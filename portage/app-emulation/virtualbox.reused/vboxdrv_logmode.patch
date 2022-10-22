@@ -1,0 +1,16 @@
+presumably this is needed even tho it's far from vboxdrv which resides in app-emulation/virtualbox-modules
+see: https://www.virtualbox.org/wiki/VBoxLogging
+"Add VBOX_WITH_R0_LOGGING=1 to LocalConfig.kmk or pass it to kmk in the command line"
+
+TODO: needs LOG_ENABLED too but I get 2 compile errors about undefined things, sort of.
+
+Index: /var/tmp/portage/app-emulation/virtualbox-6.1.18/work/VirtualBox-6.1.18/LocalConfig.kmk
+===================================================================
+--- VirtualBox-6.1.18/LocalConfig.kmk
++++ VirtualBox-6.1.18/LocalConfig.kmk
+@@ -45,3 +45,5 @@ VBOX_WITH_WARNINGS_AS_ERRORS :=
+ 
+ ## fix compilation with USE="doc" (Gentoo bug #554932)
+ VBOX_PATH_DOCBOOK_DTD   := /usr/share/sgml/docbook/sgml-dtd-4.4
++LOG_ENABLED := 1
++VBOX_WITH_R0_LOGGING := 1

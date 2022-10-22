@@ -1,0 +1,38 @@
+https://github.com/Eloston/ungoogled-chromium/issues/815
+
+--- a/third_party/blink/renderer/core/dom/document.cc	2019-08-25 10:07:09.672360957 +0200
++++ b/third_party/blink/renderer/core/dom/document.cc	2019-08-26 10:31:41.923726592 +0200
+@@ -6790,17 +6790,17 @@ void Document::DetachRange(Range* range)
+ }
+ 
+ void Document::InitDNSPrefetch() {
+-  Settings* settings = GetSettings();
++  //Settings* settings = GetSettings();
+ 
+-  have_explicitly_disabled_dns_prefetch_ = false;
+-  is_dns_prefetch_enabled_ = settings && settings->GetDNSPrefetchingEnabled() &&
++  have_explicitly_disabled_dns_prefetch_ = true;
++/*  is_dns_prefetch_enabled_ = settings && settings->GetDNSPrefetchingEnabled() &&
+                              GetSecurityOrigin()->Protocol() == "http";
+ 
+   // Inherit DNS prefetch opt-out from parent frame
+   if (Document* parent = ParentDocument()) {
+     if (!parent->IsDNSPrefetchEnabled())
+-      is_dns_prefetch_enabled_ = false;
+-  }
++*/      is_dns_prefetch_enabled_ = false;
++  //}
+ }
+ 
+ void Document::ParseDNSPrefetchControlHeader(
+--- a/third_party/blink/renderer/core/loader/preload_helper.cc	2019-08-09 16:48:15.000000000 +0200
++++ b/third_party/blink/renderer/core/loader/preload_helper.cc	2019-08-26 10:32:18.751263607 +0200
+@@ -135,7 +135,7 @@ void PreloadHelper::DnsPrefetchIfNeeded(
+     // <https://bugs.webkit.org/show_bug.cgi?id=48857>.
+     if (settings && settings->GetDNSPrefetchingEnabled() &&
+         params.href.IsValid() && !params.href.IsEmpty()) {
+-      if (settings->GetLogDnsPrefetchAndPreconnect()) {
++/*      if (settings->GetLogDnsPrefetchAndPreconnect()) */{
+         SendMessageToConsoleForPossiblyNullDocument(
+             ConsoleMessage::Create(
+                 mojom::ConsoleMessageSource::kOther,

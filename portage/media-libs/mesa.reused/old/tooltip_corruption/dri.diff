@@ -1,0 +1,60 @@
+--- /dev/fd/63	2017-04-19 23:08:33.452439409 +0200
++++ /dev/fd/62	2017-04-19 23:08:33.453439396 +0200
+@@ -16 +16 @@ Release Date: 2017-03-15
+- (==) Log file: "/home/$USER/.local/share/xorg/Xorg.0.log", Time: Wed Apr 19 22:59:30 2017
++ (==) Log file: "/home/$USER/.local/share/xorg/Xorg.0.log", Time: Wed Apr 19 23:00:13 2017
+@@ -214 +214 @@ Release Date: 2017-03-15
+- (**) RADEON(0): Option "DRI" "2"
++ (**) RADEON(0): Option "DRI" "3"
+@@ -299 +299,3 @@ Release Date: 2017-03-15
+- (**) RADEON(0): DRI3 disabled
++ (II) RADEON(0): SYNC extension fences enabled
++ (II) RADEON(0): Present extension enabled
++ (**) RADEON(0): DRI3 enabled
+@@ -586,0 +589,2 @@ Release Date: 2017-03-15
++ (**) Option "fd" "31"
++ (II) event6  - (II) SynPS/2 Synaptics TouchPad: (II) device removed
+@@ -590,43 +593,0 @@ Release Date: 2017-03-15
+- (**) Option "fd" "31"
+- (II) event6  - (II) SynPS/2 Synaptics TouchPad: (II) device removed
+- (**) Option "fd" "21"
+- (II) event3  - (II) Power Button: (II) device removed
+- (**) Option "fd" "24"
+- (II) event4  - (II) Video Bus: (II) device removed
+- (**) Option "fd" "25"
+- (II) event0  - (II) Power Button: (II) device removed
+- (**) Option "fd" "26"
+- (II) event2  - (II) Sleep Button: (II) device removed
+- (**) Option "fd" "27"
+- (**) Option "fd" "28"
+- (II) event8  - (II) Razer Razer Lycosa: (II) device removed
+- (**) Option "fd" "29"
+- (**) Option "fd" "30"
+- (II) event5  - (II) AT Translated Set 2 keyboard: (II) device removed
+- (**) Option "fd" "27"
+- (II) event7  - (II) Genius 2.4G Wireless BlueEye Mouse: (II) device removed
+- (**) Option "fd" "29"
+- (II) event11 - (II) Razer Razer Lycosa: (II) device removed
+- (II) UnloadModule: "libinput"
+- (II) systemd-logind: not releasing fd for 13:75, still in use
+- (II) UnloadModule: "libinput"
+- (II) systemd-logind: not releasing fd for 13:71, still in use
+- (II) UnloadModule: "libinput"
+- (II) systemd-logind: releasing fd for 13:69
+- (II) UnloadModule: "libinput"
+- (II) systemd-logind: releasing fd for 13:75
+- (II) UnloadModule: "libinput"
+- (II) systemd-logind: releasing fd for 13:72
+- (II) UnloadModule: "libinput"
+- (II) systemd-logind: releasing fd for 13:71
+- (II) UnloadModule: "libinput"
+- (II) systemd-logind: releasing fd for 13:66
+- (II) UnloadModule: "libinput"
+- (II) systemd-logind: releasing fd for 13:64
+- (II) UnloadModule: "libinput"
+- (II) systemd-logind: releasing fd for 13:68
+- (II) UnloadModule: "libinput"
+- (II) systemd-logind: releasing fd for 13:67
+- (II) UnloadModule: "libinput"
+- (II) systemd-logind: releasing fd for 13:70
+- (II) Server terminated successfully (0). Closing log file.

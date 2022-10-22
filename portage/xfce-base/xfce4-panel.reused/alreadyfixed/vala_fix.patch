@@ -1,0 +1,29 @@
+https://bugzilla.xfce.org/show_bug.cgi?id=16426#c24
+
+From fe7d40bb9e02be8b903c3c528b8f117b6fdfc4cf Mon Sep 17 00:00:00 2001
+From: Romain Bouvier <skunnyk@alteroot.org>
+Date: Sun, 26 Apr 2020 23:08:43 +0200
+Subject: [PATCH] Bug #16426: Fix panel build with vala 0.48
+
+- Since vala 0.48, vapigen fails with :
+overriding method `Xfce.PanelPlugin.remote_event' is incompatible with base method `bool Xfce.PanelPluginProvider.remote_event (string, GLib.Value, uint)': too few parameters.
+- The problem may be present since 2010 when remote event replies from the wrapper
+  has been added in d168066d3 (so not for internal plugins which don't
+use wrapper)
+- So, skip PanelPlugin.remote_event from vapi generation. Maybe this can
+  break some vala plugins, but I'm not aware of any using this
+remote_event feature.
+---
+ libxfce4panel/libxfce4panel-2.0.metadata | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/libxfce4panel/libxfce4panel-2.0.metadata b/libxfce4panel/libxfce4panel-2.0.metadata
+index e69de29b..d6fdee9a 100644
+--- a/libxfce4panel/libxfce4panel-2.0.metadata
++++ b/libxfce4panel/libxfce4panel-2.0.metadata
+@@ -0,0 +1 @@
++PanelPlugin.remote_event skip
+-- 
+2.26.2
+
+

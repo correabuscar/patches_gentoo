@@ -1,0 +1,28 @@
+  HOSTCC  lib/raid6/mktables
+  UNROLL  lib/raid6/int1.c
+awk: ./lib/raid6/unroll.awk:16: warning: regexp escape sequence `\#' is not a known regexp operator
+  UNROLL  lib/raid6/int2.c
+awk: ./lib/raid6/unroll.awk:16: warning: regexp escape sequence `\#' is not a known regexp operator
+  UNROLL  lib/raid6/int4.c
+awk: ./lib/raid6/unroll.awk:16: warning: regexp escape sequence `\#' is not a known regexp operator
+  UNROLL  lib/raid6/int8.c
+awk: ./lib/raid6/unroll.awk:16: warning: regexp escape sequence `\#' is not a known regexp operator
+  UNROLL  lib/raid6/int16.c
+awk: ./lib/raid6/unroll.awk:16: warning: regexp escape sequence `\#' is not a known regexp operator
+  UNROLL  lib/raid6/int32.c
+awk: ./lib/raid6/unroll.awk:16: warning: regexp escape sequence `\#' is not a known regexp operator
+  CC      lib/raid6/recov_ssse3.o
+
+diff --git a/lib/raid6/unroll.awk b/lib/raid6/unroll.awk
+index c6aa03631df8..0809805a7e23 100644
+--- a/lib/raid6/unroll.awk
++++ b/lib/raid6/unroll.awk
+@@ -13,7 +13,7 @@ BEGIN {
+ 	for (i = 0; i < rep; ++i) {
+ 		tmp = $0
+ 		gsub(/\$\$/, i, tmp)
+-		gsub(/\$\#/, n, tmp)
++		gsub(/\$#/, n, tmp)
+ 		gsub(/\$\*/, "$", tmp)
+ 		print tmp
+ 	}

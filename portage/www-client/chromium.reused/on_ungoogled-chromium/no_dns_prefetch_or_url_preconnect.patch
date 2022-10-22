@@ -1,0 +1,31 @@
+https://github.com/Eloston/ungoogled-chromium/issues/815
+
+for an alternate way to rename dns-prefetch and preconnect inside the exe file directly, see /home/user/bin/modify_chromium_exe
+
+--- a/chrome/browser/predictors/preconnect_manager.cc	2019-08-26 14:08:51.054928230 +0200
++++ b/chrome/browser/predictors/preconnect_manager.cc	2019-08-26 14:09:00.778805985 +0200
+@@ -105,6 +105,7 @@ void PreconnectManager::StartPreresolveH
+ void PreconnectManager::StartPreresolveHosts(
+     const std::vector<std::string>& hostnames) {
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  return;
+   // Push jobs in front of the queue due to higher priority.
+   for (auto it = hostnames.rbegin(); it != hostnames.rend(); ++it) {
+     PreresolveJobId job_id =
+#@@ -120,7 +121,7 @@ void PreconnectManager::StartPreresolveH
+# void PreconnectManager::StartPreconnectUrl(const GURL& url,
+#                                            bool allow_credentials) {
+#   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+#-  if (!url.SchemeIsHTTPOrHTTPS())
+#+//  if (!url.SchemeIsHTTPOrHTTPS())
+#     return;
+#   PreresolveJobId job_id = preresolve_jobs_.Add(std::make_unique<PreresolveJob>(
+#       url.GetOrigin(), 1, allow_credentials, nullptr));
+@@ -136,6 +136,7 @@ void PreconnectManager::StartPreconnectU
+     bool allow_credentials,
+     net::NetworkIsolationKey network_isolation_key) {
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  return;
+   if (!url.SchemeIsHTTPOrHTTPS())
+     return;
+   PreresolveJobId job_id = preresolve_jobs_.Add(std::make_unique<PreresolveJob>(

@@ -1,0 +1,25 @@
+https://github.com/karelzak/util-linux/issues/782
+
+well, 7.15G is 8.5G lookslike! 7.16G is 8.6G  when 'if (y > x)' instead of 'if (frac >= 10)'
+
+in cfdisk
+but 1.023K still works and 1.2K and 1.0123K
+but not 1.0234K or 1.234K or 1.23K
+^ only when 'if (y>x)' was in patch!
+
+so this isn't really mitigating it or wut
+
+diff -upr util-linux-2.32/lib/strutils.c util-linux-2.32.mod/lib/strutils.c
+--- util-linux-2.32/lib/strutils.c	2017-09-27 11:05:13.698361518 +0200
++++ util-linux-2.32.mod/lib/strutils.c	2018-07-03 20:46:44.627681308 +0200
+@@ -165,6 +165,10 @@ check_suffix:
+ 			goto err;
+ 		}
+ 		do_scale_by_power(&y, base, frac_pwr);
++		if (frac >= 10) { //FIXME: more than 1 fraction digits not supported eg. 7.4G ok, but 7.45G not good!
++			rc = -EINVAL;
++			goto err;
++		}
+ 		x += y;
+ 	}
+ done:

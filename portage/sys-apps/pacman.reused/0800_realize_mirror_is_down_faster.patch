@@ -1,0 +1,13 @@
+diff --git a/lib/libalpm/dload.c b/lib/libalpm/dload.c
+index f06caad8..17c96cb5 100644
+--- a/lib/libalpm/dload.c
++++ b/lib/libalpm/dload.c
+@@ -258,7 +258,7 @@ static void curl_set_handle_opts(struct dload_payload *payload,
+ 	curl_easy_reset(curl);
+ 	curl_easy_setopt(curl, CURLOPT_URL, payload->fileurl);
+ 	curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, error_buffer);
+-	curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
++  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 1L);//was 10L //10 sec timeout to realize the mirror is down? no thx! let's do 1; was 10L
+ 	curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);
+ 	curl_easy_setopt(curl, CURLOPT_FILETIME, 1L);
+ 	curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);

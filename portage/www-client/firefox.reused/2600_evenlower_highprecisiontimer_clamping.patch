@@ -1,0 +1,14 @@
+when privacy.reduceTimerPrecision.unconditional=true in about:config it will clamp high precision timer to 20us, but now clamp it to 100ms instead, just like privacy.resistFingerprinting.reduceTimerPrecision.microseconds=100000 us is already set for non-high precision timer mode.
+
+diff -r 50d550c87f07 toolkit/components/resistfingerprinting/nsRFPService.cpp
+--- a/toolkit/components/resistfingerprinting/nsRFPService.cpp	Tue May 26 20:49:29 2020 +0000
++++ b/toolkit/components/resistfingerprinting/nsRFPService.cpp	Tue Jun 23 06:21:20 2020 +0200
+@@ -47,7 +47,7 @@
+ #define RFP_TIMER_PREF "privacy.reduceTimerPrecision"
+ #define RFP_TIMER_UNCONDITIONAL_PREF \
+   "privacy.reduceTimerPrecision.unconditional"
+-#define RFP_TIMER_UNCONDITIONAL_VALUE 20
++#define RFP_TIMER_UNCONDITIONAL_VALUE 100000  //this is in microseconds ie. 20us (original value)
+ #define RFP_TIMER_VALUE_PREF \
+   "privacy.resistFingerprinting.reduceTimerPrecision.microseconds"
+ #define RFP_JITTER_VALUE_PREF \

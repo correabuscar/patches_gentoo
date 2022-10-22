@@ -1,0 +1,26 @@
+diff --git a/src/radeon_glamor.c b/src/radeon_glamor.c
+index f1098381..8a1a8e26 100644
+--- a/src/radeon_glamor.c
++++ b/src/radeon_glamor.c
+@@ -468,6 +468,8 @@ radeon_glamor_init(ScreenPtr screen)
+ 		return FALSE;
+ 	}
+ 
++	    xf86DrvMsg(scrn->scrnIndex, X_WARNING,
++		       "111111111111this should happen first, but only happens iff Option \"AccelMethod\" \"Glamor\" instead of \"EXA\" and then you have to turn off vsync with xfwm4 or else you only see white screen!\n");
+ 	if (!dixRegisterPrivateKey(&glamor_pixmap_index, PRIVATE_PIXMAP, 0))
+ 		return FALSE;
+ 
+diff --git a/src/radeon_present.c b/src/radeon_present.c
+index 494655c9..43c11683 100644
+--- a/src/radeon_present.c
++++ b/src/radeon_present.c
+@@ -254,6 +254,8 @@ radeon_present_check_flip(RRCrtcPtr crtc, WindowPtr window, PixmapPtr pixmap,
+     xf86CrtcPtr xf86_crtc = crtc->devPrivate;
+     ScreenPtr screen = window->drawable.pScreen;
+     ScrnInfoPtr scrn = xf86_crtc->scrn;
++	    xf86DrvMsg(scrn->scrnIndex, X_WARNING,
++		       "22222222 this should happen second\n");
+     struct radeon_pixmap *priv = radeon_get_pixmap_private(pixmap);
+     xf86CrtcConfigPtr config = XF86_CRTC_CONFIG_PTR(scrn);
+     RADEONInfoPtr info = RADEONPTR(scrn);

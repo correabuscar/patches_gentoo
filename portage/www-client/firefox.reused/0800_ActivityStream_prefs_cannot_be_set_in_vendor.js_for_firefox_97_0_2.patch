@@ -1,0 +1,337 @@
+for www-client/firefox-97.0.2
+for www-client/firefox-89.0
+for www-client/firefox-84.0_rc2
+for www-client/firefox-88.0.1::localrepo
+
+cleaned up a bit
+#diff -r 51efc4b931f7 browser/components/newtab/lib/ActivityStream.jsm
+#--- a/browser/components/newtab/lib/ActivityStream.jsm	Mon Mar 02 00:03:42 2020 +0000
+#+++ b/browser/components/newtab/lib/ActivityStream.jsm	Mon Mar 02 15:24:22 2020 +0100
+#@@ -177,14 +177,18 @@
+#           provider_icon: "pocket",
+#           provider_name: "Pocket",
+#           read_more_endpoint:
+#-            "https://getpocket.com/explore/trending?src=fx_new_tab",
+#-          stories_endpoint: `https://getpocket.cdn.mozilla.net/v3/firefox/global-recs?version=3&consumer_key=$apiKey&locale_lang=${
+#+            //"https://getpocket.com/explore/trending?src=fx_new_tab",
+#+            "https://read_more_endpoint.firefoxhelloooooowoooorl.clock/getpocket.com/explore/trending?src=fx_new_tab",
+#+          //stories_endpoint: `https://getpocket.cdn.mozilla.net/v3/firefox/global-recs?version=3&consumer_key=$apiKey&locale_lang=${
+#+          stories_endpoint: `https://stories_endpoint.firefoxhelloooooowoooorl.clock/getpocket.cdn.mozilla.net/v3/firefox/global-recs?version=3&consumer_key=$apiKey&locale_lang=${
+#             args.locale
+#           }&feed_variant=${
+#             showSpocs(args) ? "default_spocs_on" : "default_spocs_off"
+#           }`,
+#-          stories_referrer: "https://getpocket.com/recommendations",
+#-          topics_endpoint: `https://getpocket.cdn.mozilla.net/v3/firefox/trending-topics?version=2&consumer_key=$apiKey&locale_lang=${args.locale}`,
+#+          //stories_referrer: "https://getpocket.com/recommendations",
+#+          stories_referrer: "https://stories_referrer.firefoxhelloooooowoooorl.clock/recommendations",
+#+          //topics_endpoint: `https://getpocket.cdn.mozilla.net/v3/firefox/trending-topics?version=2&consumer_key=$apiKey&locale_lang=${args.locale}`,
+#+          topics_endpoint: `https://topics_endpoint.firefoxhelloooooowoooorl.clock/getpocket.cdn.mozilla.net/v3/firefox/trending-topics?version=2&consumer_key=$apiKey&locale_lang=${args.locale}`,
+#           model_keys: [
+#             "nmf_model_animals",
+#             "nmf_model_business",
+#@@ -245,8 +252,12 @@
+#             "nb_model_travel",
+#             "nb_model_writing",
+#           ],
+#-          show_spocs: showSpocs(args),
+#-          personalized: true,
+#+          show_spocs: 
+#+          //showSpocs(args),
+#+          false,
+#+          personalized: 
+#+          //true,
+#+          false,
+#           version: 1,
+#         }),
+#     },
+#Index: /var/tmp/portage/www-client/firefox-88.0.1/work/firefox-88.0.1/browser/components/newtab/lib/ActivityStream.jsm
+#===================================================================
+#--- firefox-88.0.1/browser/components/newtab/lib/ActivityStream.jsm
+#+++ firefox-88.0.1/browser/components/newtab/lib/ActivityStream.jsm
+Index: /var/tmp/portage/www-client/firefox-89.0/work/firefox-89.0/browser/components/newtab/lib/ActivityStream.jsm
+===================================================================
+--- firefox-89.0/browser/components/newtab/lib/ActivityStream.jsm
++++ firefox-89.0/browser/components/newtab/lib/ActivityStream.jsm
+@@ -148,15 +148,19 @@ const PREFS_CONFIG = new Map([
+           provider_icon: "pocket",
+           provider_name: "Pocket",
+           read_more_endpoint:
+-            "https://getpocket.com/explore/trending?src=fx_new_tab",
+-          stories_endpoint: `https://getpocket.cdn.mozilla.net/v3/firefox/global-recs?version=3&consumer_key=$apiKey&locale_lang=${
++            //"https://getpocket.com/explore/trending?src=fx_new_tab",
++            "https://read_more_endpoint.firefoxhelloooooowoooorl.clock/explore/trending?src=fx_new_tab",
++          stories_endpoint: `https://stories_endpoint.firefoxhelloooooowoooorl.clock/v3/firefox/global-recs?version=3&consumer_key=$apiKey&locale_lang=${
+             args.locale
+           }&feed_variant=${
+             showSpocs(args) ? "default_spocs_on" : "default_spocs_off"
+           }`,
+-          stories_referrer: "https://getpocket.com/recommendations",
+-          topics_endpoint: `https://getpocket.cdn.mozilla.net/v3/firefox/trending-topics?version=2&consumer_key=$apiKey&locale_lang=${args.locale}`,
+-          show_spocs: showSpocs(args),
++          //stories_referrer: "https://getpocket.com/recommendations",
++          stories_referrer: "https://stories_referrer.firefoxhelloooooowoooorl.clock/recommendations",
++          //topics_endpoint: `https://getpocket.cdn.mozilla.net/v3/firefox/trending-topics?version=2&consumer_key=$apiKey&locale_lang=${args.locale}`,
++          topics_endpoint: `https://topics_endpoint.firefoxhelloooooowoooorl.clock/v3/firefox/trending-topics?version=2&consumer_key=$apiKey&locale_lang=${args.locale}`,
++          show_spocs: //showSpocs(args),
++          false,
+         }),
+     },
+   ],
+@@ -256,7 +267,9 @@
+     {
+       title:
+         "Show sponsored cards in spoc experiment (show_spocs in topstories.options has to be set to true as well)",
+-      value: true,
++      value: 
++      //true,
++      false,
+     },
+   ],
+   [
+#@@ -282,14 +295,18 @@
+#     "showSearch",
+#     {
+#       title: "Show the Search bar",
+#-      value: true,
+#+      value: 
+#+      //true,
+#+      false,
+#     },
+#   ],
+#   [
+#     "feeds.snippets",
+#     {
+#       title: "Show snippets on activity stream",
+#-      value: true,
+#+      value: 
+#+      //true,
+#+      false,
+#     },
+#   ],
+#   [
+@@ -219,7 +219,8 @@ const PREFS_CONFIG = new Map([
+     "showSearch",
+     {
+       title: "Show the Search bar",
+-      value: true,
++      //value: true,
++      value: false,
+     },
+   ],
+   [
+@@ -303,7 +320,9 @@
+     "telemetry",
+     {
+       title: "Enable system error and usage data collection",
+-      value: true,
++      value: 
++      //true,
++      false,
+       value_local_dev: false,
+     },
+   ],
+@@ -311,7 +330,9 @@
+     "telemetry.ut.events",
+     {
+       title: "Enable Unified Telemetry event data collection",
+-      value: AppConstants.EARLY_BETA_OR_EARLIER,
++      value: 
++      //AppConstants.EARLY_BETA_OR_EARLIER,
++      false,
+       value_local_dev: false,
+     },
+   ],
+@@ -327,7 +350,8 @@
+     "telemetry.structuredIngestion.endpoint",
+     {
+       title: "Structured Ingestion telemetry server endpoint",
+-      value: "https://incoming.telemetry.mozilla.org/submit",
++      //value: "https://incoming.telemetry.mozilla.org/submit",
++      value: "https://telemetry.structuredIngestion.endpoint.firefoxhelloooooowoooorl.clock/incoming.telemetry.mozilla.org/submit",
+     },
+   ],
+   [
+#@@ -489,13 +513,16 @@
+#         return JSON.stringify({
+#           api_key_pref: "extensions.pocket.oAuthConsumerKey",
+#           collapsible: true,
+#-          enabled: true,
+#-          show_spocs: showSpocs({ geo }),
+#+          //enabled: true,
+#+          enabled: false,
+#+          //show_spocs: showSpocs({ geo }),
+#+          show_spocs: false,
+#           hardcoded_layout: true,
+#           personalized: true,
+#           // This is currently an exmple layout used for dev purposes.
+#           layout_endpoint:
+#-            "https://getpocket.cdn.mozilla.net/v3/newtab/layout?version=1&consumer_key=$apiKey&layout_variant=basic",
+#+            //"https://getpocket.cdn.mozilla.net/v3/newtab/layout?version=1&consumer_key=$apiKey&layout_variant=basic",
+#+            "https://layout_endpoint.firefoxhelloooooowoooorl.clock/getpocket.cdn.mozilla.net/v3/newtab/layout?version=1&consumer_key=$apiKey&layout_variant=basic",
+#         });
+#       },
+#     },
+@@ -505,7 +532,9 @@
+     {
+       title:
+         "Endpoint prefixes (comma-separated) that are allowed to be requested",
+-      value: "https://getpocket.cdn.mozilla.net/,https://spocs.getpocket.com/",
++      value: 
++      //"https://getpocket.cdn.mozilla.net/,https://spocs.getpocket.com/",
++      "https://discoverystream.endpoints.firefoxhelloooooowoooorl.clock/getpocket.cdn.mozilla.net/,https://spocs.getpocket.com/",
+     },
+   ],
+   [
+@@ -544,7 +573,9 @@
+     {
+       title:
+         "Endpoint for when a user opts-out of sponsored content to delete the user's data from the ad server.",
+-      value: "https://spocs.getpocket.com/user",
++      value: 
++      //"https://spocs.getpocket.com/user",
++      "https://discoverystream.endpointSpocsClear.firefoxhelloooooowoooorl.clock/spocs.getpocket.com/user",
+     },
+   ],
+   [
+#@@ -597,7 +623,8 @@
+#     name: "section.highlights",
+#     factory: () => new HighlightsFeed(),
+#     title: "Fetches content recommendations from places db",
+#-    value: true,
+#+    //value: true,
+#+    value: false,
+#   },
+#   {
+#     name: "system.topstories",
+@@ -631,6 +631,7 @@ const FEEDS_DATA = [
+       "System pref that fetches content recommendations from a configurable content provider",
+     // Dynamically determine if Pocket should be shown for a geo / locale
+     getValue: ({ geo, locale }) => {
++      return false;
+       // If we don't have geo, we don't want to flash the screen with stories while geo loads.
+       // Best to display nothing until geo is ready.
+       if (!geo) {
+#@@ -676,37 +676,43 @@ const FEEDS_DATA = [
+#     name: "systemtick",
+#     factory: () => new SystemTickFeed(),
+#     title: "Produces system tick events to periodically check for data expiry",
+#-    value: true,
+#+    //value: true,
+#+    value: false,
+#   },
+#   {
+#     name: "telemetry",
+#     factory: () => new TelemetryFeed(),
+#     title: "Relays telemetry-related actions to PingCentre",
+#-    value: true,
+#+    //value: true,
+#+    value: false,
+#   },
+#   {
+#     name: "favicon",
+#     factory: () => new FaviconFeed(),
+#     title: "Fetches tippy top manifests from remote service",
+#-    value: true,
+#+    //value: true,
+#+    value: false,
+#   },
+#   {
+#     name: "system.topsites",
+#     factory: () => new TopSitesFeed(),
+#     title: "Queries places and gets metadata for Top Sites section",
+#-    value: true,
+#+    //value: true,
+#+    value: false,
+#   },
+#   {
+#     name: "recommendationproviderswitcher",
+#     factory: () => new RecommendationProviderSwitcher(),
+#     title: "Handles switching between two types of personality providers",
+#-    value: true,
+#+    //value: true,
+#+    value: false,
+#   },
+#   {
+#     name: "discoverystreamfeed",
+#     factory: () => new DiscoveryStreamFeed(),
+#     title: "Handles new pocket ui for the new tab page",
+#-    value: true,
+#+    //value: true,
+#+    value: false,
+#   },
+# ];
+ 
+Index: /var/tmp/portage/www-client/firefox-97.0.2/work/firefox-97.0.2/browser/components/newtab/lib/ActivityStream.jsm
+===================================================================
+--- firefox-97.0.2/browser/components/newtab/lib/ActivityStream.jsm
++++ firefox-97.0.2/browser/components/newtab/lib/ActivityStream.jsm
+@@ -389,12 +389,15 @@ const PREFS_CONFIG = new Map([
+         return JSON.stringify({
+           api_key_pref: "extensions.pocket.oAuthConsumerKey",
+           collapsible: true,
+-          enabled: true,
+-          show_spocs: showSpocs({ geo }),
++          //enabled: true,
++          enabled: false,
++          //show_spocs: showSpocs({ geo }),
++          show_spocs: false,
+           hardcoded_layout: true,
+           // This is currently an exmple layout used for dev purposes.
+           layout_endpoint:
+-            "https://getpocket.cdn.mozilla.net/v3/newtab/layout?version=1&consumer_key=$apiKey&layout_variant=basic",
++            //"https://getpocket.cdn.mozilla.net/v3/newtab/layout?version=1&consumer_key=$apiKey&layout_variant=basic",
++            "https://layout_endpoint.firefoxhelloooooowoooorl.clock/getpocket.cdn.mozilla.net/v3/newtab/layout?version=1&consumer_key=$apiKey&layout_variant=basic",
+         });
+       },
+     },
+@@ -570,37 +573,43 @@ const FEEDS_DATA = [
+     name: "systemtick",
+     factory: () => new SystemTickFeed(),
+     title: "Produces system tick events to periodically check for data expiry",
+-    value: true,
++    //value: true,
++    value: false,
+   },
+   {
+     name: "telemetry",
+     factory: () => new TelemetryFeed(),
+     title: "Relays telemetry-related actions to PingCentre",
+-    value: true,
++    //value: true,
++    value: false,
+   },
+   {
+     name: "favicon",
+     factory: () => new FaviconFeed(),
+     title: "Fetches tippy top manifests from remote service",
+-    value: true,
++    //value: true,
++    value: false,
+   },
+   {
+     name: "system.topsites",
+     factory: () => new TopSitesFeed(),
+     title: "Queries places and gets metadata for Top Sites section",
+-    value: true,
++    //value: true,
++    value: false,
+   },
+   {
+     name: "recommendationprovider",
+     factory: () => new RecommendationProvider(),
+     title: "Handles setup and interaction for the personality provider",
+-    value: true,
++    //value: true,
++    value: false,
+   },
+   {
+     name: "discoverystreamfeed",
+     factory: () => new DiscoveryStreamFeed(),
+     title: "Handles new pocket ui for the new tab page",
+-    value: true,
++    //value: true,
++    value: false,
+   },
+ ];
+ 

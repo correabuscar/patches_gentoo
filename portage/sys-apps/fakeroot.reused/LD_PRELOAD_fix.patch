@@ -1,0 +1,79 @@
+this was in archlinux, no idea if it affects gentoo, TODO: see if I need to apply this in any way (currently applying it, but didn't check!)
+
+before:
+  -> Generating .BUILDINFO file...
+ERROR: ld.so: object 'libfakeroot.so' from LD_PRELOAD cannot be preloaded (cannot open shared object file): ignored.
+  -> Adding install file...
+
+after:
+  -> Generating .BUILDINFO file...
+  -> Adding install file...
+
+Extra info:
+for each sudo call in /home/user/build/1packages/kernel/linuxgit/PKGBUILD, I'm getting this error: ERROR: ld.so: object 'libfakeroot.so' from LD_PRELOAD cannot be preloaded (cannot open shared object file): ignored.
+
+#  echo "LD_PRELOAD='$LD_PRELOAD'" #LD_PRELOAD='libfakeroot.so'
+#  echo "LD_LIBRARY_PATH='$LD_LIBRARY_PATH'" #LD_LIBRARY_PATH='/usr/lib/libfakeroot:/usr/lib64/libfakeroot:/usr/lib32/libfakeroot:/home/user/build/2nonpkgs/rust.stuff/rust/rust/build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/x86_64-unknown-linux-gnu/lib:/home/user/build/2nonpkgs/rust.stuff/rust/rust/build/x86_64-unknown-linux-gnu/stage1/lib/rustlib/x86_64-unknown-linux-gnu/lib:/home/user/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib:/home/user/build/2nonpkgs/rust.stuff/rust/rust/build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/x86_64-unknown-linux-gnu/lib:/home/user/build/2nonpkgs/rust.stuff/rust/rust/build/x86_64-unknown-linux-gnu/stage1/lib/rustlib/x86_64-unknown-linux-gnu/lib:/home/user/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib:'
+#$ l /usr/lib/libfakeroot/libfakeroot.so
+#lrwxrwxrwx 1 root root 16 18.08.2017 08:16 /usr/lib/libfakeroot/libfakeroot.so -> libfakeroot-0.so*
+#$ l /usr/lib/libfakeroot/libfakeroot-0.so
+#-rwxr-xr-x 1 root root 52416 18.08.2017 08:16 /usr/lib/libfakeroot/libfakeroot-0.so*
+#$ ldd /usr/lib/libfakeroot/libfakeroot-0.so
+#	linux-vdso.so.1 (0x00007ffd0e538000)
+#	libdl.so.2 => /usr/lib/libdl.so.2 (0x00007f5f29311000)
+#	libc.so.6 => /usr/lib/libc.so.6 (0x00007f5f28f5a000)
+#	/usr/lib64/ld-linux-x86-64.so.2 (0x00007f5f29722000)
+#ok wtf is dis:
+#access("/etc/suid-debug", F_OK)         = -1 ENOENT (No such file or directory)
+#openat(AT_FDCWD, "/usr/lib/sudo/tls/x86_64/x86_64/libfakeroot.so", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+#stat("/usr/lib/sudo/tls/x86_64/x86_64", 0x7ffcdbc4c650) = -1 ENOENT (No such file or directory)
+#openat(AT_FDCWD, "/usr/lib/sudo/tls/x86_64/libfakeroot.so", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+#stat("/usr/lib/sudo/tls/x86_64", 0x7ffcdbc4c650) = -1 ENOENT (No such file or directory)
+#openat(AT_FDCWD, "/usr/lib/sudo/tls/x86_64/libfakeroot.so", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+#stat("/usr/lib/sudo/tls/x86_64", 0x7ffcdbc4c650) = -1 ENOENT (No such file or directory)
+#openat(AT_FDCWD, "/usr/lib/sudo/tls/libfakeroot.so", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+#stat("/usr/lib/sudo/tls", 0x7ffcdbc4c650) = -1 ENOENT (No such file or directory)
+#openat(AT_FDCWD, "/usr/lib/sudo/x86_64/x86_64/libfakeroot.so", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+#stat("/usr/lib/sudo/x86_64/x86_64", 0x7ffcdbc4c650) = -1 ENOENT (No such file or directory)
+#openat(AT_FDCWD, "/usr/lib/sudo/x86_64/libfakeroot.so", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+#stat("/usr/lib/sudo/x86_64", 0x7ffcdbc4c650) = -1 ENOENT (No such file or directory)
+#openat(AT_FDCWD, "/usr/lib/sudo/x86_64/libfakeroot.so", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+#stat("/usr/lib/sudo/x86_64", 0x7ffcdbc4c650) = -1 ENOENT (No such file or directory)
+#openat(AT_FDCWD, "/usr/lib/sudo/libfakeroot.so", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+#stat("/usr/lib/sudo", {st_mode=S_IFDIR|0755, st_size=210, ...}) = 0
+#openat(AT_FDCWD, "/usr/lib/tls/x86_64/x86_64/libfakeroot.so", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+#stat("/usr/lib/tls/x86_64/x86_64", 0x7ffcdbc4c650) = -1 ENOENT (No such file or directory)
+#openat(AT_FDCWD, "/usr/lib/tls/x86_64/libfakeroot.so", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+#stat("/usr/lib/tls/x86_64", 0x7ffcdbc4c650) = -1 ENOENT (No such file or directory)
+#openat(AT_FDCWD, "/usr/lib/tls/x86_64/libfakeroot.so", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+#stat("/usr/lib/tls/x86_64", 0x7ffcdbc4c650) = -1 ENOENT (No such file or directory)
+#openat(AT_FDCWD, "/usr/lib/tls/libfakeroot.so", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+#stat("/usr/lib/tls", 0x7ffcdbc4c650)    = -1 ENOENT (No such file or directory)
+#openat(AT_FDCWD, "/usr/lib/x86_64/x86_64/libfakeroot.so", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+#stat("/usr/lib/x86_64/x86_64", 0x7ffcdbc4c650) = -1 ENOENT (No such file or directory)
+#openat(AT_FDCWD, "/usr/lib/x86_64/libfakeroot.so", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+#stat("/usr/lib/x86_64", 0x7ffcdbc4c650) = -1 ENOENT (No such file or directory)
+#openat(AT_FDCWD, "/usr/lib/x86_64/libfakeroot.so", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+#stat("/usr/lib/x86_64", 0x7ffcdbc4c650) = -1 ENOENT (No such file or directory)
+#openat(AT_FDCWD, "/usr/lib/libfakeroot.so", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+#stat("/usr/lib", {st_mode=S_IFDIR|0755, st_size=97984, ...}) = 0
+#writev(2, [{iov_base="ERROR: ld.so: object '", iov_len=22}, {iov_base="libfakeroot.so", iov_len=14}, {iov_base="' from ", iov_len=7}, {iov_base="LD_PRELOAD", iov_len=10}, {iov_base=" cannot be preloaded (", iov_len=22}, {iov_base="cannot open shared object file", iov_len=30}, {iov_base="): ignored.\n", iov_len=12}], 7ERROR: ld.so: object 'libfakeroot.so' from LD_PRELOAD cannot be preloaded (cannot open shared object file): ignored.
+#) = 117
+#XXX: ok, so LD_LIBRARY_PATH is ignored, and export LD_PRELOAD='/usr/lib/libfakeroot/libfakeroot.so' and then 'sudo id', works! w/o that error!
+
+when this LDPRELOADABS is 1 in configure.ac , then 
+in scripts/fakeroot.in USEABSLIBPATH is 1 (due to direct dep on that)
+
+diff -up fakeroot-1.22/configure.ac fakeroot-1.22.mod/configure.ac
+--- fakeroot-1.22/configure.ac	2017-08-17 04:26:13.000000000 +0200
++++ fakeroot-1.22.mod/configure.ac	2018-03-10 17:53:27.042930166 +0100
+@@ -379,7 +379,8 @@ dnl This should really be done intellige
+ DLSUFFIX=".so"
+ LDLIBPATHVAR="LD_LIBRARY_PATH"
+ LDPRELOADVAR="LD_PRELOAD"
+-LDPRELOADABS=0
++LDPRELOADABS=1
++#^ or else ERROR: ld.so: object 'libfakeroot.so' from LD_PRELOAD cannot be preloaded (cannot open shared object file): ignored.  FIX is using LD_PRELOAD='/usr/lib/libfakeroot/libfakeroot.so' instead of LD_PRELOAD='libfakeroot.so'
+ LDEXTRAVAR=""
+ case $target_cpu:$target_os in
+ 	(alpha*:linux*|ia64*:linux*)

@@ -1,0 +1,130 @@
+#'allow_js_to_lockPref_from_bug440908.patch' #FIXME: this cannot be applied on latest firefox, do a |findncif stickyPref -i| to find the new files! (cpp and .rs)
+jan 26 2018:
+can't be applied anymore now, to fix, see these infos:
+https://reviewboard.mozilla.org/r/202672/diff/1#index_header
+anything after this comment https://bugzilla.mozilla.org/show_bug.cgi?id=440908#c52
+$ grep -nH sticky_pref -- `grep -nrIFw user_pref|cut -f1 -d: -s|sort -u`
+
+old:
+from: https://bugzilla.mozilla.org/show_bug.cgi?id=440908#c27
+modified to can be applied cleanly on firefox-hg
+
+this allows lockPref in vendor.js (for example)
+
+
+From b8015e0754742650a4877de9ebe7d6db2671970d Mon Sep 17 00:00:00 2001
+From: Mike Hommey <glandium@debian.org>
+Date: Sat, 21 Jun 2008 02:48:46 +0200
+Subject: [PATCH] Allow .js preference files to set locked prefs with
+ lockPref()
+
+diff -r 24763f58772d modules/libpref/prefapi.cpp
+--- a/modules/libpref/prefapi.cpp	Mon Aug 22 16:00:34 2016 -0700
++++ b/modules/libpref/prefapi.cpp	Tue Aug 23 22:47:23 2016 +0300
+@@ -997,7 +997,8 @@
+                          PrefValue   value,
+                          PrefType    type,
+                          bool        isDefault,
+-                         bool        isStickyDefault)
++                         bool        isStickyDefault,
++                         bool        isLocked)
+ 
+ {
+     uint32_t flags = 0;
+@@ -1010,4 +1011,5 @@
+         flags |= kPrefForceSet;
+     }
+     pref_HashPref(pref, value, type, flags);
++    if (isLocked) PREF_LockPref(pref, true);
+ }
+diff -r 24763f58772d modules/libpref/prefapi.h
+--- a/modules/libpref/prefapi.h	Mon Aug 22 16:00:34 2016 -0700
++++ b/modules/libpref/prefapi.h	Tue Aug 23 22:47:23 2016 +0300
+@@ -243,7 +243,8 @@
+                           PrefValue   value,
+                           PrefType    type,
+                           bool        isDefault,
+-                          bool        isStickyDefault);
++                          bool        isStickyDefault,
++                          bool        isLocked);
+ 
+ 
+ /*
+diff -r 24763f58772d modules/libpref/prefread.cpp
+--- a/modules/libpref/prefread.cpp	Mon Aug 22 16:00:34 2016 -0700
++++ b/modules/libpref/prefread.cpp	Tue Aug 23 22:47:23 2016 +0300
+@@ -43,6 +43,7 @@
+ #define BITS_PER_HEX_DIGIT      4
+ 
+ static const char kUserPref[] = "user_pref";
++static const char kLockPref[] = "lockPref";
+ static const char kPref[] = "pref";
+ static const char kPrefSticky[] = "sticky_pref";
+ static const char kTrue[] = "true";
+@@ -146,7 +147,7 @@
+         break;
+     }
+     (*ps->reader)(ps->closure, ps->lb, value, ps->vtype, ps->fdefault,
+-                  ps->fstickydefault);
++                  ps->fstickydefault, ps->flock);
+     return true;
+ }
+ 
+@@ -215,6 +216,7 @@
+                 ps->vtype = PrefType::Invalid;
+                 ps->fdefault = false;
+                 ps->fstickydefault = false;
++                ps->flock = false;
+             }
+             switch (c) {
+             case '/':       /* begin comment block or line? */
+@@ -226,12 +228,15 @@
+             case 'u':       /* indicating user_pref */
+             case 's':       /* indicating sticky_pref */
+             case 'p':       /* indicating pref */
++            case 'l':       /* indicating lockPref */
+                 if (c == 'u') {
+                   ps->smatch = kUserPref;
+                 } else if (c == 's') {
+                   ps->smatch = kPrefSticky;
++                } else if (c == 'p') {
++                  ps->smatch = kPref;
+                 } else {
+-                  ps->smatch = kPref;
++                  ps->smatch = kLockPref;
+                 }
+                 ps->sindex = 1;
+                 ps->nextstate = PREF_PARSE_UNTIL_OPEN_PAREN;
+@@ -277,8 +282,10 @@
+         /* name parsing */
+         case PREF_PARSE_UNTIL_NAME:
+             if (c == '\"' || c == '\'') {
+-                ps->fdefault = (ps->smatch == kPref || ps->smatch == kPrefSticky);
++                ps->fdefault = (ps->smatch == kPref || ps->smatch == kPrefSticky
++                                || ps->smatch == kLockPref);
+                 ps->fstickydefault = (ps->smatch == kPrefSticky);
++                ps->flock = (ps->smatch == kLockPref);
+                 ps->quotechar = c;
+                 ps->nextstate = PREF_PARSE_UNTIL_COMMA; /* return here when done */
+                 state = PREF_PARSE_QUOTED_STRING;
+diff -r 24763f58772d modules/libpref/prefread.h
+--- a/modules/libpref/prefread.h	Mon Aug 22 16:00:34 2016 -0700
++++ b/modules/libpref/prefread.h	Tue Aug 23 22:47:23 2016 +0300
+@@ -34,7 +34,8 @@
+                            PrefValue   val,
+                            PrefType    type,
+                            bool        defPref,
+-                           bool        stickyPref);
++                           bool        stickyPref,
++                           bool        lockPref);
+ 
+ /**
+  * Report any errors or warnings we encounter during parsing.
+@@ -62,6 +63,7 @@
+     PrefType    vtype;      /* PREF_STRING,INT,BOOL          */
+     bool        fdefault;   /* true if (default) pref        */
+     bool        fstickydefault; /* true if (sticky) pref     */
++    bool        flock;      /* true if pref to be locked     */
+ } PrefParseState;
+ 
+ /**

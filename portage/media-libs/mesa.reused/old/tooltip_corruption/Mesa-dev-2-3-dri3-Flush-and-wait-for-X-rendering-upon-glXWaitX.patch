@@ -1,0 +1,119 @@
+From patchwork Sat Oct 22 10:00:52 2016
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Subject: [Mesa-dev,2/3] dri3: Flush and wait for X rendering upon glXWaitX()
+From: Chris Wilson <chris@chris-wilson.co.uk>
+X-Patchwork-Id: 117379
+Message-Id: <20161022100053.636-2-chris@chris-wilson.co.uk>
+To: mesa-dev@lists.freedesktop.org
+Date: Sat, 22 Oct 2016 11:00:52 +0100
+
+glXWaitX() is supposed to be a synchronisation point with rendering via
+the X server. Currently, it only tries to keep front buffered rendering
+synchronised, but we also need to flush all rendering to shared pixmaps
+as well (which, for example, are used as texture sources by compositors).
+
+Note that this assumes that Xorg continues to flush all rendering upon
+triggering XSync rather than rendering to the drawable associated with
+the XSync. If Xorg does implement more fine-grained synchronisation
+requests (like for DRI2), we will need to ensure all tfp are also
+synchronisation following the glXWaitX().
+
+References: https://bugs.freedesktop.org/show_bug.cgi?id=97914
+Signed-off-by: Chris Wilson <chris@chris-wilson.co.uk>
+---
+ src/loader/loader_dri3_helper.c | 44 ++++++++++++++++++++++++++++++++++++++++-
+ src/loader/loader_dri3_helper.h |  3 +++
+ 2 files changed, 46 insertions(+), 1 deletion(-)
+
+diff --git a/src/loader/loader_dri3_helper.c b/src/loader/loader_dri3_helper.c
+index ca02e97..f4f6d53 100644
+--- a/src/loader/loader_dri3_helper.c
++++ b/src/loader/loader_dri3_helper.c
+@@ -113,6 +113,11 @@ loader_dri3_drawable_fini(struct loader_dri3_drawable *draw)
+          dri3_free_render_buffer(draw, draw->buffers[i]);
+    }
+ 
++   if (draw->sync_fence) {
++      xcb_sync_destroy_fence(draw->conn, draw->sync_fence);
++      xshmfence_unmap_shm(draw->shm_fence);
++   }
++
+    if (draw->special_event) {
+       xcb_void_cookie_t cookie =
+          xcb_present_select_input_checked(draw->conn, draw->eid, draw->drawable,
+@@ -549,7 +554,19 @@ loader_dri3_wait_x(struct loader_dri3_drawable *draw)
+    struct loader_dri3_buffer *front;
+    __DRIcontext *dri_context;
+ 
+-   if (draw == NULL || !draw->have_fake_front)
++   if (draw == NULL)
++      return;
++
++   if (draw->sync_fence) {
++      xshmfence_reset(draw->shm_fence);
++
++      xcb_sync_trigger_fence(draw->conn, draw->sync_fence);
++      xcb_flush(draw->conn);
++
++      xshmfence_await(draw->shm_fence);
++   }
++
++   if (!draw->have_fake_front)
+       return;
+ 
+    front = dri3_fake_front_buffer(draw);
+@@ -943,6 +960,29 @@ no_shm_fence:
+    return NULL;
+ }
+ 
++static void
++dri3_attach_sync(struct loader_dri3_drawable *draw)
++{
++   int fence_fd;
++
++   fence_fd = xshmfence_alloc_shm();
++   if (fence_fd < 0)
++      return;
++
++   draw->shm_fence = xshmfence_map_shm(fence_fd);
++   if (draw->shm_fence == NULL) {
++      close(fence_fd);
++      return;
++   }
++
++   draw->sync_fence = xcb_generate_id(draw->conn);
++   xcb_dri3_fence_from_fd(draw->conn,
++                          draw->drawable,
++                          draw->sync_fence,
++                          false,
++                          fence_fd);
++}
++
+ /** loader_dri3_update_drawable
+  *
+  * Called the first time we use the drawable and then
+@@ -1032,6 +1072,8 @@ dri3_update_drawable(__DRIdrawable *driDrawable,
+          xcb_unregister_for_special_event(draw->conn, draw->special_event);
+          draw->special_event = NULL;
+       }
++
++      dri3_attach_sync(draw);
+    }
+    dri3_flush_present_events(draw);
+    return true;
+diff --git a/src/loader/loader_dri3_helper.h b/src/loader/loader_dri3_helper.h
+index 1d1f15e..dab15b6 100644
+--- a/src/loader/loader_dri3_helper.h
++++ b/src/loader/loader_dri3_helper.h
+@@ -156,6 +156,9 @@ struct loader_dri3_drawable {
+    xcb_gcontext_t gc;
+    xcb_special_event_t *special_event;
+ 
++   xcb_sync_fence_t sync_fence;
++   struct xshmfence *shm_fence;
++
+    bool first_init;
+ 
+    struct loader_dri3_extensions *ext;

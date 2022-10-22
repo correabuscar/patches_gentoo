@@ -1,0 +1,16 @@
+diff -upr coreutils-8.29/src/md5sum.c coreutils-8.29.mod/src/md5sum.c
+--- coreutils-8.29/src/md5sum.c	2017-11-24 22:40:53.000000000 +0100
++++ coreutils-8.29.mod/src/md5sum.c	2018-04-09 21:35:19.775458235 +0200
+@@ -530,6 +530,11 @@ split_3 (char *s, size_t s_len,
+      significant -- that includes leading and trailing white space.  */
+   *file_name = &s[i];
+ 
++  if (s[s_len-1] == '\r') { // ignore ^M at the end instead of treating it as part of the filename  - naive fix
++      s[s_len-1] = '\0';
++      //printf ("!! %s\n", *file_name); //will break 2 tests for md5sum and sha1sum! must probably print on stderr instead!
++  }
++
+   if (escaped_filename)
+     return filename_unescape (&s[i], s_len - i) != NULL;
+ 
+

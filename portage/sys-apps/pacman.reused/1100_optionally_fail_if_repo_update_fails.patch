@@ -1,0 +1,32 @@
+TODO: this holds true only for git and mercurial(aka hg) repos!
+
+diff --git a/scripts/libmakepkg/source/git.sh.in b/scripts/libmakepkg/source/git.sh.in
+index ccf4642b..8ce330b1 100644
+--- a/scripts/libmakepkg/source/git.sh.in
++++ b/scripts/libmakepkg/source/git.sh.in
+@@ -65,6 +65,10 @@ download_git() {
+ 		if ! git fetch --all -p; then
+ 			# only warn on failure to allow offline builds
+ 			warning "$(gettext "Failure while updating %s %s repo")" "${repo}" "git"
++      if test "$MAKEPKG_FAIL_IF_REPO_UPDATE_FAILS" == "1" -o -e '/tmp/MAKEPKG_FAIL_IF_REPO_UPDATE_FAILS'; then
++        plain "$(gettext "Aborting... because of \$MAKEPKG_FAIL_IF_REPO_UPDATE_FAILS or existing /tmp/MAKEPKG_FAIL_IF_REPO_UPDATE_FAILS")"
++        exit 1
++      fi
+ 		fi
+ 	fi
+ }
+diff --git a/scripts/libmakepkg/source/hg.sh.in b/scripts/libmakepkg/source/hg.sh.in
+index 5362d6b1..11bb1b3b 100644
+--- a/scripts/libmakepkg/source/hg.sh.in
++++ b/scripts/libmakepkg/source/hg.sh.in
+@@ -58,6 +58,10 @@ download_hg() {
+ 		if ! hg pull; then
+ 			# only warn on failure to allow offline builds
+ 			warning "$(gettext "Failure while updating %s %s repo")" "${repo}" "hg"
++      if test "$MAKEPKG_FAIL_IF_REPO_UPDATE_FAILS" == "1" -o -e '/tmp/MAKEPKG_FAIL_IF_REPO_UPDATE_FAILS'; then
++        plain "$(gettext "Aborting... because of \$MAKEPKG_FAIL_IF_REPO_UPDATE_FAILS or existing /tmp/MAKEPKG_FAIL_IF_REPO_UPDATE_FAILS")"
++        exit 1
++      fi
+ 		fi
+ 	fi
+ }

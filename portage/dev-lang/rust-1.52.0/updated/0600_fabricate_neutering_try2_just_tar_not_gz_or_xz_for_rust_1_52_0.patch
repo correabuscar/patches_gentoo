@@ -1,0 +1,221 @@
+TODO: this patch is for 1.49.0 rust, can't be applied on 1.52.0 rust!
+
+diff --git a/src/combiner.rs b/src/combiner.rs
+index 35f3560..3da76a5 100644
+--- a/src/tools/rust-installer/src/combiner.rs
++++ b/src/tools/rust-installer/src/combiner.rs
+#@@ -3,7 +3,7 @@ use super::Tarballer;
+# use crate::util::*;
+# use crate::Result;
+# use failure::{bail, ResultExt};
+#-use flate2::read::GzDecoder;
+#+//use flate2::read::GzDecoder;
+# use std::io::{Read, Write};
+# use std::path::Path;
+# use tar::Archive;
+#@@ -60,7 +60,8 @@ impl Combiner {
+#             .filter(|s| !s.is_empty())
+#         {
+#             // Extract the input tarballs
+#-            let tar = GzDecoder::new(open_file(&input_tarball)?);
+#+            //let tar = GzDecoder::new(open_file(&input_tarball)?);
+#+            let tar = open_file(&input_tarball.trim_end_matches(".gz"))?; //expect fname to be .tar not .tar.gz (need change in src/tools/rust-installer/src/tarballer.rs)
+#             Archive::new(tar).unpack(&self.work_dir).with_context(|_| {
+#                 format!(
+#                     "unable to extract '{}' into '{}'",
+@@ -2,7 +2,7 @@ use super::Scripter;
+ use super::Tarballer;
+ use crate::util::*;
+ use anyhow::{bail, Context, Result};
+-use flate2::read::GzDecoder;
++//use flate2::read::GzDecoder;
+ use std::io::{Read, Write};
+ use std::path::Path;
+ use tar::Archive;
+@@ -59,7 +59,8 @@ impl Combiner {
+             .filter(|s| !s.is_empty())
+         {
+             // Extract the input tarballs
+-            let tar = GzDecoder::new(open_file(&input_tarball)?);
++            //let tar = GzDecoder::new(open_file(&input_tarball)?);
++            let tar = open_file(&input_tarball.trim_end_matches(".gz"))?; //expect fname to be .tar not .tar.gz (need change in src/tools/rust-installer/src/tarballer.rs)
+             Archive::new(tar).unpack(&self.work_dir).with_context(|| {
+                 format!(
+                     "unable to extract '{}' into '{}'",
+diff --git a/src/tarballer.rs b/src/tarballer.rs
+index fa6ab2c..8dc8971 100644
+--- a/src/tools/rust-installer/src/tarballer.rs
++++ b/src/tools/rust-installer/src/tarballer.rs
+#@@ -1,11 +1,11 @@
+# use failure::{bail, ResultExt};
+#-use flate2::write::GzEncoder;
+#+//use flate2::write::GzEncoder;
+# use std::fs::{read_link, symlink_metadata};
+# use std::io::{self, empty, BufWriter, Write};
+# use std::path::Path;
+# use tar::{Builder, Header};
+# use walkdir::WalkDir;
+#-use xz2::write::XzEncoder;
+#+//use xz2::write::XzEncoder;
+# 
+# use crate::util::*;
+# use crate::Result;
+@@ -1,11 +1,11 @@
+ use anyhow::{bail, Context, Result};
+-use flate2::write::GzEncoder;
++//use flate2::write::GzEncoder;
+ use std::fs::{read_link, symlink_metadata};
+ use std::io::{self, empty, BufWriter, Write};
+ use std::path::Path;
+ use tar::{Builder, Header};
+ use walkdir::WalkDir;
+-use xz2::write::XzEncoder;
++//use xz2::write::XzEncoder;
+ 
+ use crate::util::*;
+ 
+@@ -27,11 +27,12 @@ actor! {
+ impl Tarballer {
+     /// Generates the actual tarballs
+     pub fn run(self) -> Result<()> {
++        let tar = self.output.clone() + ".tar";
+         let tar_gz = self.output.clone() + ".tar.gz";
+         let tar_xz = self.output.clone() + ".tar.xz";
+ 
+         // Remove any existing files.
+-        for file in &[&tar_gz, &tar_xz] {
++        for file in &[&tar_gz, &tar_xz, &tar] {
+             if Path::new(file).exists() {
+                 remove_file(file)?;
+             }
+@@ -44,29 +45,31 @@ impl Tarballer {
+             .with_context(|_| "failed to collect file paths")?;
+         files.sort_by(|a, b| a.bytes().rev().cmp(b.bytes().rev()));
+ 
+-        // Prepare the `.tar.gz` file.
+-        let gz = GzEncoder::new(create_new_file(tar_gz)?, flate2::Compression::best());
+-
+-        // Prepare the `.tar.xz` file. Note that preset 6 takes about 173MB of memory
+-        // per thread, so we limit the number of threads to not blow out 32-bit hosts.
+-        // (We could be more precise with `MtStreamBuilder::memusage()` if desired.)
+-        let stream = xz2::stream::MtStreamBuilder::new()
+-            .threads(Ord::min(num_cpus::get(), 8) as u32)
+-            .preset(6)
+-            .encoder()?;
+-        let xz = XzEncoder::new_stream(create_new_file(tar_xz)?, stream);
+-
+-        // Write the tar into both encoded files. We write all directories
+-        // first, so files may be directly created. (See rust-lang/rustup.rs#1092.)
+-        let tee = RayonTee(xz, gz);
+-        let buf = BufWriter::with_capacity(1024 * 1024, tee);
++        let stream = create_new_file(tar)?;
++        //// Prepare the `.tar.gz` file.
++        //let gz = GzEncoder::new(create_new_file(tar_gz)?, flate2::Compression::none());
++
++        //// Prepare the `.tar.xz` file. Note that preset 6 takes about 173MB of memory
++        //// per thread, so we limit the number of threads to not blow out 32-bit hosts.
++        //// (We could be more precise with `MtStreamBuilder::memusage()` if desired.)
++        //let stream = xz2::stream::MtStreamBuilder::new()
++        //    .threads(Ord::min(num_cpus::get(), 8) as u32)
++        //    .preset(0)
++        //    .encoder()?;
++        //let xz = XzEncoder::new_stream(create_new_file(tar_xz)?, stream);
++
++        //// Write the tar into both encoded files. We write all directories
++        //// first, so files may be directly created. (See rust-lang/rustup.rs#1092.)
++        //let tee = RayonTee(xz, gz);
++        //let buf = BufWriter::with_capacity(1024 * 1024, tee);
++        let buf = BufWriter::with_capacity(1024 * 1024, stream);
+         let mut builder = Builder::new(buf);
+ 
+-        let pool = rayon::ThreadPoolBuilder::new()
+-            .num_threads(2)
+-            .build()
+-            .unwrap();
+-        pool.install(move || {
++        //let pool = rayon::ThreadPoolBuilder::new()
++        //    .num_threads(2) //was 2, but using 12 threads here has no effect!
++        //    .build()
++        //    .unwrap();
++        //pool.install(move || {
+             for path in dirs {
+                 let src = Path::new(&self.work_dir).join(&path);
+                 builder
+#@@ -78,28 +81,29 @@ impl Tarballer {
+#                 append_path(&mut builder, &src, &path)
+#                     .with_context(|_| format!("failed to tar file '{}'", src.display()))?;
+#             }
+#-            let RayonTee(xz, gz) = builder
+#+            //let RayonTee(xz, gz) = builder
+#+            let _ = builder
+#                 .into_inner()
+#                 .with_context(|_| "failed to finish writing .tar stream")?
+#                 .into_inner()
+#                 .ok()
+#                 .unwrap();
+# 
+#-            // Finish both encoded files.
+#-            let (rxz, rgz) = rayon::join(
+#-                || {
+#-                    xz.finish()
+#-                        .with_context(|_| "failed to finish .tar.xz file")
+#-                },
+#-                || {
+#-                    gz.finish()
+#-                        .with_context(|_| "failed to finish .tar.gz file")
+#-                },
+#-            );
+#-            rxz?;
+#-            rgz?;
+#+            //// Finish both encoded files.
+#+            //let (rxz, rgz) = rayon::join(
+#+            //    || {
+#+            //        xz.finish()
+#+            //            .with_context(|_| "failed to finish .tar.xz file")
+#+            //    },
+#+            //    || {
+#+            //        gz.finish()
+#+            //            .with_context(|_| "failed to finish .tar.gz file")
+#+            //    },
+#+            //);
+#+            //rxz?;
+#+            //rgz?;
+#             Ok(())
+#-        })
+#+        //})
+#     }
+# }
+# 
+@@ -80,22 +80,23 @@ impl Tarballer {
+                 append_path(&mut builder, &src, &path)
+                     .with_context(|| format!("failed to tar file '{}'", src.display()))?;
+             }
+-            let RayonTee(xz, gz) = builder
++            //let RayonTee(xz, gz) = builder
++            let _ = builder
+                 .into_inner()
+                 .context("failed to finish writing .tar stream")?
+                 .into_inner()
+                 .ok()
+                 .unwrap();
+ 
+-            // Finish both encoded files.
+-            let (rxz, rgz) = rayon::join(
+-                || xz.finish().context("failed to finish .tar.xz file"),
+-                || gz.finish().context("failed to finish .tar.gz file"),
+-            );
+-            rxz?;
+-            rgz?;
++            //// Finish both encoded files.
++            //let (rxz, rgz) = rayon::join(
++            //    || xz.finish().context("failed to finish .tar.xz file"),
++            //    || gz.finish().context("failed to finish .tar.gz file"),
++            //);
++            //rxz?;
++            //rgz?;
+             Ok(())
+-        })
++        //})
+     }
+ }
+ 

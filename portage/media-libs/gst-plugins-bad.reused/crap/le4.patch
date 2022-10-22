@@ -1,0 +1,74 @@
+see: https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/issues/1194#note_396772
+diff --git a/ext/ladspa/gstladspautils.c b/ext/ladspa/gstladspautils.c
+index d55db6f85..3169bb89a 100644
+--- a/ext/ladspa/gstladspautils.c
++++ b/ext/ladspa/gstladspautils.c
+@@ -62,6 +62,8 @@
+ #include <lrdf.h>
+ #endif
+ 
++#include <glib/gprintf.h> /* g_fprintf */
++
+ GST_DEBUG_CATEGORY_EXTERN (ladspa_debug);
+ #define GST_CAT_DEFAULT ladspa_debug
+ 
+@@ -387,10 +389,25 @@ gst_ladspa_object_class_get_param_spec (GstLADSPAClass * ladspa_class,
+   if (LADSPA_IS_HINT_INTEGER (hintdesc)) {
+     lower = CLAMP (lower, G_MININT, G_MAXINT);
+     upper = CLAMP (upper, G_MININT, G_MAXINT);
++    //naive workaround:
++    //lower = CLAMP (lower, G_MININT+G_MAXUINT16, G_MAXINT-G_MAXUINT16);
++    //upper = CLAMP (upper, G_MININT+G_MAXUINT16, G_MAXINT-G_MAXUINT16);
++    //if ((gint)upper < 0) {
++    g_fprintf(stderr, "!as float1, name:%s lower:%f def:%f upper:%f\n", name, lower, def, upper);
++    g_fprintf(stderr, "!as int1  , name:%s lower:%d def:%d upper:%d\n", name, (gint)lower, (gint)def, (gint)upper);
++    gint l,d,u;
++    l=lower;
++    d=def;
++    u=upper;
++    g_fprintf(stderr, "!as int2  , name:%s lower:%d def:%d upper:%d\n", name, (gint)lower, (gint)def, (gint)upper);
++    g_fprintf(stderr, "!as int3  , name:%s lower:%d def:%d upper:%d\n", name, l, d, u);
++    //}
+   }
+ 
++  //g_fprintf(stderr, "!7 int1  , name:%s lower:%d def:%d upper:%d\n", name, (gint)lower, (gint)def, (gint)upper);
+   /* default to lower bound */
+   def = lower;
++  //g_fprintf(stderr, "!6 int1  , name:%s lower:%d def:%d upper:%d\n", name, (gint)lower, (gint)def, (gint)upper);
+ 
+ #ifdef LADSPA_IS_HINT_HAS_DEFAULT
+   if (LADSPA_IS_HINT_HAS_DEFAULT (hintdesc)) {
+@@ -424,18 +441,33 @@ gst_ladspa_object_class_get_param_spec (GstLADSPAClass * ladspa_class,
+   }
+ #endif /* LADSPA_IS_HINT_HAS_DEFAULT */
+ 
++  //g_fprintf(stderr, "!5 int1  , name:%s lower:%d def:%d upper:%d\n", name, (gint)lower, (gint)def, (gint)upper);
+   if (lower > upper) {
++    //g_fprintf(stderr, "!3 int1  , name:%s lower:%d def:%d upper:%d\n", name, (gint)lower, (gint)def, (gint)upper);
+     gfloat tmp;
+ 
+     /* silently swap */
+     tmp = lower;
+     lower = upper;
+     upper = tmp;
++    //g_fprintf(stderr, "!4 int1  , name:%s lower:%d def:%d upper:%d\n", name, (gint)lower, (gint)def, (gint)upper);
+   }
+ 
++  //g_fprintf(stderr, "!1 int1  , name:%s lower:%d def:%d upper:%d\n", name, (gint)lower, (gint)def, (gint)upper);
+   def = CLAMP (def, lower, upper);
++  //g_fprintf(stderr, "!2 int1  , name:%s lower:%d def:%d upper:%d\n", name, (gint)lower, (gint)def, (gint)upper); //XXX adding or removing(aka commenting out) this line, make the following !!ii int* lines show an upper of 2147483647 respectively -2147483648
+ 
+   if (LADSPA_IS_HINT_INTEGER (hintdesc)) {
++    //if ((gint)upper < 0) { // only "param--latency" and "latency" names are affected by this issue!
++    g_fprintf(stderr, "!ii float1, name:%s lower:%f def:%f upper:%f\n", name, lower, def, upper);
++    g_fprintf(stderr, "!ii int1  , name:%s lower:%d def:%d upper:%d\n", name, (gint)lower, (gint)def, (gint)upper);
++    gint l,d,u;
++    l=lower;
++    d=def;
++    u=upper;
++    g_fprintf(stderr, "!ii int2  , name:%s lower:%d def:%d upper:%d\n", name, (gint)lower, (gint)def, (gint)upper);
++    g_fprintf(stderr, "!ii int3  , name:%s lower:%d def:%d upper:%d\n", name, l, d, u);
++    //}
+     ret =
+         g_param_spec_int (name, name, desc->PortNames[portnum], lower, upper,
+         def, perms);

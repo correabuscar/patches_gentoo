@@ -1,0 +1,16 @@
+this doesn't work yet:
+see https://bugs.gentoo.org/865623
+
+Index: /usr/src/linux-5.18.18-gentoo/kernel/sched/alt_core.c
+===================================================================
+--- a/kernel/sched/alt_core.c
++++ ux-5.18.18-gentoo/kernel/sched/alt_core.c
+@@ -43,7 +43,7 @@
+ 
+ #include "pelt.h"
+ 
+-#include "../../fs/io-wq.h"
++#include "../../io_uring/io-wq.h"
+ #include "../smpboot.h"
+ 
+ /*

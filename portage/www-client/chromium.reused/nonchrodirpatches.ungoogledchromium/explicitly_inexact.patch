@@ -1,0 +1,13 @@
+diff --git a/utils/patches.py b/utils/patches.py
+index 1faf734..f743e10 100755
+--- a/utils/patches.py
++++ b/utils/patches.py
+@@ -39,7 +39,7 @@ def apply_patches(patch_path_iter, tree_path, reverse=False, patch_bin_path=None
+     logger = get_logger()
+     for patch_path, patch_num in zip(patch_paths, range(1, len(patch_paths) + 1)):
+         cmd = [
+-            str(patch_bin_path), '-p1', '--ignore-whitespace', '-i',
++            str(patch_bin_path), '--fuzz=2', '-p1', '--ignore-whitespace', '-i',
+             str(patch_path), '-d',
+             str(tree_path), '--no-backup-if-mismatch'
+         ]

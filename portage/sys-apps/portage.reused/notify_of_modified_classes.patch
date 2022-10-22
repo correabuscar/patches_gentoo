@@ -1,0 +1,14 @@
+Index: /usr/lib/portage/python3.6/ebuild.sh
+===================================================================
+--- orig/bin/ebuild.sh
++++ mod/bin/ebuild.sh
+@@ -286,6 +286,9 @@ inherit() {
+ 				break
+ 			fi
+ 		done
++		if [[ "$location" =~ ^/eclasses_override/ ]]; then
++      eqawarn "Using(inherit) modified eclass '$location'"
++		fi
+ 		debug-print "inherit: $1 -> $location"
+ 		[[ -z ${location} ]] && die "${1}.eclass could not be found by inherit()"
+ 

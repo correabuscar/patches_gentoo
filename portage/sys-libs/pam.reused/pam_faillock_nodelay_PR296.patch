@@ -1,0 +1,65 @@
+From 1479ee7e3d68aad9098b62f0a1ab141d998c57d5 Mon Sep 17 00:00:00 2001
+From: Tavian Barnes <tavianator@tavianator.com>
+Date: Wed, 11 Nov 2020 11:40:35 -0500
+Subject: [PATCH] faillock: Add a nodelay option
+
+Fixes #295
+---
+ modules/pam_faillock/faillock.conf.5.xml | 10 ++++++++++
+ modules/pam_faillock/pam_faillock.c      |  8 +++++++-
+ 2 files changed, 17 insertions(+), 1 deletion(-)
+
+diff --git a/modules/pam_faillock/faillock.conf.5.xml b/modules/pam_faillock/faillock.conf.5.xml
+index aa8500b9..04a84107 100644
+--- a/modules/pam_faillock/faillock.conf.5.xml
++++ b/modules/pam_faillock/faillock.conf.5.xml
+@@ -94,6 +94,16 @@
+                 </para>
+               </listitem>
+             </varlistentry>
++            <varlistentry>
++              <term>
++                <option>nodelay</option>
++              </term>
++              <listitem>
++                <para>
++                  Don't enforce a delay after authentication failures.
++                </para>
++              </listitem>
++            </varlistentry>
+             <varlistentry>
+               <term>
+                 <option>deny=<replaceable>n</replaceable></option>
+diff --git a/modules/pam_faillock/pam_faillock.c b/modules/pam_faillock/pam_faillock.c
+index ea177260..92cc0121 100644
+--- a/modules/pam_faillock/pam_faillock.c
++++ b/modules/pam_faillock/pam_faillock.c
+@@ -67,6 +67,7 @@
+ #define FAILLOCK_FLAG_NO_LOG_INFO	0x8
+ #define FAILLOCK_FLAG_UNLOCKED		0x10
+ #define FAILLOCK_FLAG_LOCAL_ONLY	0x20
++#define FAILLOCK_FLAG_NO_DELAY		0x40
+ 
+ #define MAX_TIME_INTERVAL 604800 /* 7 days */
+ #define FAILLOCK_CONF_MAX_LINELEN 1023
+@@ -344,6 +345,9 @@ set_conf_opt(pam_handle_t *pamh, struct options *opts, const char *name, const c
+ 	else if (strcmp(name, "local_users_only") == 0) {
+ 		opts->flags |= FAILLOCK_FLAG_LOCAL_ONLY;
+ 	}
++	else if (strcmp(name, "nodelay") == 0) {
++		opts->flags |= FAILLOCK_FLAG_NO_DELAY;
++	}
+ 	else {
+ 		pam_syslog(pamh, LOG_ERR, "Unknown option: %s", name);
+ 	}
+@@ -654,7 +658,9 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags,
+ 	if (rv != PAM_SUCCESS)
+ 		goto err;
+ 
+-	pam_fail_delay(pamh, 2000000);	/* 2 sec delay on failure */
++	if (!(opts.flags & FAILLOCK_FLAG_NO_DELAY)) {
++		pam_fail_delay(pamh, 2000000);	/* 2 sec delay on failure */
++	}
+ 
+ 	if ((rv=get_pam_user(pamh, &opts)) != PAM_SUCCESS) {
+ 		goto err;

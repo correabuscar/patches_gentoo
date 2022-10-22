@@ -1,0 +1,12 @@
+diff --git a/src/xfpm-manager.c b/src/xfpm-manager.c
+index 01537005..0e177fec 100644
+--- a/src/xfpm-manager.c
++++ b/src/xfpm-manager.c
+@@ -322,6 +322,7 @@ xfpm_manager_shutdown (XfpmManager *manager)
+ static void
+ xfpm_manager_ask_shutdown (XfpmManager *manager)
+ {
++  g_warning ("!! boom");
+   if ( manager->priv->session_managed )
+   xfce_sm_client_request_shutdown (manager->priv->client, XFCE_SM_CLIENT_SHUTDOWN_HINT_ASK);
+ }

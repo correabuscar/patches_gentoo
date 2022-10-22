@@ -1,0 +1,18 @@
+avoid bc 1.07 or later, possibly hanging in the future!
+see: https://bugs.archlinux.org/task/53546
+
+for kernel 5.0-rc1
+
+diff --git a/Kbuild b/Kbuild
+index 65db5bef2e36..c00d64b3eb85 100644
+--- a/Kbuild
++++ b/Kbuild
+@@ -26,7 +26,7 @@ timeconst-file := include/generated/timeconst.h
+ 
+ targets += $(timeconst-file)
+ 
+-filechk_gentimeconst = echo $(CONFIG_HZ) | bc -q $<
++filechk_gentimeconst = echo "$(CONFIG_HZ);" | bc -q $<
+ 
+ $(timeconst-file): kernel/time/timeconst.bc FORCE
+ 	$(call filechk,gentimeconst)

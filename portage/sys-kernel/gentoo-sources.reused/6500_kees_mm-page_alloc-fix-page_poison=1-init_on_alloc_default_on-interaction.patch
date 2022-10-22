@@ -1,0 +1,52 @@
+already in 5.16.8 or earlier(not checked)
+
+
+file date was 14 july 2021 on this one:
+
+https://lore.kernel.org/linux-mm/20210712215816.1512739-1-slyfox@gentoo.org/t/#m68f2dd65dbaad8d4db89e2a5e952ebac468707a1
+
+diff --git a/mm/page_alloc.c b/mm/page_alloc.c
+index 3b97e17806be..1f19365bc158 100644
+--- a/mm/page_alloc.c
++++ b/mm/page_alloc.c
+@@ -840,21 +840,24 @@ void init_mem_debugging_and_hardening(void)
+ 	}
+ #endif
+ 
+-	if (_init_on_alloc_enabled_early) {
+-		if (page_poisoning_requested)
+-			pr_info("mem auto-init: CONFIG_PAGE_POISONING is on, "
+-				"will take precedence over init_on_alloc\n");
+-		else
+-			static_branch_enable(&init_on_alloc);
+-	}
+-	if (_init_on_free_enabled_early) {
+-		if (page_poisoning_requested)
+-			pr_info("mem auto-init: CONFIG_PAGE_POISONING is on, "
+-				"will take precedence over init_on_free\n");
+-		else
+-			static_branch_enable(&init_on_free);
++	if ((_init_on_alloc_enabled_early || _init_on_free_enabled_early) &&
++	    page_poisoning_requested) {
++		pr_info("mem auto-init: CONFIG_PAGE_POISONING is on, "
++			"will take precedence over init_on_alloc and init_on_free\n");
++		_init_on_alloc_enabled_early = false;
++		_init_on_free_enabled_early = false;
+ 	}
+ 
++	if (_init_on_alloc_enabled_early)
++		static_branch_enable(&init_on_alloc);
++	else
++		static_branch_disable(&init_on_alloc);
++
++	if (_init_on_free_enabled_early)
++		static_branch_enable(&init_on_free);
++	else
++		static_branch_disable(&init_on_free);
++
+ #ifdef CONFIG_DEBUG_PAGEALLOC
+ 	if (!debug_pagealloc_enabled())
+ 		return;
+
+-- 
+Kees Cook

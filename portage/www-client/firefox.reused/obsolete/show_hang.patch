@@ -1,0 +1,15 @@
+when --disable-debug
+doesn't hang with --enable-debug
+https://bugzilla.mozilla.org/show_bug.cgi?id=1376197#c35
+
+diff -r 587daa4bdc4b js/src/jit/x86-shared/MacroAssembler-x86-shared.cpp
+--- a/js/src/jit/x86-shared/MacroAssembler-x86-shared.cpp	Fri Jun 30 14:45:26 2017 -0700
++++ b/js/src/jit/x86-shared/MacroAssembler-x86-shared.cpp	Sat Jul 01 13:33:04 2017 +0200
+@@ -434,6 +434,7 @@
+     // On x86, always use push to push the integer registers, as it's fast
+     // on modern hardware and it's a small instruction.
+     for (GeneralRegisterBackwardIterator iter(set.gprs()); iter.more(); ++iter) {
++        std::printf("!! diffG='%" PRId32 "'\n", diffG);
+         diffG -= sizeof(intptr_t);
+         Push(*iter);
+     }

@@ -1,0 +1,41 @@
+https://bugs.freedesktop.org/show_bug.cgi?id=109522#c13
+
+diff --git a/drivers/gpu/drm/i915/intel_dp_link_training.c b/drivers/gpu/drm/i915/intel_dp_link_training.c
+index b59c87daa4f7..e69b2198af89 100644
+--- a/drivers/gpu/drm/i915/intel_dp_link_training.c
++++ b/drivers/gpu/drm/i915/intel_dp_link_training.c
+@@ -87,6 +87,7 @@ intel_dp_set_link_train(struct intel_dp *intel_dp,
+ 	ret = drm_dp_dpcd_write(&intel_dp->aux, DP_TRAINING_PATTERN_SET,
+ 				buf, len);
+ 
++  DRM_ERROR("ret=%d len=%d\n", ret, len);
+ 	return ret == len;
+ }
+ 
+diff --git a/drivers/gpu/drm/drm_dp_helper.c b/drivers/gpu/drm/drm_dp_helper.c
+index 54a6414c5d96..a6baf92dba8f 100644
+--- a/drivers/gpu/drm/drm_dp_helper.c
++++ b/drivers/gpu/drm/drm_dp_helper.c
+@@ -234,7 +234,7 @@ static int drm_dp_dpcd_access(struct drm_dp_aux *aux, u8 request,
+ 	 * aux i2c transactions but real world devices this wasn't
+ 	 * sufficient, bump to 32 which makes Dell 4k monitors happier.
+ 	 */
+-	for (retry = 0; retry < 32; retry++) {
++	for (retry = 0; retry < 32; retry++) {
+ 		if (ret != 0 && ret != -ETIMEDOUT) {
+ 			usleep_range(AUX_RETRY_INTERVAL,
+ 				     AUX_RETRY_INTERVAL + 100);
+@@ -262,10 +262,12 @@ static int drm_dp_dpcd_access(struct drm_dp_aux *aux, u8 request,
+ 			err = ret;
+ 	}
+ 
+-	DRM_DEBUG_KMS("Too many retries, giving up. First error: %d\n", err);
++	DRM_ERROR("Too many retries, giving up. First error: %d\n", err);
++  dump_stack();
+ 	ret = err;
+ 
+ unlock:
++	DRM_ERROR("Ret '%d' after %u retries\n", ret, retry);
+ 	mutex_unlock(&aux->hw_mutex);
+ 	return ret;
+ }

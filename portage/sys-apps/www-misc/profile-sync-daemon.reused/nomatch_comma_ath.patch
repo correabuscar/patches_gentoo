@@ -1,0 +1,86 @@
+commit e1f7327d9134a3ac07858d8f475122b2f7f72c1f
+Date:   Sun Feb 25 23:11:56 2018 +0100
+
+    don't match ",ath"
+    
+    match only "Path" and "path" instead.
+
+diff --git a/common/browsers/firefox b/common/browsers/firefox
+index 2f0bd4c..78ff5aa 100644
+--- a/common/browsers/firefox
++++ b/common/browsers/firefox
+@@ -1,6 +1,6 @@
+ if [[ -d $HOME/.mozilla/firefox ]]; then
+-    profileArr=( $(grep '[P,p]'ath= $HOME/.mozilla/firefox/profiles.ini |
+-    sed 's/[P,p]ath=//') )
++    profileArr=( $(grep '[Pp]'ath= $HOME/.mozilla/firefox/profiles.ini |
++    sed 's/[Pp]ath=//') )
+     index=0
+     PSNAME="$browser"
+     for profileItem in ${profileArr[@]}; do
+diff --git a/common/browsers/firefox-trunk b/common/browsers/firefox-trunk
+index 3725177..8e090d0 100644
+--- a/common/browsers/firefox-trunk
++++ b/common/browsers/firefox-trunk
+@@ -1,6 +1,6 @@
+ if [[ -d $HOME/.mozilla/firefox-trunk ]]; then
+-    profileArr=( $(grep '[P,p]'ath= $HOME/.mozilla/firefox-trunk/profiles.ini |
+-    sed 's/[P,p]ath=//') )
++    profileArr=( $(grep '[Pp]'ath= $HOME/.mozilla/firefox-trunk/profiles.ini |
++    sed 's/[Pp]ath=//') )
+     index=0
+     PSNAME="$browser"
+     for profileItem in ${profileArr[@]}; do
+diff --git a/common/browsers/heftig-aurora b/common/browsers/heftig-aurora
+index 253c3f0..345dbb2 100644
+--- a/common/browsers/heftig-aurora
++++ b/common/browsers/heftig-aurora
+@@ -1,7 +1,7 @@
+ # https://bbs.archlinux.org/viewtopic.php?id=117157
+ if [[ -d $HOME/.mozilla/aurora ]]; then
+-    profileArr=( $(grep '[P,p]'ath= $HOME/.mozilla/aurora/profiles.ini |
+-    sed 's/[P,p]ath=//') )
++    profileArr=( $(grep '[Pp]'ath= $HOME/.mozilla/aurora/profiles.ini |
++    sed 's/[Pp]ath=//') )
+     index=0
+     PSNAME="aurora"
+     for profileItem in ${profileArr[@]}; do
+diff --git a/common/browsers/icecat b/common/browsers/icecat
+index 273bb4e..9ef1811 100644
+--- a/common/browsers/icecat
++++ b/common/browsers/icecat
+@@ -1,6 +1,6 @@
+ if [[ -d $HOME/.mozilla/icecat ]]; then
+-    profileArr=( $(grep '[P,p]'ath= $HOME/.mozilla/icecat/profiles.ini |
+-    sed 's/[P,p]ath=//') )
++    profileArr=( $(grep '[Pp]'ath= $HOME/.mozilla/icecat/profiles.ini |
++    sed 's/[Pp]ath=//') )
+     index=0
+     PSNAME="$browser"
+     for profileItem in ${profileArr[@]}; do
+diff --git a/common/browsers/palemoon b/common/browsers/palemoon
+index e6e5eda..115b82d 100644
+--- a/common/browsers/palemoon
++++ b/common/browsers/palemoon
+@@ -1,6 +1,6 @@
+ if [[ -d $HOME/.moonchild\ productions/pale\ moon ]]; then
+-    profileArr=( $(grep '[P,p]'ath= $HOME/.moonchild\ productions/pale\ moon/profiles.ini |
+-    sed 's/[P,p]ath=//') )
++    profileArr=( $(grep '[Pp]'ath= $HOME/.moonchild\ productions/pale\ moon/profiles.ini |
++    sed 's/[Pp]ath=//') )
+     index=0
+     PSNAME="$browser"
+     for profileItem in ${profileArr[@]}; do
+diff --git a/common/browsers/seamonkey b/common/browsers/seamonkey
+index 50b3f41..2532528 100644
+--- a/common/browsers/seamonkey
++++ b/common/browsers/seamonkey
+@@ -1,6 +1,6 @@
+ if [[ -d $HOME/.mozilla/seamonkey ]]; then
+-    profileArr=( $(grep '[P,p]'ath= $HOME/.mozilla/seamonkey/profiles.ini |
+-    sed 's/[P,p]ath=//') )
++    profileArr=( $(grep '[Pp]'ath= $HOME/.mozilla/seamonkey/profiles.ini |
++    sed 's/[Pp]ath=//') )
+     index=0
+     PSNAME="$browser"
+     for profileItem in ${profileArr[@]}; do

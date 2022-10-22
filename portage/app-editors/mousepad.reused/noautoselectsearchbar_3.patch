@@ -1,0 +1,12 @@
+for mousepad 0.5.1
+--- a/mousepad/mousepad-search-bar.c
++++ b/mousepad/mousepad-search-bar.c
+@@ -404,7 +404,7 @@ mousepad_search_bar_focus (MousepadSearc
+   gtk_widget_grab_focus (bar->entry);
+ 
+   /* select the entire entry */
+-  gtk_editable_select_region (GTK_EDITABLE (bar->entry), 0, -1);
++  //gtk_editable_select_region (GTK_EDITABLE (bar->entry), 0, -1); // yes this does make me lose PRIMARY selection (ie. MMB paste, or shift+insert), hence commented out line!
+ }
+ 
+ 

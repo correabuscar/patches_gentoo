@@ -1,0 +1,20 @@
+diff --git a/misc/init-misc.c b/misc/init-misc.c
+index 4ecaeae3769..838bea2c7d8 100644
+--- a/misc/init-misc.c
++++ b/misc/init-misc.c
+@@ -19,6 +19,8 @@
+ #include <string.h>
+ #include <libc-internal.h>
+ 
++#include <stdio.h> //needed for fprintf
++
+ char *__progname_full = (char *) "";
+ char *__progname = (char *) "";
+ weak_alias (__progname_full, program_invocation_name)
+@@ -36,5 +38,6 @@ __init_misc (int argc, char **argv, char **envp)
+       else
+ 	__progname = p + 1;
+       __progname_full = argv[0];
++      fprintf(stderr, "!! __init_misc argv[0]=='%s' __progname='%s'\n", argv[0], __progname);//this was to debug an issue with chromium, but turns out it is using setproctitle in services/service_manager/embedder/set_process_title.cc to overwrite argv[0] with all args in one long string! (lame-o !) thus __progname shows all args in one long string!!! instead of program name!
+     }
+ }

@@ -1,0 +1,3 @@
+#!/bin/bash
+
+find . -type f -and -iname \*.patch -and -print0 | xargs -P1 -0 --max-args=1 --  /swcode/bin.append/patch_dangling_hunk_detector

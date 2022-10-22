@@ -1,0 +1,21 @@
+it's now already fixed in bash-99999 of 02jan2020 at least! so this patch not needed
+
+fix of sporadic compilation error:
+bashline.c:65:10: fatal error: builtins/builtext.h: No such file or directory
+   65 | #include "builtins/builtext.h"  /* for read_builtin */
+      |
+
+thanks to <sam_c> on #gentoo freenode irc for suggesting it's due to high -jNUMBER
+
+diff --git a/Makefile.in b/Makefile.in
+index 087a4002..cf45b332 100644
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -1311,6 +1311,7 @@ bashline.o: trap.h flags.h assoc.h $(BASHINCDIR)/ocache.h
+ bashline.o: $(DEFSRC)/common.h $(GLOB_LIBSRC)/glob.h alias.h
+ bashline.o: pcomplete.h ${BASHINCDIR}/chartypes.h input.h
+ bashline.o: ${BASHINCDIR}/shmbutil.h ${BASHINCDIR}/shmbchar.h
++bashline.o: ${DEFDIR}/builtext.h
+ bracecomp.o: config.h bashansi.h ${BASHINCDIR}/ansi_stdlib.h
+ bracecomp.o: shell.h syntax.h config.h bashjmp.h ${BASHINCDIR}/posixjmp.h
+ bracecomp.o: command.h ${BASHINCDIR}/stdc.h error.h

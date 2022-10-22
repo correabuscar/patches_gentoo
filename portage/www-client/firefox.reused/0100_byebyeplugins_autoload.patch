@@ -1,0 +1,35 @@
+bye bye autoloaded plugins, like:
+/usr/lib/mozilla/plugins/libevbrowserplugin.so
+
+mozconfig already has:
+ac_add_options --disable-system-extension-dirs
+so this patch isn't really needed!
+
+diff -r 12b945b6f707 xpcom/io/nsAppFileLocationProvider.cpp
+--- a/xpcom/io/nsAppFileLocationProvider.cpp	Wed Mar 13 05:48:27 2019 -1000
++++ b/xpcom/io/nsAppFileLocationProvider.cpp	Wed Mar 13 20:41:15 2019 +0100
+@@ -25,7 +25,7 @@
+ #  include <stdlib.h>
+ #  include <sys/param.h>
+ #endif
+-
++#undef ENABLE_SYSTEM_EXTENSION_DIRS
+ // WARNING: These hard coded names need to go away. They need to
+ // come from localizable resources
+ 
+@@ -175,13 +175,14 @@
+   else if (nsCRT::strcmp(aProp, NS_SYSTEM_PLUGINS_DIR) == 0) {
+ #    ifdef ENABLE_SYSTEM_EXTENSION_DIRS
+     static const char* const sysLPlgDir =
++      "/dev/null/no-f-ing-plugins-firefox";/*
+ #      if defined(HAVE_USR_LIB64_DIR) && defined(__LP64__)
+         "/usr/lib64/mozilla/plugins";
+ #      elif defined(__OpenBSD__) || defined(__FreeBSD__)
+         "/usr/local/lib/mozilla/plugins";
+ #      else
+         "/usr/lib/mozilla/plugins";
+-#      endif
++#      endif */
+     rv = NS_NewNativeLocalFile(nsDependentCString(sysLPlgDir), false,
+                                getter_AddRefs(localFile));
+ #    else

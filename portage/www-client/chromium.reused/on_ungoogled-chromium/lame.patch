@@ -1,0 +1,102 @@
+TODO: find a way to define CHROMIUM_ZLIB_NO_CHROMECONF
+
+[1523/6/11653/13181] 331.357s [remaining/running/finished/totalthissession] elapsed
+ccache clang++ -fPIC -Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now -Wl,-z,defs -Wl,--as-needed -fuse-ld=lld -Wl,--icf=all -Wl,--color-diagnostics -m64 -Wl,-O2 -Wl,--gc-sections -rdynamic -pie -Wl,--disable-new-dtags -Wl,-O1,--sort-common,--as-needed,-z,relro -o "./chromedriver" -Wl,--start-group @"./chromedriver.rsp"  -Wl,--end-group   -latomic -ldl -lpthread -lrt -lgmodule-2.0 -lgobject-2.0 -lgthread-2.0 -lglib-2.0 -lsmime3 -lnss3 -lnssutil3 -lplds4 -lplc4 -lnspr4 -licui18n -licuuc -licudata -lX11 -lX11-xcb -lxcb -lXcomposite -lXcursor -lXdamage -lXext -lXfixes -lXi -lXrender -lXtst -levent -lresolv -lgio-2.0 -lz -ljpeg -lminizip -lXss -ldbus-1 -lfontconfig -lwebpdemux -lwebpmux -lwebp -lfreetype -lexpat -lharfbuzz-subset -lharfbuzz -ldrm -lXrandr -lre2 
+FAILED: chromedriver 
+ccache clang++ -fPIC -Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now -Wl,-z,defs -Wl,--as-needed -fuse-ld=lld -Wl,--icf=all -Wl,--color-diagnostics -m64 -Wl,-O2 -Wl,--gc-sections -rdynamic -pie -Wl,--disable-new-dtags -Wl,-O1,--sort-common,--as-needed,-z,relro -o "./chromedriver" -Wl,--start-group @"./chromedriver.rsp"  -Wl,--end-group   -latomic -ldl -lpthread -lrt -lgmodule-2.0 -lgobject-2.0 -lgthread-2.0 -lglib-2.0 -lsmime3 -lnss3 -lnssutil3 -lplds4 -lplc4 -lnspr4 -licui18n -licuuc -licudata -lX11 -lX11-xcb -lxcb -lXcomposite -lXcursor -lXdamage -lXext -lXfixes -lXi -lXrender -lXtst -levent -lresolv -lgio-2.0 -lz -ljpeg -lminizip -lXss -ldbus-1 -lfontconfig -lwebpdemux -lwebpmux -lwebp -lfreetype -lexpat -lharfbuzz-subset -lharfbuzz -ldrm -lXrandr -lre2 
+ld.lld: error: undefined symbol: Cr_z_inflateInit_
+>>> referenced by cert_compressor.cc:591 (../../net/third_party/quiche/src/quic/core/crypto/cert_compressor.cc:591)
+>>>               net/cert_compressor.o:(quic::CertCompressor::DecompressChain(base::BasicStringPiece<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > const&, quic::CommonCertSets const*, std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >*)) in archive obj/net/libnet.a
+
+ld.lld: error: undefined symbol: Cr_z_inflate
+>>> referenced by cert_compressor.cc:596 (../../net/third_party/quiche/src/quic/core/crypto/cert_compressor.cc:596)
+>>>               net/cert_compressor.o:(quic::CertCompressor::DecompressChain(base::BasicStringPiece<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > const&, quic::CommonCertSets const*, std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >*)) in archive obj/net/libnet.a
+
+ld.lld: error: undefined symbol: Cr_z_inflateSetDictionary
+>>> referenced by cert_compressor.cc:600 (../../net/third_party/quiche/src/quic/core/crypto/cert_compressor.cc:600)
+>>>               net/cert_compressor.o:(quic::CertCompressor::DecompressChain(base::BasicStringPiece<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > const&, quic::CommonCertSets const*, std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >*)) in archive obj/net/libnet.a
+
+ld.lld: error: undefined symbol: Cr_z_inflate
+>>> referenced by cert_compressor.cc:603 (../../net/third_party/quiche/src/quic/core/crypto/cert_compressor.cc:603)
+>>>               net/cert_compressor.o:(quic::CertCompressor::DecompressChain(base::BasicStringPiece<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > const&, quic::CommonCertSets const*, std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >*)) in archive obj/net/libnet.a
+
+ld.lld: error: undefined symbol: Cr_z_inflateEnd
+>>> referenced by cert_compressor.cc:439 (../../net/third_party/quiche/src/quic/core/crypto/cert_compressor.cc:439)
+>>>               net/cert_compressor.o:(quic::CertCompressor::DecompressChain(base::BasicStringPiece<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > const&, quic::CommonCertSets const*, std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >*)) in archive obj/net/libnet.a
+
+ld.lld: error: undefined symbol: Cr_z_inflateEnd
+>>> referenced by cert_compressor.cc:439 (../../net/third_party/quiche/src/quic/core/crypto/cert_compressor.cc:439)
+>>>               net/cert_compressor.o:(quic::CertCompressor::DecompressChain(base::BasicStringPiece<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > const&, quic::CommonCertSets const*, std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >*)) in archive obj/net/libnet.a
+
+ld.lld: error: undefined symbol: Cr_z_crc32
+>>> referenced by simple_util.cc:117 (../../net/disk_cache/simple/simple_util.cc:117)
+>>>               net/simple_util.o:(disk_cache::simple_util::Crc32(char const*, int)) in archive obj/net/libnet.a
+
+ld.lld: error: undefined symbol: Cr_z_crc32
+>>> referenced by simple_util.cc:120 (../../net/disk_cache/simple/simple_util.cc:120)
+>>>               net/simple_util.o:(disk_cache::simple_util::Crc32(char const*, int)) in archive obj/net/libnet.a
+
+ld.lld: error: undefined symbol: Cr_z_crc32
+>>> referenced by simple_util.cc:124 (../../net/disk_cache/simple/simple_util.cc:124)
+>>>               net/simple_util.o:(disk_cache::simple_util::IncrementalCrc32(unsigned int, char const*, int)) in archive obj/net/libnet.a
+
+ld.lld: error: undefined symbol: Cr_z_crc32
+>>> referenced by simple_entry_impl.cc:1092 (../../net/disk_cache/simple/simple_entry_impl.cc:1092)
+>>>               net/simple_entry_impl.o:(disk_cache::SimpleEntryImpl::ReadDataInternal(bool, int, int, net::IOBuffer*, int, base::OnceCallback<void (int)>)) in archive obj/net/libnet.a
+
+ld.lld: error: undefined symbol: Cr_z_crc32
+>>> referenced by simple_entry_impl.cc:981 (../../net/disk_cache/simple/simple_entry_impl.cc:981)
+>>>               net/simple_entry_impl.o:(disk_cache::SimpleEntryImpl::CloseInternal()) in archive obj/net/libnet.a
+
+ld.lld: error: undefined symbol: Cr_z_crc32
+>>> referenced by simple_entry_impl.cc:1189 (../../net/disk_cache/simple/simple_entry_impl.cc:1189)
+>>>               net/simple_entry_impl.o:(disk_cache::SimpleEntryImpl::WriteDataInternal(int, int, net::IOBuffer*, int, base::OnceCallback<void (int)>, bool)) in archive obj/net/libnet.a
+
+ld.lld: error: undefined symbol: Cr_z_crc32
+>>> referenced by simple_synchronous_entry.cc:285 (../../net/disk_cache/simple/simple_synchronous_entry.cc:285)
+>>>               net/simple_synchronous_entry.o:(disk_cache::SimpleEntryCreationResults::SimpleEntryCreationResults(disk_cache::SimpleEntryStat)) in archive obj/net/libnet.a
+
+ld.lld: error: undefined symbol: Cr_z_crc32
+>>> referenced by simple_synchronous_entry.cc:285 (../../net/disk_cache/simple/simple_synchronous_entry.cc:285)
+>>>               net/simple_synchronous_entry.o:(disk_cache::SimpleEntryCreationResults::SimpleEntryCreationResults(disk_cache::SimpleEntryStat)) in archive obj/net/libnet.a
+
+ld.lld: error: undefined symbol: Cr_z_inflateEnd
+>>> referenced by gzip_source_stream.cc:36 (../../net/filter/gzip_source_stream.cc:36)
+>>>               net/gzip_source_stream.o:(net::GzipSourceStream::~GzipSourceStream()) in archive obj/net/libnet.a
+
+ld.lld: error: undefined symbol: Cr_z_inflateEnd
+>>> referenced by gzip_source_stream.cc:36 (../../net/filter/gzip_source_stream.cc:36)
+>>>               net/gzip_source_stream.o:(net::GzipSourceStream::~GzipSourceStream()) in archive obj/net/libnet.a
+
+ld.lld: error: undefined symbol: Cr_z_inflateInit2_
+>>> referenced by gzip_source_stream.cc:66 (../../net/filter/gzip_source_stream.cc:66)
+>>>               net/gzip_source_stream.o:(net::GzipSourceStream::Create(std::unique_ptr<net::SourceStream, std::default_delete<net::SourceStream> >, net::SourceStream::SourceType)) in archive obj/net/libnet.a
+
+ld.lld: error: undefined symbol: Cr_z_inflateInit_
+>>> referenced by gzip_source_stream.cc:68 (../../net/filter/gzip_source_stream.cc:68)
+>>>               net/gzip_source_stream.o:(net::GzipSourceStream::Create(std::unique_ptr<net::SourceStream, std::default_delete<net::SourceStream> >, net::SourceStream::SourceType)) in archive obj/net/libnet.a
+
+ld.lld: error: undefined symbol: Cr_z_inflate
+>>> referenced by gzip_source_stream.cc:139 (../../net/filter/gzip_source_stream.cc:139)
+>>>               net/gzip_source_stream.o:(net::GzipSourceStream::FilterData(net::IOBuffer*, int, net::IOBuffer*, int, int*, bool)) in archive obj/net/libnet.a
+
+ld.lld: error: undefined symbol: Cr_z_inflateReset
+>>> referenced by gzip_source_stream.cc:256 (../../net/filter/gzip_source_stream.cc:256)
+>>>               net/gzip_source_stream.o:(net::GzipSourceStream::FilterData(net::IOBuffer*, int, net::IOBuffer*, int, int*, bool)) in archive obj/net/libnet.a
+
+ld.lld: error: too many errors emitted, stopping now (use -error-limit=0 to see all errors)
+clang-8: error: linker command failed with exit code 1 (use -v to see invocation)
+
+diff --git a/third_party/zlib/zconf.h b/third_party/zlib/zconf.h
+index 2d1d03ff951c..353fd36f17e3 100644
+--- a/third_party/zlib/zconf.h
++++ b/third_party/zlib/zconf.h
+@@ -17,7 +17,7 @@
+ #if !defined(CHROMIUM_ZLIB_NO_CHROMECONF)
+ /* This include does prefixing as below, but with an updated set of names.  Also
+  * sets up export macros in component builds. */
+-#include "chromeconf.h"
++//#include "chromeconf.h"
+ #endif
+ 
+ /*

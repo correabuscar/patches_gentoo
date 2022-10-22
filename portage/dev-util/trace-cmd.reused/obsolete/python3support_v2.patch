@@ -1,0 +1,80 @@
+Add support for Python 3 v2
+patch from https://bugzilla.kernel.org/show_bug.cgi?id=204231#c2
+--- a/python/ctracecmd.i	
++++ a/python/ctracecmd.i	
+@@ -108,7 +108,7 @@ static PyObject *py_field_get_stack(struct tep_handle *pevent,
+ 		    ((int)addr == -1))
+ 			break;
+ 		func = tep_find_function(event->tep, addr);
+-		if (PyList_Append(list, PyString_FromString(func))) {
++		if (PyList_Append(list, PyUnicode_FromString(func))) {
+ 			Py_DECREF(list);
+ 			return NULL;
+ 		}
+@@ -117,6 +117,22 @@ static PyObject *py_field_get_stack(struct tep_handle *pevent,
+ 	return list;
+ }
+ 
++#if PY_MAJOR_VERSION >= 3
++static PyObject *fromMemory(void *buf, size_t len)
++{
++		return PyMemoryView_FromMemory(buf, len, PyBUF_READ);
++}
++#define PY_INT_AS_LONG PyLong_AsLong
++#else
++static PyObject *fromMemory(void *buf, size_t len)
++{
++		return PyBuffer_FromMemory(buf, len);
++}
++#define PY_INT_AS_LONG PyInt_AS_LONG
++#endif
++
++
++
+ static PyObject *py_field_get_data(struct tep_format_field *f, struct tep_record *r)
+ {
+ 	if (!strncmp(f->type, "__data_loc ", 11)) {
+@@ -137,10 +153,10 @@ static PyObject *py_field_get_data(struct tep_format_field *f, struct tep_record
+ 		offset = val & 0xffff;
+ 		len = val >> 16;
+ 
+-		return PyBuffer_FromMemory((char *)r->data + offset, len);
++		return fromMemory(r->data + offset, len);
+ 	}
+ 
+-	return PyBuffer_FromMemory((char *)r->data + f->offset, f->size);
++	return fromMemory(r->data + f->offset, f->size);
+ }
+ 
+ static PyObject *py_field_get_str(struct tep_format_field *f, struct tep_record *r)
+@@ -162,10 +178,10 @@ static PyObject *py_field_get_str(struct tep_format_field *f, struct tep_record
+ 		 */
+ 		offset = val & 0xffff;
+ 
+-		return PyString_FromString((char *)r->data + offset);
++		return PyUnicode_FromString((char *)r->data + offset);
+ 	}
+ 
+-	return PyString_FromStringAndSize((char *)r->data + f->offset,
++	return PyUnicode_FromStringAndSize((char *)r->data + f->offset,
+ 				strnlen((char *)r->data + f->offset, f->size));
+ }
+ 
+@@ -177,7 +193,7 @@ static PyObject *py_format_get_keys(struct tep_event *ef)
+ 	list = PyList_New(0);
+ 
+ 	for (f = ef->format.fields; f; f = f->next) {
+-		if (PyList_Append(list, PyString_FromString(f->name))) {
++		if (PyList_Append(list, PyUnicode_FromString(f->name))) {
+ 			Py_DECREF(list);
+ 			return NULL;
+ 		}
+@@ -217,7 +233,7 @@ static int python_callback(struct trace_seq *s,
+ 			Py_XDECREF(result);
+ 			return 0;
+ 		}
+-		r = PyInt_AS_LONG(result);
++		r = PY_INT_AS_LONG(result);
+ 	} else if (result == Py_None)
+ 		r = 0;
+ 	else

@@ -1,0 +1,33 @@
+#@@ -114,7 +114,7 @@ pub fn output(cmd: &mut Command) -> String {
+#     let output = match cmd.stderr(Stdio::inherit()).output() {
+#         Ok(status) => status,
+#         Err(e) => fail(&format!(
+#-            "failed to execute command: {:?}\nerror: {}",
+#+            "2failed to execute command: {:?}\nerror: {}",
+#             cmd, e
+#         )),
+#     };
+
+diff --git a/src/build_helper/lib.rs b/src/build_helper/lib.rs
+index 2f9953330f..e050228f83 100644
+--- a/src/build_helper/lib.rs
++++ b/src/build_helper/lib.rs
+@@ -133,7 +133,7 @@ pub fn make(host: &str) -> PathBuf {
+ pub fn output(cmd: &mut Command) -> String {
+     let output = match cmd.stderr(Stdio::inherit()).output() {
+         Ok(status) => status,
+-        Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}", cmd, e)),
++        Err(e) => fail(&format!("2failed2 to execute command: {:?}\nerror: {}", cmd, e)),
+     };
+     if !output.status.success() {
+         panic!(
+@@ -255,6 +255,7 @@ fn dir_up_to_date(src: &Path, threshold: SystemTime) -> bool {
+ }
+ 
+ fn fail(s: &str) -> ! {
+-    println!("\n\n{}\n\n", s);
+-    std::process::exit(1);
++    //println!("\n\n{}\n\n", s);
++    //std::process::exit(1);
++    panic!("\n\n{}\n\n",s);
+ }

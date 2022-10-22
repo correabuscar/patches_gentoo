@@ -1,0 +1,31 @@
+otherwise addons like uBlock origin from git will not be loaded because they're unsigned even though xpinstall.signatures.required is already false
+Index: /var/tmp/portage/www-client/firefox-97.0.2/work/firefox-97.0.2/toolkit/modules/AppConstants.jsm
+===================================================================
+--- firefox-97.0.2/toolkit/modules/AppConstants.jsm
++++ firefox-97.0.2/toolkit/modules/AppConstants.jsm
+@@ -283,11 +283,7 @@ this.AppConstants = Object.freeze({
+ #endif
+ 
+   MOZ_REQUIRE_SIGNING:
+-#ifdef MOZ_REQUIRE_SIGNING
+-  true,
+-#else
+   false,
+-#endif
+ 
+   get MOZ_UNSIGNED_SCOPES() {
+     let result = 0;
+Index: /var/tmp/portage/www-client/firefox-97.0.2/work/firefox-97.0.2/toolkit/moz.configure
+===================================================================
+--- firefox-97.0.2/toolkit/moz.configure
++++ firefox-97.0.2/toolkit/moz.configure
+@@ -1487,7 +1487,8 @@ set_define("A11Y_LOG", True, when=a11y_l
+ # ==============================================================
+ @depends(milestone)
+ def require_signing(milestone):
+-    return milestone.is_release_or_beta and not milestone.is_esr
++    return False
++    #return milestone.is_release_or_beta and not milestone.is_esr
+ 
+ 
+ option(

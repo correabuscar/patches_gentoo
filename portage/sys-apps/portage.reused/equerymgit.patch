@@ -1,0 +1,50 @@
+without this patch:
+see https://bugs.gentoo.org/757897
+with this patch:
+# equery m glib
+!!! Ambiguous package name. Choose from:
+  dev-haskell/glib
+  dev-libs/glib
+# equery m git
+!!! Ambiguous package name. Choose from:
+  dev-haskell/git
+  acct-group/git
+  dev-vcs/git
+  acct-user/git
+  dev-ruby/git
+
+Index: /var/tmp/portage/sys-apps/portage-3.0.11-r1/work/portage-3.0.11/lib/portage/dbapi/cpv_expand.py
+===================================================================
+--- .orig/var/tmp/portage/sys-apps/portage-3.0.11-r1/work/portage-3.0.11/lib/portage/dbapi/cpv_expand.py
++++ /var/tmp/portage/sys-apps/portage-3.0.11-r1/work/portage-3.0.11/lib/portage/dbapi/cpv_expand.py
+@@ -67,18 +67,18 @@ def cpv_expand(mycpv, mydb=None, use_cac
+ 				if mydb.cp_list(x+"/"+myp,use_cache=use_cache):
+ 					matches.append(x+"/"+myp)
+ 		if len(matches) > 1:
+-			virtual_name_collision = False
+-			if len(matches) > 1:
+-				for x in matches:
+-					if not x.startswith(("acct-group/", "acct-user/", "virtual/")):
+-						# Assume that the non-virtual is desired.  This helps
+-						# avoid the ValueError for invalid deps that come from
+-						# installed packages (during reverse blocker detection,
+-						# for example).
+-						mykey = x
+-					else:
+-						virtual_name_collision = True
+-			if not virtual_name_collision:
++			#more than 1 match!
++			how_many_nv=0
++			for x in matches:
++				if not x.startswith(("acct-group/", "acct-user/", "virtual/")):
++					# Assume that the non-virtual is desired.  This helps
++					# avoid the ValueError for invalid deps that come from
++					# installed packages (during reverse blocker detection,
++					# for example).
++					mykey = x
++					how_many_nv+=1
++					#how many non-virtuals? if more than 1, then collision!
++			if how_many_nv > 1:
+ 				# AmbiguousPackageName inherits from ValueError,
+ 				# for backward compatibility with calling code
+ 				# that already handles ValueError.

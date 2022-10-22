@@ -1,0 +1,93 @@
+requires/assumes_applied:  ignore_bad_prunes.patch
+
+ From 5ddf02612d0fd5c5d727ddda609e923aa9a3ff56 Mon Sep 17 00:00:00 2001
+ From: wchen342 <feiyu2817@gmail.com>
+ Date: Tue, 24 Sep 2019 14:48:40 -0400
+ Subject: [PATCH 1/2] Set default log level for utils to INFO; only show unremovable files on DEBUG
+#
+#---
+# utils/_common.py        | 2 +-
+# utils/prune_binaries.py | 3 ++-
+# 2 files changed, 3 insertions(+), 2 deletions(-)
+#
+#diff --git a/utils/_common.py b/utils/_common.py
+#index d49efd78..7af943ab 100644
+#--- a/utils/_common.py
+#+++ b/utils/_common.py
+#@@ -34,7 +34,7 @@ class ExtractorEnum: #pylint: disable=too-few-public-methods
+# # Public methods
+# 
+# 
+#-def get_logger(initial_level=logging.DEBUG):
+#+def get_logger(initial_level=logging.INFO):
+#     """Gets the named logger"""
+# 
+#     logger = logging.getLogger('ungoogled')
+#diff --git a/utils/prune_binaries.py b/utils/prune_binaries.py
+#index dc088c0f..7a80e426 100755
+#--- a/utils/prune_binaries.py
+#+++ b/utils/prune_binaries.py
+#@@ -38,7 +38,8 @@ def _callback(args):
+#     prune_files = tuple(filter(len, args.pruning_list.read_text(encoding=ENCODING).splitlines()))
+#     unremovable_files = prune_dir(args.directory, prune_files)
+#     if unremovable_files:
+#-        get_logger().error('Files could not be pruned: %s', unremovable_files)
+#+        get_logger().error('%d files could not be pruned.', len(unremovable_files))
+#+        get_logger().debug('Files could not be pruned:\n%s', '\n'.join(f for f in unremovable_files))
+#         exit(1)
+# 
+# 
+#
+#From 53de2f6cd4c2dac545dc29ca96bf96f807ce0387 Mon Sep 17 00:00:00 2001
+#From: wchen342 <feiyu2817@gmail.com>
+#Date: Tue, 24 Sep 2019 14:53:47 -0400
+#Subject: [PATCH 2/2] Style fix
+#
+#---
+# utils/prune_binaries.py | 3 ++-
+# 1 file changed, 2 insertions(+), 1 deletion(-)
+#
+#diff --git a/utils/prune_binaries.py b/utils/prune_binaries.py
+#index 7a80e426..8d80d358 100755
+#--- a/utils/prune_binaries.py
+#+++ b/utils/prune_binaries.py
+#@@ -39,7 +39,8 @@ def _callback(args):
+#     unremovable_files = prune_dir(args.directory, prune_files)
+#     if unremovable_files:
+#         get_logger().error('%d files could not be pruned.', len(unremovable_files))
+#-        get_logger().debug('Files could not be pruned:\n%s', '\n'.join(f for f in unremovable_files))
+#+        get_logger().debug('Files could not be pruned:\n%s',
+#+                           '\n'.join(f for f in unremovable_files))
+#         exit(1)
+# 
+# 
+diff --git a/utils/_common.py b/utils/_common.py
+index d49efd7..7af943a 100644
+--- a/utils/_common.py
++++ b/utils/_common.py
+@@ -34,7 +34,7 @@ class ExtractorEnum: #pylint: disable=too-few-public-methods
+ # Public methods
+ 
+ 
+-def get_logger(initial_level=logging.DEBUG):
++def get_logger(initial_level=logging.INFO):
+     """Gets the named logger"""
+ 
+     logger = logging.getLogger('ungoogled')
+diff --git a/utils/prune_binaries.py b/utils/prune_binaries.py
+index dc088c0..fd329be 100755
+--- a/utils/prune_binaries.py
++++ b/utils/prune_binaries.py
+@@ -38,8 +38,10 @@ def _callback(args):
+     prune_files = tuple(filter(len, args.pruning_list.read_text(encoding=ENCODING).splitlines()))
+     unremovable_files = prune_dir(args.directory, prune_files)
+     if unremovable_files:
+-        get_logger().error('Files could not be pruned: %s', unremovable_files)
+-        #exit(1)
++        #get_logger().error('Files could not be pruned: %s', unremovable_files)
++        get_logger().error('%d files could not be pruned.', len(unremovable_files))
++        get_logger().debug('Files could not be pruned:\n%s', '\n'.join(f for f in unremovable_files))
++        #exit(1)
+ 
+ 
+ def main():

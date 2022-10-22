@@ -1,0 +1,30 @@
+diff -upr '--exclude=*.Po' dosfstools-4.1/src/fat.c dosfstools-4.1.mod/src/fat.c
+--- dosfstools-4.1/src/fat.c	2017-01-22 04:50:09.000000000 +0100
++++ dosfstools-4.1.mod/src/fat.c	2017-05-05 15:30:48.175450189 +0200
+@@ -121,6 +121,26 @@ void read_fat(DOS_FS * fs)
+ 	get_fat(&second_media, second, 0, fs);
+ 	first_ok = (first_media.value & FAT_EXTD(fs)) == FAT_EXTD(fs);
+ 	second_ok = (second_media.value & FAT_EXTD(fs)) == FAT_EXTD(fs);
++
++  if (second_ok) {
++    uint8_t *end=second+eff_size;//using <, so no -1
++    //int count=0;
++    uint8_t *cur=second+12;
++    if (end >= cur) {
++      //first 12 chars are these: f8 ff ff 0f ff ff ff 0f  ff ff ff 0f
++      //rest are zeroes if this 2nd FAT (FAT32) is unused/empty in some devices like: VIZ CAR CAMERA - they never update 2nd FAT so it remains as it was when last restored by fsck.vfat
++      for (; cur < end && 0 == *cur; cur++);//{count++;}
++      //printf("count=%d eff_size=%d cur==end?%d\n",count, eff_size, cur == end);
++      if (cur > end) {
++        printf("THIS IS NOT SUPPOSED TO HAPPEN cur=%p > end=%p\n", cur, end);
++      }
++      second_ok = (cur < end);
++      if (!second_ok) {
++        printf("Second FAT is empty/unused - ignoring it.\n");
++      }
++    }
++  }
++
+ 	if (first_ok && !second_ok) {
+ 	    printf("FATs differ - using first FAT.\n");
+ 	    fs_write(fs->fat_start + fs->fat_size, eff_size, first);

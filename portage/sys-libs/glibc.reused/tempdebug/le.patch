@@ -1,0 +1,13 @@
+diff --git a/libio/fileops.c b/libio/fileops.c
+index daa5a058771..8c164aa4570 100644
+--- a/libio/fileops.c
++++ b/libio/fileops.c
+@@ -1252,7 +1252,7 @@ _IO_new_file_xsputn (FILE *f, const void *data, size_t n)
+ 
+       /* Try to maintain alignment: write a whole number of blocks.  */
+       block_size = f->_IO_buf_end - f->_IO_buf_base;
+-      do_write = to_do - (block_size >= 128 ? to_do % block_size : 0);
++      do_write = to_do - (block_size >= 128 ? to_do % block_size : 0);
+ 
+       if (do_write)
+ 	{

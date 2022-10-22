@@ -1,0 +1,17 @@
+in check 0.15.1 (at least) this patch is not required, as it already does get a /usr/lib64/libcheck.so.0.15.1 file, instead of .so.0.0.0
+=====
+https://github.com/libcheck/check/issues/187#issuecomment-493546945
+
+diff --git a/src/Makefile.am b/src/Makefile.am
+index 22ebde0..480ead7 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -37,7 +37,7 @@ $(EXPORT_SYM): check.h.in
+ 	${SED} -n -e 's/^..*CK_EXPORT[[:space:]][[:space:]]*\([[:alnum:]_][[:alnum:]_]*\)..*$$/\1/p' @top_srcdir@/src/check.h.in > $@
+ 
+ libcheck_la_DEPENDENCIES= $(EXPORT_SYM)
+-libcheck_la_LDFLAGS	= -no-undefined -export-symbols $(EXPORT_SYM)
++libcheck_la_LDFLAGS	= -version-number $(LIBCHECK_VERSION) -no-undefined -export-symbols $(EXPORT_SYM)
+ libcheck_la_SOURCES	= $(CFILES) $(HFILES)
+ libcheck_la_LIBADD	= @GCOV_LIBS@ @PTHREAD_LIBS@ $(LIBSUBUNIT_LIBS) $(top_builddir)/lib/libcompat.la
+ 

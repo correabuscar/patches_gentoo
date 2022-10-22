@@ -1,0 +1,27 @@
+fixes this:
+
+/var/tmp/portage/media-sound/pulseaudio-13.0-r1/work/pulseaudio-13.0/configure --prefix=/usr --build=x86_64-pc-linux-gnu --host=x86_64-pc-linux-gnu --mandir=/usr/share/man --infodir=/usr/share/info --datadir=/usr/share --sysconfdir=/etc --localstatedir=/var/lib --disable-dependency-tracking --disable-silent-rules --docdir=/usr/share/doc/pulseaudio-13.0-r1 --htmldir=/usr/share/doc/pulseaudio-13.0-r1/html --with-sysroot=/ --libdir=/usr/lib64 --disable-adrian-aec --disable-esound --disable-gconf --disable-solaris --enable-largefile --localstatedir=/var --with-systemduserunitdir=/usr/lib/systemd/user --with-udev-rules-dir=//lib/udev/rules.d --enable-alsa --disable-bluez5 --enable-gsettings --disable-gtk3 --disable-jack --disable-samplerate --disable-lirc --enable-orc --disable-oss-output --enable-openssl --disable-default-build-tests --enable-udev --disable-webrtc-aec --disable-avahi --without-fftw --with-soxr --with-database=gdbm --enable-glib2 --enable-asyncns --disable-neon-opt --disable-tcpwrap --enable-dbus --enable-x11 --disable-systemd-daemon --disable-systemd-login --disable-systemd-journal --disable-ipv6 --with-caps --enable-systemd-login SYSTEMDLOGIN_CFLAGS=-I/usr/include/elogind SYSTEMDLOGIN_LIBS=-L/lib64 -lelogind --with-pulsedsp-location=/usr/\\$$LIB/pulseaudio
+configure: error: unrecognized option: `-lelogind'
+Try `/var/tmp/portage/media-sound/pulseaudio-13.0-r1/work/pulseaudio-13.0/configure --help' for more information
+
+--- pulseaudio-13.0-r1.ebuild	2020-11-23 03:20:42.849471264 +0100
++++ /var/db/repos/gentoo/media-sound/pulseaudio/pulseaudio-13.0-r1.ebuild	2020-11-06 05:09:16.000000000 +0100
+@@ -195,16 +195,16 @@ multilib_src_configure() {
+ 		$(use_enable ipv6)
+ 		$(use_with caps)
+ 	)
+ 
+ 	if use elogind && multilib_is_native_abi; then
+ 		myconf+=(
+ 			--enable-systemd-login
+-			"SYSTEMDLOGIN_CFLAGS=`pkg-config --cflags "libelogind" 2>/dev/null`"
+-			"SYSTEMDLOGIN_LIBS=`pkg-config --libs "libelogind" 2>/dev/null`"
++			SYSTEMDLOGIN_CFLAGS=`pkg-config --cflags "libelogind" 2>/dev/null`
++			SYSTEMDLOGIN_LIBS=`pkg-config --libs "libelogind" 2>/dev/null`
+ 		)
+ 	fi
+ 
+ 	if use bluetooth; then
+ 		myconf+=(
+ 			$(multilib_native_use_enable native-headset bluez5-native-headset)
+ 			$(multilib_native_use_enable ofono-headset bluez5-ofono-headset)

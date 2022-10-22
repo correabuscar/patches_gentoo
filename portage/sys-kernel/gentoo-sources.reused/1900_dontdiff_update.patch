@@ -1,0 +1,32 @@
+for when diff-ing dirs that supposedly reside in two different kernel tree sources, like:
+ diff -pruN -X /home/emacs/build/3/packages-core/linux316/makepkg/linux316/src/linux-3.16-rc6/Documentation/dontdiff linux-3.16-rc6.orig/Documentation/dontdiff linux-3.16-rc6/Documentation/dontdiff
+
+diff --git a/Documentation/dontdiff b/Documentation/dontdiff
+index 2228fcc8e29f..47e301c3cd35 100644
+--- a/Documentation/dontdiff
++++ b/Documentation/dontdiff
+@@ -260,3 +260,24 @@ wakeup.elf
+ wakeup.lds
+ zImage*
+ zoffset.h
++vdso-image-32-int80.c
++vdso-image-32-syscall.c
++vdso-image-32-sysenter.c
++vdso-image-64.c
++devicetable-offsets.h
++asn1_compiler
++sortextable
++pasyms.h
++realmode.lds
++x509-asn1.c
++x509-asn1.h
++x509_rsakey-asn1.c
++x509_rsakey-asn1.h
++oid_registry_data.c
++cayman_reg_safe.h
++mkpiggy
++realmode.relocs
++vdso2c
++
++
++

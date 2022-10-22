@@ -1,0 +1,72 @@
+From a86e78dd0b3fb682bd991193fb06561d2d33f738 Mon Sep 17 00:00:00 2001
+From: Lars Wendler <polynomial-c@gentoo.org>
+Date: Mon, 23 Nov 2020 12:23:30 +0100
+Subject: [PATCH 1/2] media-sound/pulseaudio: Fixed quoting for elogind
+ configure args
+
+Also use tc-getPKG_CONFIG from toolchain-funcs.eclass to find pkg-config
+
+Reported-by: flippynelle <flippynelle@pm.me>
+Closes: https://bugs.gentoo.org/756196
+Package-Manager: Portage-3.0.10, Repoman-3.0.2
+Signed-off-by: Lars Wendler <polynomial-c@gentoo.org>
+---
+ media-sound/pulseaudio/pulseaudio-13.0-r1.ebuild | 7 ++++---
+ media-sound/pulseaudio/pulseaudio-13.0.ebuild    | 7 ++++---
+ 2 files changed, 8 insertions(+), 6 deletions(-)
+
+diff --git a/media-sound/pulseaudio/pulseaudio-13.0-r1.ebuild b/media-sound/pulseaudio/pulseaudio-13.0-r1.ebuild
+index c6746608ed4e..5c0f7d6d8e87 100644
+--- a/media-sound/pulseaudio/pulseaudio-13.0-r1.ebuild
++++ b/media-sound/pulseaudio/pulseaudio-13.0-r1.ebuild
+@@ -2,7 +2,7 @@
+ # Distributed under the terms of the GNU General Public License v2
+ 
+ EAPI=7
+-inherit autotools bash-completion-r1 flag-o-matic gnome2-utils linux-info systemd udev multilib-minimal
++inherit autotools bash-completion-r1 flag-o-matic gnome2-utils linux-info systemd toolchain-funcs udev multilib-minimal
+ 
+ DESCRIPTION="A networked sound server with an advanced plugin system"
+ HOMEPAGE="https://www.freedesktop.org/wiki/Software/PulseAudio/"
+@@ -197,10 +197,11 @@ multilib_src_configure() {
+ 	)
+ 
+ 	if use elogind && multilib_is_native_abi; then
++		local PKGCONFIG="$(tc-getPKG_CONFIG)"
+ 		myconf+=(
+ 			--enable-systemd-login
+-			SYSTEMDLOGIN_CFLAGS=`pkg-config --cflags "libelogind" 2>/dev/null`
+-			SYSTEMDLOGIN_LIBS=`pkg-config --libs "libelogind" 2>/dev/null`
++			SYSTEMDLOGIN_CFLAGS="$(${PKGCONFIG} --cflags "libelogind" 2>/dev/null)"
++			SYSTEMDLOGIN_LIBS="$(${PKGCONFIG} --libs "libelogind" 2>/dev/null)"
+ 		)
+ 	fi
+ 
+diff --git a/media-sound/pulseaudio/pulseaudio-13.0.ebuild b/media-sound/pulseaudio/pulseaudio-13.0.ebuild
+index d1ed1d05bf32..737b28abb7fb 100644
+--- a/media-sound/pulseaudio/pulseaudio-13.0.ebuild
++++ b/media-sound/pulseaudio/pulseaudio-13.0.ebuild
+@@ -2,7 +2,7 @@
+ # Distributed under the terms of the GNU General Public License v2
+ 
+ EAPI=6
+-inherit autotools bash-completion-r1 flag-o-matic gnome2-utils linux-info systemd user udev multilib-minimal
++inherit autotools bash-completion-r1 flag-o-matic gnome2-utils linux-info systemd toolchain-funcs user udev multilib-minimal
+ 
+ DESCRIPTION="A networked sound server with an advanced plugin system"
+ HOMEPAGE="https://www.freedesktop.org/wiki/Software/PulseAudio/"
+@@ -202,10 +202,11 @@ multilib_src_configure() {
+ 	)
+ 
+ 	if use elogind && multilib_is_native_abi; then
++		local PKGCONFIG="$(tc-getPKG_CONFIG)"
+ 		myconf+=(
+ 			--enable-systemd-login
+-			SYSTEMDLOGIN_CFLAGS=`pkg-config --cflags "libelogind" 2>/dev/null`
+-			SYSTEMDLOGIN_LIBS=`pkg-config --libs "libelogind" 2>/dev/null`
++			SYSTEMDLOGIN_CFLAGS="$(${PKGCONFIG} --cflags "libelogind" 2>/dev/null)"
++			SYSTEMDLOGIN_LIBS="$(${PKGCONFIG} --libs "libelogind" 2>/dev/null)"
+ 		)
+ 	fi
+ 
+

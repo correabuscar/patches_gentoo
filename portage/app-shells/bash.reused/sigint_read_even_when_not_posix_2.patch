@@ -1,0 +1,14 @@
+Index: /var/tmp/portage/app-shells/bash-99999/work/bash-99999/bashline.c
+===================================================================
+--- a/bashline.c
++++ b/bashline.c
+@@ -4724,7 +4724,8 @@ bash_event_hook ()
+   RL_UNSETSTATE (RL_STATE_TIMEOUT);			/* XXX */
+ 
+   /* posix mode SIGINT during read -e. We only get here if SIGINT is trapped. */
+-  if (posixly_correct && this_shell_builtin == read_builtin && sig == SIGINT)
++  if (//posixly_correct && // not only when POSIX, thanks to Chet Ramey for the info about this here: https://lists.gnu.org/archive/html/bug-bash/2020-04/msg00110.html SIGINT==2 (2 was used before)
++      this_shell_builtin == read_builtin && sig == SIGINT)
+     {
+       last_command_exit_value = 128|SIGINT;
+       throw_to_top_level ();

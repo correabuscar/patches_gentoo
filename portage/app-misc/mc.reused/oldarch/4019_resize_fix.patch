@@ -1,0 +1,144 @@
+src: https://github.com/MidnightCommander/mc/compare/4019_resize_fix.patch
+
+From 4c36a5c8ea3386fbdf6b911986092fac11a0508a Mon Sep 17 00:00:00 2001
+From: Andrew Borodin <aborodin@vmail.ru>
+Date: Sat, 21 Sep 2019 20:44:51 +0300
+Subject: [PATCH 1/2] Ticket #4019: fix SIGWINCH handling,
+
+Fix regression introduced in 37ffc024225fd2ef1016babf3cbbeabce4a32899.
+
+(tty_got_winch): don't read FIFO, just check whether it os empty or not.
+It can be called many times without lost of info about SIGWINCH raises.
+(tty_flush_winch): read from FIFO to make it empty.
+
+Signed-off-by: Andrew Borodin <aborodin@vmail.ru>
+---
+ lib/tty/tty.c              | 37 ++++++++++++++++++++++++++++++++-----
+ lib/tty/tty.h              |  1 +
+ lib/widget/dialog-switch.c |  1 +
+ 3 files changed, 34 insertions(+), 5 deletions(-)
+
+diff --git a/lib/tty/tty.c b/lib/tty/tty.c
+index e78ae02da5..1eb6d3fda2 100644
+--- a/lib/tty/tty.c
++++ b/lib/tty/tty.c
+@@ -35,6 +35,13 @@
+ #include <stdarg.h>
+ #include <stdlib.h>
+ #include <string.h>             /* memset() */
++
++#ifdef HAVE_SYS_SELECT_H
++#include <sys/select.h>
++#else
++#include <sys/time.h>
++#include <sys/types.h>
++#endif
+ #include <unistd.h>             /* exit() */
+ 
+ #ifdef HAVE_SYS_IOCTL_H
+@@ -168,7 +175,31 @@ tty_got_interrupt (void)
+ gboolean
+ tty_got_winch (void)
+ {
+-    gboolean ret = FALSE;
++    fd_set fdset;
++    /* *INDENT-OFF* */
++    /* no timeout */
++    struct timeval timeout = { .tv_sec = 0, .tv_usec = 0 };
++    /* *INDENT-ON* */
++    int ok;
++
++    FD_ZERO (&fdset);
++    FD_SET (sigwinch_pipe[0], &fdset);
++
++    while ((ok = select (sigwinch_pipe[0] + 1, &fdset, NULL, NULL, &timeout)) < 0)
++        if (errno != EINTR)
++        {
++            perror (_("Cannot check SIGWINCH pipe"));
++            exit (EXIT_FAILURE);
++        }
++
++    return (ok != 0 && FD_ISSET (sigwinch_pipe[0], &fdset));
++}
++
++/* --------------------------------------------------------------------------------------------- */
++
++void
++tty_flush_winch (void)
++{
+     ssize_t n;
+ 
+     /* merge all SIGWINCH events raised to this moment */
+@@ -178,12 +209,8 @@ tty_got_winch (void)
+ 
+         /* read multiple events at a time  */
+         n = read (sigwinch_pipe[0], &x, sizeof (x));
+-        if (n > 0)
+-            ret = TRUE;
+     }
+     while (n > 0 || (n == -1 && errno == EINTR));
+-
+-    return ret;
+ }
+ 
+ /* --------------------------------------------------------------------------------------------- */
+diff --git a/lib/tty/tty.h b/lib/tty/tty.h
+index 5af4c10c3d..fb1d94da81 100644
+--- a/lib/tty/tty.h
++++ b/lib/tty/tty.h
+@@ -81,6 +81,7 @@ extern void tty_disable_interrupt_key (void);
+ extern gboolean tty_got_interrupt (void);
+ 
+ extern gboolean tty_got_winch (void);
++extern void tty_flush_winch (void);
+ 
+ extern void tty_reset_prog_mode (void);
+ extern void tty_reset_shell_mode (void);
+diff --git a/lib/widget/dialog-switch.c b/lib/widget/dialog-switch.c
+index d8f8afa5a7..c9cd6f5e62 100644
+--- a/lib/widget/dialog-switch.c
++++ b/lib/widget/dialog-switch.c
+@@ -356,6 +356,7 @@ dialog_change_screen_size (void)
+ {
+     GList *d;
+ 
++    tty_flush_winch ();
+     tty_change_screen_size ();
+ 
+ #ifdef HAVE_SLANG
+
+From ef94c4d2fef9ba3e19a147ee4d3a4f14d1de3799 Mon Sep 17 00:00:00 2001
+From: Andrew Borodin <aborodin@vmail.ru>
+Date: Sun, 22 Sep 2019 17:11:48 +0300
+Subject: [PATCH 2/2] fixup! Ticket #4019: fix SIGWINCH handling,
+
+---
+ lib/tty/tty.c | 2 +-
+ src/execute.c | 1 +
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/lib/tty/tty.c b/lib/tty/tty.c
+index 1eb6d3fda2..611a80b89c 100644
+--- a/lib/tty/tty.c
++++ b/lib/tty/tty.c
+@@ -177,7 +177,7 @@ tty_got_winch (void)
+ {
+     fd_set fdset;
+     /* *INDENT-OFF* */
+-    /* no timeout */
++    /* instant timeout */
+     struct timeval timeout = { .tv_sec = 0, .tv_usec = 0 };
+     /* *INDENT-ON* */
+     int ok;
+diff --git a/src/execute.c b/src/execute.c
+index cab5981408..e2be79932e 100644
+--- a/src/execute.c
++++ b/src/execute.c
+@@ -544,6 +544,7 @@ toggle_subshell (void)
+      * There is some problem with screen redraw in ncurses-based mc in this situation.
+      */
+     was_sigwinch = tty_got_winch ();
++    tty_flush_winch ();
+ 
+ #ifdef ENABLE_SUBSHELL
+     if (mc_global.tty.use_subshell)

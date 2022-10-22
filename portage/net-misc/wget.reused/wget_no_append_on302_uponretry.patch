@@ -1,0 +1,24 @@
+hacky patch to showcase how wget should act if the bug was fixed
+but this isn't the fix, it's a hack
+
+see test cases: /home/user/sandbox/python/server_for_wget
+bug: https://savannah.gnu.org/bugs/index.php?62869
+bug happens only with `-O file` arg and not when -c aka --continue is present
+
+Index: /var/tmp/portage/net-misc/wget-1.21.3-r1/work/wget-1.21.3/src/http.c
+===================================================================
+--- wget-1.21.3/src/http.c
++++ wget-1.21.3/src/http.c
+@@ -3865,6 +3865,12 @@ gethttp (const struct url *u, struct url
+           /* In case the caller cares to look...  */
+           hs->len = 0;
+           hs->res = 0;
++          if ((hs->restval > 0)&&(opt.output_document))
++            {
++              opt.start_pos=hs->restval;
++              logprintf (LOG_ALWAYS, " !!! Enabling 302 redirect hack, or else your file would've been %s bytes larger and thus corrupt because the entire file would've been redownloaded and appended to what it has already gotten thus far.\n",number_to_static_string (opt.start_pos));
++              // LOG_ALWAYS - print the message unconditionally - from: src/log.c
++            }
+           hs->restval = 0;
+ 
+           /* Normally we are not interested in the response body of a redirect.

@@ -1,0 +1,35 @@
+https://git.kernel.org/pub/scm/linux/kernel/git/helgaas/pci.git/commit/?h=next&id=66ff14e59e8a30690755b08bc3042359703fb07a
+
+for 5.6.14 stable kernel
+
+diff --git a/drivers/pci/pcie/aspm.c b/drivers/pci/pcie/aspm.c
+index c2596e79ec63..994baa46596f 100644
+--- a/drivers/pci/pcie/aspm.c
++++ b/drivers/pci/pcie/aspm.c
+@@ -628,16 +628,16 @@ static void pcie_aspm_cap_init(struct pcie_link_state *link, int blacklist)
+ 
+ 	/* Setup initial capable state. Will be updated later */
+ 	link->aspm_capable = link->aspm_support;
+-	/*
+-	 * If the downstream component has pci bridge function, don't
+-	 * do ASPM for now.
+-	 */
+-	list_for_each_entry(child, &linkbus->devices, bus_list) {
+-		if (pci_pcie_type(child) == PCI_EXP_TYPE_PCI_BRIDGE) {
+-			link->aspm_disable = ASPM_STATE_ALL;
+-			break;
+-		}
+-	}
++//	/*
++//	 * If the downstream component has pci bridge function, don't
++//	 * do ASPM for now.
++//	 */
++//	list_for_each_entry(child, &linkbus->devices, bus_list) {
++//		if (pci_pcie_type(child) == PCI_EXP_TYPE_PCI_BRIDGE) {
++//			link->aspm_disable = ASPM_STATE_ALL;
++//			break;
++//		}
++//	}
+ 
+ 	/* Get and check endpoint acceptable latencies */
+ 	list_for_each_entry(child, &linkbus->devices, bus_list) {

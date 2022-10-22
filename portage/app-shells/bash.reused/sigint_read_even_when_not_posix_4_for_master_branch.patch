@@ -1,0 +1,29 @@
+for 'master' branch instead of 'devel' branch
+#diff --git a/bashline.c b/bashline.c
+#index c69c0c5e..35e2a68f 100644
+#--- a/bashline.c
+#+++ b/bashline.c
+#@@ -4639,7 +4639,8 @@ bash_event_hook ()
+#   bashline_reset_event_hook ();
+# 
+#   /* posix mode SIGINT during read -e. We only get here if SIGINT is trapped. */
+#-  if (posixly_correct && this_shell_builtin == read_builtin && sig == 2)
+#+  if (//posixly_correct && // not only when POSIX, thanks to Chet Ramey for the info about this here: https://lists.gnu.org/archive/html/bug-bash/2020-04/msg00110.html SIGINT==2 (2 was used before, it still is here on 'master' branch, but on 'devel' it's just the const SIGINT)
+#+      this_shell_builtin == read_builtin && sig == 2)
+#     {
+#       last_command_exit_value = 128|SIGINT;
+#       throw_to_top_level ();
+Index: /var/tmp/portage/app-shells/bash-9999/work/bash-9999/bashline.c
+===================================================================
+--- bash-9999/bashline.c
++++ bash-9999/bashline.c
+@@ -4826,7 +4826,8 @@ bash_event_hook ()
+   RL_UNSETSTATE (RL_STATE_TIMEOUT);			/* XXX */
+ 
+   /* posix mode SIGINT during read -e. We only get here if SIGINT is trapped. */
+-  if (posixly_correct && this_shell_builtin == read_builtin && sig == SIGINT)
++  if (//posixly_correct && // not only when POSIX, thanks to Chet Ramey for the info about this here: https://lists.gnu.org/archive/html/bug-bash/2020-04/msg00110.html SIGINT==2 (2 was used before, it still is here on 'master' branch, but on 'devel' it's just the const SIGINT)
++      this_shell_builtin == read_builtin && sig == SIGINT)
+     {
+       last_command_exit_value = 128|SIGINT;
+       throw_to_top_level ();

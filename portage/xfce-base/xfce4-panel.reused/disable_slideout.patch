@@ -1,0 +1,59 @@
+#diff --git a/panel/panel-window.c b/panel/panel-window.c
+#index 36439743..5690339b 100644
+#--- a/panel/panel-window.c
+#+++ b/panel/panel-window.c
+#@@ -1454,7 +1454,7 @@ panel_window_size_allocate (GtkWidget     *widget,
+#           floating = FALSE;
+#         }
+# 
+#-      if (floating)
+#+      if (floating||1)
+#         {
+#           gtk_window_move (GTK_WINDOW (window), window->alloc.x, window->alloc.y);
+#         }
+#
+#For local/xfce4-panel 4.15.1.r40.g9fa58946-1 (builtbydaddy xfce4-git) it's:
+#diff --git a/panel/panel-window.c b/panel/panel-window.c
+#index 442fdab7..e267bcf2 100644
+#--- a/panel/panel-window.c
+#+++ b/panel/panel-window.c
+#@@ -1478,15 +1478,16 @@ panel_window_size_allocate (GtkWidget     *widget,
+#                && (((x + w) == gdk_screen_get_width (window->screen))
+#                     || (x == 0)))
+#         {
+#           floating = FALSE;
+#         }
+# 
+#       if (floating
+#-          || window->popdown_speed == 0)
+#+          || window->popdown_speed == 0
+#+          || 1)
+#         {
+#           gtk_window_move (GTK_WINDOW (window), window->alloc.x, window->alloc.y);
+#         }
+#       else
+#         {
+#           fade_change_timeout = window->popdown_speed;
+# 
+diff --git a/panel/panel-window.c b/panel/panel-window.c
+index 8995ea4f..59f758bd 100644
+--- a/panel/panel-window.c
++++ b/panel/panel-window.c
+@@ -1494,15 +1494,16 @@ G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+         }
+       else
+         window->floating = TRUE;
+ G_GNUC_END_IGNORE_DEPRECATIONS
+ 
+       /* make the panel invisible without animation */
+       if (window->floating
+-          || window->popdown_speed == 0)
++          || window->popdown_speed == 0
++          || 1)
+         {
+           /* cancel any pending animations */
+           if (window->autohide_ease_out_id != 0)
+             g_source_remove (window->autohide_ease_out_id);
+ 
+           gtk_window_move (GTK_WINDOW (window), window->alloc.x, window->alloc.y);
+         }

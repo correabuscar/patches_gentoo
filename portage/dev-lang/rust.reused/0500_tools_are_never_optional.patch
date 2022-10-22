@@ -1,0 +1,29 @@
+ok, if any tool such as clippy fails the build, then this patch will make ./x.py build fail instantly, instead of continuing and eventually finishing with exit code 0, and then only ./x.py install will fail(without this patch) which means 19 more mins(20+19) of compilation instead of just 20mins
+
+#@@ -594,7 +594,7 @@ macro_rules! tool_extended {
+#                     mode: Mode::ToolRustc,
+#                     path: $path,
+#                     extra_features: $sel.extra_features,
+#-                    is_optional_tool: true,
+#+                    is_optional_tool: false,
+#                     source_type: SourceType::Submodule,
+#                 })
+#             }
+#index bd77f7a91d..49db8d282f 100644
+
+Index: /var/tmp/portage/dev-lang/rust-9999/work/rust-git-src/src/bootstrap/tool.rs
+===================================================================
+#--- .orig/var/tmp/portage/dev-lang/rust-9999/work/rust-git-src/src/bootstrap/tool.rs
+#+++ /var/tmp/portage/dev-lang/rust-9999/work/rust-git-src/src/bootstrap/tool.rs
+diff --git a/src/bootstrap/tool.rs b/src/bootstrap/tool.rs
+--- a/src/bootstrap/tool.rs
++++ b/src/bootstrap/tool.rs
+@@ -636,7 +636,7 @@ macro_rules! tool_extended {
+                     mode: Mode::ToolRustc,
+                     path: $path,
+                     extra_features: $sel.extra_features,
+-                    is_optional_tool: true,
++                    is_optional_tool: false,
+                     source_type: if false $(|| $in_tree)* {
+                         SourceType::InTree
+                     } else {

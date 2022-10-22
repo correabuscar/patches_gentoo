@@ -1,0 +1,509 @@
+FIXME: systemd gives this error during some pacman -Syu updates:
+[  103.954563] systemd-fstab-generator[6035]: Failed to create unit file /run/systemd/generator/tmp.mount, as it already exists. Duplicate entry in /etc/fstab?
+[  103.954598] systemd-fstab-generator[6035]: Failed to create unit file /run/systemd/generator/var-tmp.mount, as it already exists. Duplicate entry in /etc/fstab?
+[  103.957619] systemd[6029]: /usr/lib/systemd/system-generators/systemd-fstab-generator failed with exit status 1.
+
+revision 2
+fixed mount refusing to continue when fstype was specified!
+fixed segfault by using 0 aka NULL as arg to mnt_table_find_target2 from mnt_table_find_target()
+TODO: don't add field to struct and thus avoid needing to recompile
+doneTODO: remove 'inline' from func, just to be sure it doesn't make things crash?
+
+Not actually sure if this is needed anymore?(if it is, it's due to that new struct field!) Warning: systemd must be recompiled! pacman -Qi util-linux|grep Required   to see what others!
+;;;;;;;;;;;;;
+TODO: only same-target(eg. /tmp/1) entries are taken into account, so if you have same source or something else, only the first fstab entry will be considered(ie. the normal way)!
+
+TODO: see if other mnt_table_find_target() calls should be replaced with *2() one. Probably not.
+
+test with:
+$ sudo umount /tmp/1; LIBMOUNT_DEBUG=none sudo --preserve-env=LIBMOUNT_DEBUG /home/user/build/1packages/4used/util-linux/makepkg_pacman/util-linux/src/util-linux/mount --fstab /home/user/1del/fstab.test.file /tmp/1
+[sudo] password for user: 
+lt-mount: /tmp/1: special device /dev/zram3 does not exist.
+lt-mount: Entry '1' exit code: '32'
+lt-mount: /tmp/1: special device /dev/zram4 does not exist.
+lt-mount: Entry '2' exit code: '32'
+lt-mount: Entry '3' exit code: '0'
+
+or replace 'none' with 'all' to see tons more output.
+
+and:
+
+$ cat /home/user/1del/fstab.test.file
+
+
+/dev/zram3                   /tmp/1        ext4    defaults,auto,rw,exec,nosuid,strictatime,nodev,discard,delalloc,block_validity,user_xattr,nojournal_checksum,barrier 0 0
+/dev/zram4                   /tmp/1        ext4    defaults,auto,rw,exec,nosuid,strictatime,nodev,discard,delalloc,block_validity,user_xattr,nojournal_checksum,barrier 0 0
+tmpfs                   /tmp/1            tmpfs           auto,rw,exec,nosuid,strictatime,nodev,size=90%,mode=1777 0 0
+
+
+diff --git a/libmount/src/context.c b/libmount/src/context.c
+index 91fe8e4bf..cd45a3e55 100644
+--- a/libmount/src/context.c
++++ b/libmount/src/context.c
+@@ -70,6 +70,8 @@ struct libmnt_context *mnt_new_context(void)
+ 	cxt->ns_tgt.fd = -1;
+ 	cxt->ns_cur = &cxt->ns_orig;
+ 
++	cxt->fstab_entry_foundcount=0; // 0 means not found OR not started searching yet.
++
+ 	/* if we're really root and aren't running setuid */
+ 	cxt->restricted = (uid_t) 0 == ruid && ruid == euid ? 0 : 1;
+ 
+@@ -2387,12 +2389,12 @@ static int apply_table(struct libmnt_context *cxt, struct libmnt_table *tb,
+ 	tgt = mnt_fs_get_target(cxt->fs);
+ 
+ 	if (tgt && src)
+-		fs = mnt_table_find_pair(tb, src, tgt, direction);
++		fs = mnt_table_find_pair(tb, src, tgt, direction); //TODO: do these other functions also!
+ 	else {
+ 		if (src)
+-			fs = mnt_table_find_source(tb, src, direction);
++			fs = mnt_table_find_source(tb, src, direction);//, &(cxt->fstab_entry_foundcount));
+ 		else if (tgt)
+-			fs = mnt_table_find_target(tb, tgt, direction);
++			fs = mnt_table_find_target2(tb, tgt, direction, &(cxt->fstab_entry_foundcount));
+ 
+ 		if (!fs && mnt_context_is_swapmatch(cxt)) {
+ 			/* swap source and target (if @src is not LABEL/UUID),
+@@ -2404,7 +2406,7 @@ static int apply_table(struct libmnt_context *cxt, struct libmnt_table *tb,
+ 			 * example bind mount, symlink to a device, ...).
+ 			 */
+ 			if (src && !mnt_fs_get_tag(cxt->fs, NULL, NULL))
+-				fs = mnt_table_find_target(tb, src, direction);
++				fs = mnt_table_find_target2(tb, src, direction, &(cxt->fstab_entry_foundcount));
+ 			if (!fs && tgt)
+ 				fs = mnt_table_find_source(tb, tgt, direction);
+ 		}
+diff --git a/libmount/src/libmount.h.in b/libmount/src/libmount.h.in
+index 321c0540b..4de3dda88 100644
+--- a/libmount/src/libmount.h.in
++++ b/libmount/src/libmount.h.in
+@@ -590,6 +590,8 @@ extern struct libmnt_fs *mnt_table_find_mountpoint(struct libmnt_table *tb,
+ 				const char *path, int direction);
+ extern struct libmnt_fs *mnt_table_find_target(struct libmnt_table *tb,
+ 				const char *path, int direction);
++extern struct libmnt_fs *mnt_table_find_target2(struct libmnt_table *tb,
++				const char *path, int direction, int *lastfound_count);
+ extern struct libmnt_fs *mnt_table_find_srcpath(struct libmnt_table *tb,
+ 				const char *path, int direction);
+ extern struct libmnt_fs *mnt_table_find_tag(struct libmnt_table *tb, const char *tag,
+@@ -848,7 +850,7 @@ extern struct libmnt_ns *mnt_context_get_origin_ns(struct libmnt_context *cxt);
+ extern struct libmnt_ns *mnt_context_switch_ns(struct libmnt_context *cxt, struct libmnt_ns *ns);
+ extern struct libmnt_ns *mnt_context_switch_origin_ns(struct libmnt_context *cxt);
+ extern struct libmnt_ns *mnt_context_switch_target_ns(struct libmnt_context *cxt);
+-
++//extern struct libmnt_context *mnt_copy_context(struct libmnt_context *o); // I don't need this anymore!
+ 
+ /* context_mount.c */
+ extern int mnt_context_mount(struct libmnt_context *cxt);
+diff --git a/libmount/src/libmount.sym b/libmount/src/libmount.sym
+index 792d11753..17da39085 100644
+--- a/libmount/src/libmount.sym
++++ b/libmount/src/libmount.sym
+@@ -78,6 +78,7 @@ global:
+ 	mnt_context_set_user_mflags;
+ 	mnt_context_strerror;
+ 	mnt_context_umount;
++	/*mnt_copy_context; no longer needed in sys-utils/mount.c so commented out! */
+ 	mnt_copy_fs;
+ 	mnt_free_cache;
+ 	mnt_free_context;
+diff --git a/libmount/src/mountP.h b/libmount/src/mountP.h
+index 9e7ad2b71..ae72d2dc2 100644
+--- a/libmount/src/mountP.h
++++ b/libmount/src/mountP.h
+@@ -298,6 +298,7 @@ struct libmnt_context
+ 	struct libmnt_fs *fs;		/* filesystem description (type, mountpoint, device, ...) */
+ 	struct libmnt_fs *fs_template;	/* used for @fs on mnt_reset_context() */
+ 
++	int fstab_entry_foundcount;// which fstab entry was found, in case more than one exists for the target in fstab; 0 means not found, 1 means first one, 2 means second one
+ 	struct libmnt_table *fstab;	/* fstab (or mtab for some remounts) entries */
+ 	struct libmnt_table *mtab;	/* mtab entries */
+ 	struct libmnt_table *utab;	/* rarely used by umount only */
+@@ -415,7 +416,7 @@ extern int __mnt_fs_set_fstype_ptr(struct libmnt_fs *fs, char *fstype)
+ 			__attribute__((nonnull(1)));
+ 
+ /* context.c */
+-extern struct libmnt_context *mnt_copy_context(struct libmnt_context *o);
++extern struct libmnt_context *mnt_copy_context(struct libmnt_context *o); // moved to libmount/src/libmount.h.in so it can be inside the libmount lib! nvm, I don't need this anymore(so, uncommented out)
+ extern int mnt_context_mtab_writable(struct libmnt_context *cxt);
+ extern int mnt_context_utab_writable(struct libmnt_context *cxt);
+ extern const char *mnt_context_get_writable_tabpath(struct libmnt_context *cxt);
+diff --git a/libmount/src/tab.c b/libmount/src/tab.c
+index 1633d4231..805aa3b6b 100644
+--- a/libmount/src/tab.c
++++ b/libmount/src/tab.c
+@@ -55,6 +55,30 @@
+ #include "fileutils.h"
+ #include "canonicalize.h"
+ 
++//#include <execinfo.h>
++//#include <stdio.h>
++//#include <stdlib.h>
++//
++///* Obtain a backtrace and print it to stdout. */
++//void print_trace (void)
++//{ // src: https://www.gnu.org/software/libc/manual/html_node/Backtraces.html
++//#define MAX_LINES_IN_STACKDUMP 100
++//	void *array[MAX_LINES_IN_STACKDUMP];
++//	size_t size;
++//	char **strings;
++//	size_t i;
++//
++//	size = backtrace (array, MAX_LINES_IN_STACKDUMP);
++//	strings = backtrace_symbols (array, size);
++//
++//	printf ("Obtained %zd stack frames.\n", size);
++//
++//	for (i = 0; i < size; i++)
++//		printf ("%s\n", strings[i]);
++//
++//	free (strings);
++//}
++
+ int is_mountinfo(struct libmnt_table *tb)
+ {
+ 	struct libmnt_fs *fs;
+@@ -993,49 +1017,97 @@ struct libmnt_fs *mnt_table_find_mountpoint(struct libmnt_table *tb,
+  *
+  * Returns: a tab entry or NULL.
+  */
+-struct libmnt_fs *mnt_table_find_target(struct libmnt_table *tb, const char *path, int direction)
++/*inline*/ struct libmnt_fs *mnt_table_find_target(struct libmnt_table *tb, const char *path, int direction)
++{
++	return mnt_table_find_target2(tb, path, direction, NULL);
++}
++struct libmnt_fs *mnt_table_find_target2(struct libmnt_table *tb, const char *path, int direction, int *p_lastfound_count)
+ {
+ 	struct libmnt_iter itr;
+ 	struct libmnt_fs *fs = NULL;
+ 	char *cn;
+ 
+-	if (!tb || !path || !*path)
++	if (!tb || !path || !*path) {
++		if (p_lastfound_count)
++			*p_lastfound_count=0;
+ 		return NULL;
+-	if (direction != MNT_ITER_FORWARD && direction != MNT_ITER_BACKWARD)
++	}
++	if (direction != MNT_ITER_FORWARD && direction != MNT_ITER_BACKWARD) {
++		if (p_lastfound_count)
++			*p_lastfound_count=0;
+ 		return NULL;
++	}
+ 
+-	DBG(TAB, ul_debugobj(tb, "lookup TARGET: '%s'", path));
++	DBG(TAB, ul_debugobj(tb, "lookup TARGET: '%s' count=%d", path, (p_lastfound_count ? *p_lastfound_count : 0) ));
++	//print_trace();
++	//char *p=NULL;
++	//*p=1;
+ 
+ 	/* native @target */
+ 	mnt_reset_iter(&itr, direction);
++	int count=0;
+ 	while(mnt_table_next_fs(tb, &itr, &fs) == 0) {
+-		if (mnt_fs_streq_target(fs, path))
+-			return fs;
++		//printf("!! checking '%s'=='%s'\n", mnt_fs_get_target(fs),path);
++		if (mnt_fs_streq_target(fs, path)) {
++			count++;
++			//printf("!! found %d \n", count);
++			if (p_lastfound_count) {
++				if (count > *p_lastfound_count) { // p_lastfound_count could be 0 here if first search! or 1 if second search
++					*p_lastfound_count=count;//at least 1
++					return fs; //FIXME: whitespace indentation is tabs, :set noexpandtab and re-indent then save
++				}
++			} else {
++				return fs;
++			}
++		}
+ 	}
+ 
+ 	/* try absolute path */
+ 	if (is_relative_path(path) && (cn = absolute_path(path))) {
+ 		DBG(TAB, ul_debugobj(tb, "lookup absolute TARGET: '%s'", cn));
+ 		mnt_reset_iter(&itr, direction);
++		count=0;
+ 		while (mnt_table_next_fs(tb, &itr, &fs) == 0) {
+ 			if (mnt_fs_streq_target(fs, cn)) {
+ 				free(cn);
+-				return fs;
++				count++;
++				if (p_lastfound_count) {
++					if (count > *p_lastfound_count) {
++						*p_lastfound_count=count;
++						return fs;
++					}
++				} else {
++					return fs;
++				}
+ 			}
+ 		}
+ 		free(cn);
+ 	}
+ 
+-	if (!tb->cache || !(cn = mnt_resolve_path(path, tb->cache)))
++	if (!tb->cache || !(cn = mnt_resolve_path(path, tb->cache))) {
++		if (p_lastfound_count) {
++			*p_lastfound_count=0;
++		}
+ 		return NULL;
++	}
+ 
+ 	DBG(TAB, ul_debugobj(tb, "lookup canonical TARGET: '%s'", cn));
+ 
+ 	/* canonicalized paths in struct libmnt_table */
+ 	mnt_reset_iter(&itr, direction);
++	count=0;
+ 	while(mnt_table_next_fs(tb, &itr, &fs) == 0) {
+-		if (mnt_fs_streq_target(fs, cn))
+-			return fs;
++		if (mnt_fs_streq_target(fs, cn)) {
++			count++;
++			if (p_lastfound_count) {
++				if (count > *p_lastfound_count) {
++					*p_lastfound_count=count;
++					return fs;
++				}
++			} else {
++				return fs;
++			}
++		}
+ 	}
+ 
+ 	/* non-canonical path in struct libmnt_table
+@@ -1043,6 +1115,7 @@ struct libmnt_fs *mnt_table_find_target(struct libmnt_table *tb, const char *pat
+ 	 *    canonicalized by the kernel
+ 	 */
+ 	mnt_reset_iter(&itr, direction);
++	count=0;
+ 	while(mnt_table_next_fs(tb, &itr, &fs) == 0) {
+ 		char *p;
+ 
+@@ -1054,8 +1127,20 @@ struct libmnt_fs *mnt_table_find_target(struct libmnt_table *tb, const char *pat
+ 
+ 		p = mnt_resolve_target(fs->target, tb->cache);
+ 		/* both canonicalized, strcmp() is fine here */
+-		if (p && strcmp(cn, p) == 0)
+-			return fs;
++		if (p && strcmp(cn, p) == 0) {
++			count++;
++			if (p_lastfound_count) {
++				if (count > *p_lastfound_count) {
++					*p_lastfound_count=count;
++					return fs;
++				}
++			} else {
++				return fs;
++			}
++		}
++	}
++	if (p_lastfound_count) {
++		*p_lastfound_count=0;
+ 	}
+ 	return NULL;
+ }
+#@@ -993,49 +1017,81 @@ struct libmnt_fs *mnt_table_find_mountpoint(struct libmnt_table *tb,
+#  *
+#  * Returns: a tab entry or NULL.
+#  */
+#-struct libmnt_fs *mnt_table_find_target(struct libmnt_table *tb, const char *path, int direction)
+#+inline struct libmnt_fs *mnt_table_find_target(struct libmnt_table *tb, const char *path, int direction)
+#+{
+#+	return mnt_table_find_target2(tb, path, direction, NULL);
+#+}
+#+struct libmnt_fs *mnt_table_find_target2(struct libmnt_table *tb, const char *path, int direction, int *lastfound_count)
+# {
+# 	struct libmnt_iter itr;
+# 	struct libmnt_fs *fs = NULL;
+# 	char *cn;
+# 
+#-	if (!tb || !path || !*path)
+#+	if (!tb || !path || !*path) {
+#+		*lastfound_count=0;
+# 		return NULL;
+#-	if (direction != MNT_ITER_FORWARD && direction != MNT_ITER_BACKWARD)
+#+	}
+#+	if (direction != MNT_ITER_FORWARD && direction != MNT_ITER_BACKWARD) {
+#+		*lastfound_count=0;
+# 		return NULL;
+#+	}
+# 
+#-	DBG(TAB, ul_debugobj(tb, "lookup TARGET: '%s'", path));
+#+	DBG(TAB, ul_debugobj(tb, "lookup TARGET: '%s' count=%d", path, *lastfound_count));
+#+	//print_trace();
+#+	//char *p=NULL;
+#+	//*p=1;
+# 
+# 	/* native @target */
+# 	mnt_reset_iter(&itr, direction);
+#+	int count=0;
+# 	while(mnt_table_next_fs(tb, &itr, &fs) == 0) {
+#-		if (mnt_fs_streq_target(fs, path))
+#-			return fs;
+#+		//printf("!! checking '%s'=='%s'\n", mnt_fs_get_target(fs),path);
+#+		if (mnt_fs_streq_target(fs, path)) {
+#+			count++;
+#+			//printf("!! found %d \n", count);
+#+			if (count > *lastfound_count) { // lastfound_count could be 0 here if first search! or 1 if second search
+#+				*lastfound_count=count;//at least 1
+#+				return fs; //FIXME: whitespace indentation is tabs, :set noexpandtab and re-indent then save
+#+			}
+#+		}
+# 	}
+# 
+# 	/* try absolute path */
+# 	if (is_relative_path(path) && (cn = absolute_path(path))) {
+# 		DBG(TAB, ul_debugobj(tb, "lookup absolute TARGET: '%s'", cn));
+# 		mnt_reset_iter(&itr, direction);
+#+		count=0;
+# 		while (mnt_table_next_fs(tb, &itr, &fs) == 0) {
+# 			if (mnt_fs_streq_target(fs, cn)) {
+# 				free(cn);
+#-				return fs;
+#+				count++;
+#+				if (count > *lastfound_count) {
+#+					*lastfound_count=count;
+#+					return fs;
+#+				}
+# 			}
+# 		}
+# 		free(cn);
+# 	}
+# 
+#-	if (!tb->cache || !(cn = mnt_resolve_path(path, tb->cache)))
+#+	if (!tb->cache || !(cn = mnt_resolve_path(path, tb->cache))) {
+#+		*lastfound_count=0;
+# 		return NULL;
+#+	}
+# 
+# 	DBG(TAB, ul_debugobj(tb, "lookup canonical TARGET: '%s'", cn));
+# 
+# 	/* canonicalized paths in struct libmnt_table */
+# 	mnt_reset_iter(&itr, direction);
+#+	count=0;
+# 	while(mnt_table_next_fs(tb, &itr, &fs) == 0) {
+#-		if (mnt_fs_streq_target(fs, cn))
+#-			return fs;
+#+		if (mnt_fs_streq_target(fs, cn)) {
+#+			count++;
+#+			if (count > *lastfound_count) {
+#+				*lastfound_count=count;
+#+				return fs;
+#+			}
+#+		}
+# 	}
+# 
+# 	/* non-canonical path in struct libmnt_table
+#@@ -1043,6 +1099,7 @@ struct libmnt_fs *mnt_table_find_target(struct libmnt_table *tb, const char *pat
+# 	 *    canonicalized by the kernel
+# 	 */
+# 	mnt_reset_iter(&itr, direction);
+#+	count=0;
+# 	while(mnt_table_next_fs(tb, &itr, &fs) == 0) {
+# 		char *p;
+# 
+#@@ -1054,9 +1111,15 @@ struct libmnt_fs *mnt_table_find_target(struct libmnt_table *tb, const char *pat
+# 
+# 		p = mnt_resolve_target(fs->target, tb->cache);
+# 		/* both canonicalized, strcmp() is fine here */
+#-		if (p && strcmp(cn, p) == 0)
+#-			return fs;
+#+		if (p && strcmp(cn, p) == 0) {
+#+			count++;
+#+			if (count > *lastfound_count) {
+#+				*lastfound_count=count;
+#+				return fs;
+#+			}
+#+		}
+# 	}
+#+	*lastfound_count=0;
+# 	return NULL;
+# }
+# 
+diff --git a/sys-utils/mount.c b/sys-utils/mount.c
+index 257e355fe..4c8b9cffa 100644
+--- a/sys-utils/mount.c
++++ b/sys-utils/mount.c
+@@ -29,7 +29,10 @@
+ #include <sys/mman.h>
+ #include <sys/stat.h>
+ #include <stdarg.h>
+-#include <libmount.h>
++//#include <libmount.h> // not needed but most likely included by something else(?) yep by libmount/src/mountP.h as #include "libmount.h" which is the proper one to include!
++#include "libmount/src/mountP.h" //error: dereferencing pointer to incomplete type ‘struct libmnt_context’
++//#include "libmount.h" // nope this won't work, same deref ^
++
+ #include <ctype.h>
+ 
+ #include "nls.h"
+@@ -577,7 +580,7 @@ static pid_t parse_pid(const char *str)
+ int main(int argc, char **argv)
+ {
+ 	int c, rc = MNT_EX_SUCCESS, all = 0, show_labels = 0;
+-	struct libmnt_context *cxt;
++	struct libmnt_context *cxt=NULL;
+ 	struct libmnt_table *fstab = NULL;
+ 	char *srcbuf = NULL;
+ 	char *types = NULL;
+@@ -964,6 +967,16 @@ int main(int argc, char **argv)
+ 		/* For --make-* or --bind is fstab/mtab unnecessary */
+ 		mnt_context_set_optsmode(cxt, MNT_OMODE_NOTAB);
+ 
++	//struct libmnt_context *restoredcontext=mnt_copy_context(cxt); // yep I've had to add mnt_copy_context to libmount/src/libmount.sym and move its extern declaration from libmount/src/mountP.h to ./libmount/src/libmount.h.in https://github.com/karelzak/util-linux/commit/189a1bf3b314a8fc48c29ea1e0287d5cc71021a0#diff-d113854404c6f1dbf8dfb327fafecc60
++	struct libmnt_fs *restored_fs= mnt_copy_fs(NULL, cxt->fs);
++	if (NULL == restored_fs) 
++		err(MNT_EX_SYSERR, _("failed to make a copy of cxt->fs"));
++	int oldfc=0;
++redo:
++//	if (cxt->fs) {
++//		mnt_fs_print_debug(cxt->fs, stderr);
++//		mnt_fs_print_debug(restored_fs, stderr);
++//	}
+ 	rc = mnt_context_mount(cxt);
+ 
+ 	if (rc == -EPERM
+@@ -975,6 +988,43 @@ int main(int argc, char **argv)
+ 	}
+ 	rc = mk_exit_code(cxt, rc);
+ 
++	//fprintf(stderr," !! rc=%d count=%d oldfc=%d\n", rc, cxt->fstab_entry_foundcount, oldfc); // if oldfc== fstab_entry_foundcount then bug in code, so the 'if' below will prevent infinite loop!
++	warnx(_("Entry '%d' exit code: '%d'"), cxt->fstab_entry_foundcount, rc);
++	if (MNT_EX_SUCCESS != rc) {
++		if (oldfc == cxt->fstab_entry_foundcount) {
++			warnx(_("Prevented infinite loop! For some reason(buggy code!) we failed to advance(or reset) the iterator which got stuck at %d"), cxt->fstab_entry_foundcount);
++		} else if (/*(MNT_EX_SUCCESS != rc)&&*/(cxt->fstab_entry_foundcount > 0)/*&&(oldfc != cxt->fstab_entry_foundcount)*/) {
++			oldfc=cxt->fstab_entry_foundcount;
++			//if (cxt->fstab_entry_foundcount <3) {
++			//cxt->fstab_entry_foundcount++;//try next entry, if any; ! no need to inc here!
++			//saved=1+cxt->fstab_entry_foundcount;
++			//restoredcontext->fstab_entry_foundcount = cxt->fstab_entry_foundcount;
++			cxt->flags &= ( ~( MNT_FL_PREPARED | MNT_FL_TAB_APPLIED) );//TODO: find a better/idiomatic way here
++			mnt_context_reset_status(cxt);
++			//mnt_context_set_source(cxt, NULL);//evil hack to test that my logic is working; doneFIXME: need to sanely reset cxt somehow! ok, no attempting to temporarily save it and restore it... via mnt_copy_context() ; XXX: fstype is not reset here!
++			//mnt_fs_set_fstype(cxt, NULL);
++			//saved = cxt->fstab_entry_foundcount;
++			//mnt_free_context(cxt);
++			//cxt=NULL;
++			//mnt_free_context(cxt);
++			//cxt=mnt_copy_context(restoredcontext); // doneTODO: make this compile? undefined reference to `mnt_copy_context' had to add it into .sym file (see above)
++			mnt_free_fs(cxt->fs);
++			cxt->fs=mnt_new_fs(); //workaround for mnt_copy_fs not setting fields to NULL, by design.
++			if ((NULL == mnt_copy_fs(cxt->fs, restored_fs)) || (NULL == cxt->fs)) { // too safe?
++				err(MNT_EX_SYSERR, _("failed to restore cxt->fs, it's NULL"));
++			}
++			//cxt->fstab_entry_foundcount = restoredcontext->fstab_entry_foundcount; // yes this wasn't copied, obviously, since it's new.
++			//mnt_fs_print_debug(cxt->fs, stderr);
++			//mnt_fs_print_debug(restored_fs, stderr);
++			if (NULL != mnt_fs_get_fstype(cxt->fs))
++				err(MNT_EX_SYSERR, _("failed to restore a copy of cxt->fs, fstype wasn't reset to NULL!"));
++			//printf("!! REDO with count=%d\n", cxt->fstab_entry_foundcount);
++			//warnx(_("Trying next entry(aka '%d'), if any."), 1+cxt->fstab_entry_foundcount);
++			//printf("!! REDO with count=%d\n", saved);
++			goto redo;
++			//}
++		} // else if
++	} // fi unsuccessful
+ 	if (rc == MNT_EX_SUCCESS && mnt_context_is_verbose(cxt))
+ 		success_message(cxt);
+ done:

@@ -1,0 +1,460 @@
+this case isn't detected even though some is 99% pressure and everything frozen (tho not much disk thrashing):
+$ time stress -m 3000 --vm-bytes 10M --timeout 50
+stress: info: [8626] dispatching hogs: 0 cpu, 0 io, 3000 vm, 0 hdd
+stress: info: [8626] successful run completed in 76s
+
+real	1m16.519s
+user	0m37.926s
+sys	2m59.763s
+
+in /proc/pressure/memory  some avg10 is 99% but full avg10= about 50 after unfreeze and goes up to about 68% only while some avg10 remains 99+%
+
+another try: (notice how it took 2min instead of just 50 sec, I'm guessing the extra time was when it was unfrozen but stress was cleaning up 3k threads, while some avg10 still showing 99%)
+
+$ time stress -m 3000 --vm-bytes 10M --timeout 50
+stress: info: [16966] dispatching hogs: 0 cpu, 0 io, 3000 vm, 0 hdd
+v stress: info: [16966] successful run completed in 132s
+
+real	2m11.348s
+user	0m47.711s
+sys	4m58.027s
+
+(in a third test that took 1m56s):
+so it's 97%(some avg10) and 54%(full avg10) and goes up to 99.98% and 65% during cleanup(when it's unfrozen)
+
+ok, I can make it detect it by setting vm.thrashing_oom_level=40 (instead of 80) but this will kill Xorg and if I start it again 20s later is killed again due to trigger Severe thrashing detected! (15s of 40% memory pressure)
+
+------
+can't apply this on 5.2.7 yet due to  Documentation/admin-guide/sysctl/ dir not existing yet (maybe in git it does - yes)
+
+not made by me, this is pro patch, src: https://lkml.org/lkml/2019/8/7/835
+
+From 9efda85451062dea4ea287a886e515efefeb1545 Mon Sep 17 00:00:00 2001
+From: Johannes Weiner <hannes@cmpxchg.org>
+Date: Mon, 5 Aug 2019 13:15:16 -0400
+Subject: [PATCH] psi: trigger the OOM killer on severe thrashing
+
+Over the last few years we have had many reports that the kernel can
+enter an extended livelock situation under sufficient memory
+pressure. The system becomes unresponsive and fully IO bound for
+indefinite periods of time, and often the user has no choice but to
+reboot. Even though the system is clearly struggling with a shortage
+of memory, the OOM killer is not engaging reliably.
+
+The reason is that with bigger RAM, and in particular with faster
+SSDs, page reclaim does not necessarily fail in the traditional sense
+anymore. In the time it takes the CPU to run through the vast LRU
+lists, there are almost always some cache pages that have finished
+reading in and can be reclaimed, even before userspace had a chance to
+access them. As a result, reclaim is nominally succeeding, but
+userspace is refault-bound and not making significant progress.
+
+While this is clearly noticable to human beings, the kernel could not
+actually determine this state with the traditional memory event
+counters. We might see a certain rate of reclaim activity or refaults,
+but how long, or whether at all, userspace is unproductive because of
+it depends on IO speed, readahead efficiency, as well as memory access
+patterns and concurrency of the userspace applications. The same
+number of the VM events could be unnoticed in one system / workload
+combination, and result in an indefinite lockup in a different one.
+
+However, eb414681d5a0 ("psi: pressure stall information for CPU,
+memory, and IO") introduced a memory pressure metric that quantifies
+the share of wallclock time in which userspace waits on reclaim,
+refaults, swapins. By using absolute time, it encodes all the above
+mentioned variables of hardware capacity and workload behavior. When
+memory pressure is 40%, it means that 40% of the time the workload is
+stalled on memory, period. This is the actual measure for the lack of
+forward progress that users can experience. It's also something they
+expect the kernel to manage and remedy if it becomes non-existent.
+
+To accomplish this, this patch implements a thrashing cutoff for the
+OOM killer. If the kernel determines a sustained high level of memory
+pressure, and thus a lack of forward progress in userspace, it will
+trigger the OOM killer to reduce memory contention.
+
+Per default, the OOM killer will engage after 15 seconds of at least
+80% memory pressure. These values are tunable via sysctls
+vm.thrashing_oom_period and vm.thrashing_oom_level.
+
+Ideally, this would be standard behavior for the kernel, but since it
+involves a new metric and OOM killing, let's be safe and make it an
+opt-in via CONFIG_THRASHING_OOM. Setting vm.thrashing_oom_level to 0
+also disables the feature at runtime.
+
+Signed-off-by: Johannes Weiner <hannes@cmpxchg.org>
+Reported-by: "Artem S. Tashkinov" <aros@gmx.com>
+---
+ Documentation/admin-guide/sysctl/vm.rst | 24 ++++++++
+ include/linux/psi.h                     |  5 ++
+ include/linux/psi_types.h               |  6 ++
+ kernel/sched/psi.c                      | 74 +++++++++++++++++++++++++
+ kernel/sysctl.c                         | 20 +++++++
+ mm/Kconfig                              | 20 +++++++
+ 6 files changed, 149 insertions(+)
+
+diff --git a/Documentation/admin-guide/sysctl/vm.rst b/Documentation/admin-guide/sysctl/vm.rst
+index 64aeee1009ca..0332cb52bcfc 100644
+--- a/Documentation/admin-guide/sysctl/vm.rst
++++ b/Documentation/admin-guide/sysctl/vm.rst
+@@ -66,6 +66,8 @@ files can be found in mm/swap.c.
+ - stat_interval
+ - stat_refresh
+ - numa_stat
++- thrashing_oom_level
++- thrashing_oom_period
+ - swappiness
+ - unprivileged_userfaultfd
+ - user_reserve_kbytes
+@@ -825,6 +827,28 @@ When page allocation performance is not a bottleneck and you want all
+ 	echo 1 > /proc/sys/vm/numa_stat
+ 
+ 
++thrashing_oom_level
++===================
++
++This defines the memory pressure level for severe thrashing at which
++the OOM killer will be engaged.
++
++The default is 80. This means the system is considered to be thrashing
++severely when all active tasks are collectively stalled on memory
++(waiting for page reclaim, refaults, swapins etc) for 80% of the time.
++
++A setting of 0 will disable thrashing-based OOM killing.
++
++
++thrashing_oom_period
++===================
++
++This defines the number of seconds the system must sustain severe
++thrashing at thrashing_oom_level before the OOM killer is invoked.
++
++The default is 15.
++
++
+ swappiness
+ ==========
+ 
+diff --git a/include/linux/psi.h b/include/linux/psi.h
+index 7b3de7321219..661ce45900f9 100644
+--- a/include/linux/psi.h
++++ b/include/linux/psi.h
+@@ -37,6 +37,11 @@ __poll_t psi_trigger_poll(void **trigger_ptr, struct file *file,
+ 			poll_table *wait);
+ #endif
+ 
++#ifdef CONFIG_THRASHING_OOM
++extern unsigned int sysctl_thrashing_oom_level;
++extern unsigned int sysctl_thrashing_oom_period;
++#endif
++
+ #else /* CONFIG_PSI */
+ 
+ static inline void psi_init(void) {}
+diff --git a/include/linux/psi_types.h b/include/linux/psi_types.h
+index 07aaf9b82241..7c57d7e5627e 100644
+--- a/include/linux/psi_types.h
++++ b/include/linux/psi_types.h
+@@ -162,6 +162,12 @@ struct psi_group {
+ 	u64 polling_total[NR_PSI_STATES - 1];
+ 	u64 polling_next_update;
+ 	u64 polling_until;
++
++#ifdef CONFIG_THRASHING_OOM
++	/* Severe thrashing state tracking */
++	bool oom_pressure;
++	u64 oom_pressure_start;
++#endif
+ };
+ 
+ #else /* CONFIG_PSI */
+diff --git a/kernel/sched/psi.c b/kernel/sched/psi.c
+index f28342dc65ec..4b1b620d6359 100644
+--- a/kernel/sched/psi.c
++++ b/kernel/sched/psi.c
+@@ -139,6 +139,7 @@
+ #include <linux/ctype.h>
+ #include <linux/file.h>
+ #include <linux/poll.h>
++#include <linux/oom.h>
+ #include <linux/psi.h>
+ #include "sched.h"
+ 
+@@ -177,6 +178,14 @@ struct psi_group psi_system = {
+ 	.pcpu = &system_group_pcpu,
+ };
+ 
++#ifdef CONFIG_THRASHING_OOM
++static void psi_oom_tick(struct psi_group *group, u64 now);
++#else
++static inline void psi_oom_tick(struct psi_group *group, u64 now)
++{
++}
++#endif
++
+ static void psi_avgs_work(struct work_struct *work);
+ 
+ static void group_init(struct psi_group *group)
+@@ -403,6 +412,8 @@ static u64 update_averages(struct psi_group *group, u64 now)
+ 		calc_avgs(group->avg[s], missed_periods, sample, period);
+ 	}
+ 
++	psi_oom_tick(group, now);
++
+ 	return avg_next_update;
+ }
+ 
+@@ -1280,3 +1291,66 @@ static int __init psi_proc_init(void)
+ 	return 0;
+ }
+ module_init(psi_proc_init);
++
++#ifdef CONFIG_THRASHING_OOM
++/*
++ * Trigger the OOM killer when detecting severe thrashing.
++ *
++ * Per default we define severe thrashing as 15 seconds of 80% memory
++ * pressure (i.e. all active tasks are collectively stalled on memory
++ * 80% of the time).
++ */
++unsigned int sysctl_thrashing_oom_level = 80;
++unsigned int sysctl_thrashing_oom_period = 15;
++
++static void psi_oom_tick(struct psi_group *group, u64 now)
++{
++	struct oom_control oc = {
++		.order = 0,
++	};
++	unsigned long pressure;
++	bool high;
++
++	/* Disabled at runtime */
++	if (!sysctl_thrashing_oom_level)
++		return;
++
++	/*
++	 * Protect the system from livelocking due to thrashing. Leave
++	 * per-cgroup policies to oomd, lmkd etc.
++	 */
++	if (group != &psi_system)
++		return;
++
++	pressure = LOAD_INT(group->avg[PSI_MEM_FULL][0]);
++	high = pressure >= sysctl_thrashing_oom_level;
++
++	if (!group->oom_pressure && !high)
++		return;
++
++	if (!group->oom_pressure && high) {
++		group->oom_pressure = true;
++		group->oom_pressure_start = now;
++		return;
++	}
++
++	if (group->oom_pressure && !high) {
++		group->oom_pressure = false;
++		return;
++	}
++
++	if (now < group->oom_pressure_start +
++	    (u64)sysctl_thrashing_oom_period * NSEC_PER_SEC)
++		return;
++
++	pr_warn("Severe thrashing detected! (%ds of %d%% memory pressure)\n",
++		sysctl_thrashing_oom_period, sysctl_thrashing_oom_level);
++
++	group->oom_pressure = false;
++
++	if (!mutex_trylock(&oom_lock))
++		return;
++	out_of_memory(&oc);
++	mutex_unlock(&oom_lock);
++}
++#endif /* CONFIG_THRASHING_OOM */
+diff --git a/kernel/sysctl.c b/kernel/sysctl.c
+index f12888971d66..3b9b3deb1836 100644
+--- a/kernel/sysctl.c
++++ b/kernel/sysctl.c
+@@ -68,6 +68,7 @@
+ #include <linux/bpf.h>
+ #include <linux/mount.h>
+ #include <linux/userfaultfd_k.h>
++#include <linux/psi.h>
+ 
+ #include "../lib/kstrtox.h"
+ 
+@@ -1746,6 +1747,25 @@ static struct ctl_table vm_table[] = {
+ 		.extra1		= SYSCTL_ZERO,
+ 		.extra2		= SYSCTL_ONE,
+ 	},
++#endif
++#ifdef CONFIG_THRASHING_OOM
++	{
++		.procname	= "thrashing_oom_level",
++		.data		= &sysctl_thrashing_oom_level,
++		.maxlen		= sizeof(unsigned int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec_minmax,
++		.extra1		= SYSCTL_ZERO,
++		.extra2		= &one_hundred,
++	},
++	{
++		.procname	= "thrashing_oom_period",
++		.data		= &sysctl_thrashing_oom_period,
++		.maxlen		= sizeof(unsigned int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec_minmax,
++		.extra1		= SYSCTL_ZERO,
++	},
+ #endif
+ 	{ }
+ };
+diff --git a/mm/Kconfig b/mm/Kconfig
+index 56cec636a1fc..cef13b423beb 100644
+--- a/mm/Kconfig
++++ b/mm/Kconfig
+@@ -736,4 +736,24 @@ config ARCH_HAS_PTE_SPECIAL
+ config ARCH_HAS_HUGEPD
+ 	bool
+ 
++config THRASHING_OOM
++	bool "Trigger the OOM killer on severe thrashing"
++	select PSI
++	help
++	  Under memory pressure, the kernel can enter severe thrashing
++	  or swap storms during which the system is fully IO-bound and
++	  does not respond to any user input. The OOM killer does not
++	  always engage because page reclaim manages to make nominal
++	  forward progress, but the system is effectively livelocked.
++
++	  This feature uses pressure stall information (PSI) to detect
++	  severe thrashing and trigger the OOM killer.
++
++	  The OOM killer will be engaged when the system sustains a
++	  memory pressure level of 80% for 15 seconds. This can be
++	  adjusted using the vm.thrashing_oom_[level|period] sysctls.
++
++	  Say Y if you have observed your system becoming unresponsive
++	  for extended periods under memory pressure.
++
+ endmenu
+-- 
+2.22.0
+
+src: https://lkml.org/lkml/2019/8/8/776
+
+From 1b3888bdf075f86f226af4e350c8a88435d1fe8e Mon Sep 17 00:00:00 2001
+From: Johannes Weiner <hannes@cmpxchg.org>
+Date: Thu, 11 Jul 2019 16:01:40 -0400
+Subject: [PATCH] psi: annotate refault stalls from IO submission
+
+psi tracks the time tasks wait for refaulting pages to become
+uptodate, but it does not track the time spent submitting the IO. The
+submission part can be significant if backing storage is contended or
+when cgroup throttling (io.latency) is in effect - a lot of time is
+spent in submit_bio(). In that case, we underreport memory pressure.
+
+Annotate submit_bio() to account submission time as memory stall when
+the bio is reading userspace workingset pages.
+
+Signed-off-by: Johannes Weiner <hannes@cmpxchg.org>
+---
+ block/bio.c               |  3 +++
+ block/blk-core.c          | 23 ++++++++++++++++++++++-
+ include/linux/blk_types.h |  1 +
+ 3 files changed, 26 insertions(+), 1 deletion(-)
+
+diff --git a/block/bio.c b/block/bio.c
+index 29cd6cf4da51..4dd9ea0b068b 100644
+--- a/block/bio.c
++++ b/block/bio.c
+@@ -805,6 +805,9 @@ void __bio_add_page(struct bio *bio, struct page *page,
+ 
+ 	bio->bi_iter.bi_size += len;
+ 	bio->bi_vcnt++;
++
++	if (!bio_flagged(bio, BIO_WORKINGSET) && unlikely(PageWorkingset(page)))
++		bio_set_flag(bio, BIO_WORKINGSET);
+ }
+ EXPORT_SYMBOL_GPL(__bio_add_page);
+ 
+diff --git a/block/blk-core.c b/block/blk-core.c
+index 5d1fc8e17dd1..5993922d63fb 100644
+--- a/block/blk-core.c
++++ b/block/blk-core.c
+@@ -36,6 +36,7 @@
+ #include <linux/blk-cgroup.h>
+ #include <linux/debugfs.h>
+ #include <linux/bpf.h>
++#include <linux/psi.h>
+ 
+ #define CREATE_TRACE_POINTS
+ #include <trace/events/block.h>
+#@@ -1127,6 +1128,10 @@ EXPORT_SYMBOL_GPL(direct_make_request);
+#  */
+# blk_qc_t submit_bio(struct bio *bio)
+# {
+#+	bool workingset_read = false;
+#+	unsigned long pflags;
+#+	blk_qc_t ret;
+#+
+# 	/*
+# 	 * If it's a regular read/write or a barrier with data attached,
+# 	 * go through the normal accounting stuff before submission.
+@@ -1128,6 +1129,10 @@ EXPORT_SYMBOL_GPL(direct_make_request);
+  */
+ blk_qc_t submit_bio(struct bio *bio)
+ {
++  bool workingset_read = false;
++  unsigned long pflags;
++  blk_qc_t ret;
++
+ 	if (blkcg_punt_bio_submit(bio))
+ 		return BLK_QC_T_NONE;
+ 
+@@ -1142,6 +1147,8 @@ blk_qc_t submit_bio(struct bio *bio)
+ 		if (op_is_write(bio_op(bio))) {
+ 			count_vm_events(PGPGOUT, count);
+ 		} else {
++			if (bio_flagged(bio, BIO_WORKINGSET))
++				workingset_read = true;
+ 			task_io_account_read(bio->bi_iter.bi_size);
+ 			count_vm_events(PGPGIN, count);
+ 		}
+@@ -1156,7 +1163,21 @@ blk_qc_t submit_bio(struct bio *bio)
+ 		}
+ 	}
+ 
+-	return generic_make_request(bio);
++	/*
++	 * If we're reading data that is part of the userspace
++	 * workingset, count submission time as memory stall. When the
++	 * device is congested, or the submitting cgroup IO-throttled,
++	 * submission can be a significant part of overall IO time.
++	 */
++	if (workingset_read)
++		psi_memstall_enter(&pflags);
++
++	ret = generic_make_request(bio);
++
++	if (workingset_read)
++		psi_memstall_leave(&pflags);
++
++	return ret;
+ }
+ EXPORT_SYMBOL(submit_bio);
+ 
+diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
+index 6a53799c3fe2..2f77e3446760 100644
+--- a/include/linux/blk_types.h
++++ b/include/linux/blk_types.h
+@@ -209,6 +209,7 @@ enum {
+ 	BIO_BOUNCED,		/* bio is a bounce bio */
+ 	BIO_USER_MAPPED,	/* contains user pages */
+ 	BIO_NULL_MAPPED,	/* contains invalid user pages */
++	BIO_WORKINGSET,		/* contains userspace workingset pages */
+ 	BIO_QUIET,		/* Make BIO Quiet */
+ 	BIO_CHAIN,		/* chained bio, ->bi_remaining in effect */
+ 	BIO_REFFED,		/* bio has elevated ->bi_cnt */
+-- 
+2.22.0

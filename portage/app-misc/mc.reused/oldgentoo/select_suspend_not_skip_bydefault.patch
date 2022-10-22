@@ -1,0 +1,13 @@
+diff --git a/src/filemanager/filegui.c b/src/filemanager/filegui.c
+index 3f969b763..235b8e3b9 100644
+--- a/src/filemanager/filegui.c
++++ b/src/filemanager/filegui.c
+@@ -849,7 +849,7 @@ file_op_context_create_ui (file_op_context_t * ctx, gboolean with_eta,
+ 
+     place_progress_buttons (ui->op_dlg, FALSE);
+ 
+-    widget_select (progress_buttons[0].w);
++    widget_select (progress_buttons[1].w);
+ 
+     /* We will manage the dialog without any help, that's why
+        we have to call dlg_init */

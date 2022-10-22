@@ -1,0 +1,13 @@
+Index: /var/tmp/portage/sys-apps/portage-2.3.87/work/portage-2.3.87/bin/phase-helpers.sh
+===================================================================
+--- portage-2.3.87/bin/phase-helpers.sh
++++ portage-2.3.87/bin/phase-helpers.sh
+@@ -1004,6 +1004,8 @@ if ___eapi_has_eapply; then
+ 			if ${patch_cmd} "${all_opts[@]}" --dry-run -s -F0 \
+ 					< "${f}" &>/dev/null; then
+ 				all_opts+=( -s -F0 )
++			else
++				eqawarn "    ${f}: patch failed to apply without a fuzz factor, please rebase. Also this could mean that some extra code was added and compilation may fail or worse succeed with unintended consequences. See: https://github.com/gentoo/portage/pull/481#issuecomment-581041914"
+ 			fi
+ 
+ 			${patch_cmd} "${all_opts[@]}" < "${f}"

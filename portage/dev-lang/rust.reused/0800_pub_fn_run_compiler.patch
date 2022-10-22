@@ -1,0 +1,22 @@
+make miri compile or else you get when compiling rust:
+
+ error[E0603]: function `run_compiler` is private
+    --> src/tools/miri/src/bin/miri.rs:160:23
+     |
+ 160 |         rustc_driver::run_compiler(&args, callbacks, None, None, None)
+     |                       ^^^^^^^^^^^^ private function
+     |
+
+Index: /var/tmp/portage/dev-lang/rust-1.48.0/work/rustc-1.48.0-src/compiler/rustc_driver/src/lib.rs
+===================================================================
+--- .orig/compiler/rustc_driver/src/lib.rs
++++ mod/compiler/rustc_driver/src/lib.rs
+@@ -179,7 +179,7 @@ impl<'a, 'b> RunCompiler<'a, 'b> {
+ }
+ // Parse args and run the compiler. This is the primary entry point for rustc.
+ // The FileLoader provides a way to load files from sources other than the file system.
+-fn run_compiler(
++pub fn run_compiler(
+     at_args: &[String],
+     callbacks: &mut (dyn Callbacks + Send),
+     file_loader: Option<Box<dyn FileLoader + Send + Sync>>,

@@ -1,0 +1,27 @@
+diff --git a/drivers/base/core.c b/drivers/base/core.c
+index 12ebd055724c..76d0d8f14139 100644
+--- a/drivers/base/core.c
++++ b/drivers/base/core.c
+@@ -2797,17 +2797,17 @@ void device_shutdown(void)
+ 		pm_runtime_barrier(dev);
+ 
+ 		if (dev->class && dev->class->shutdown_pre) {
+-			if (initcall_debug)
++			//if (initcall_debug)
+ 				dev_info(dev, "shutdown_pre\n");
+ 			dev->class->shutdown_pre(dev);
+ 		}
+ 		if (dev->bus && dev->bus->shutdown) {
+-			if (initcall_debug)
+-				dev_info(dev, "shutdown\n");
++			//if (initcall_debug)
++				dev_info(dev, "shutdown2\n");
+ 			dev->bus->shutdown(dev);
+ 		} else if (dev->driver && dev->driver->shutdown) {
+-			if (initcall_debug)
+-				dev_info(dev, "shutdown\n");
++			//if (initcall_debug)
++				dev_info(dev, "shutdown3\n");
+ 			dev->driver->shutdown(dev);
+ 		}
+ 

@@ -1,0 +1,26 @@
+Index: /var/tmp/portage/www-client/firefox-97.0.2/work/firefox-97.0.2/browser/modules/AboutNewTab.jsm
+===================================================================
+--- firefox-97.0.2/browser/modules/AboutNewTab.jsm
++++ firefox-97.0.2/browser/modules/AboutNewTab.jsm
+@@ -172,6 +172,7 @@ const AboutNewTab = {
+    * onBrowserReady - Continues the initialization of Activity Stream after browser is ready.
+    */
+   onBrowserReady() {
++    return;
+     if (this.activityStream && this.activityStream.initialized) {
+       return;
+     }
+
+Index: /var/tmp/portage/www-client/firefox-103.0/work/firefox-103.0/browser/modules/AboutNewTab.jsm
+===================================================================
+--- firefox-103.0/browser/modules/AboutNewTab.jsm
++++ firefox-103.0/browser/modules/AboutNewTab.jsm
+@@ -16,7 +16,7 @@ const { Services } = ChromeUtils.import(
+ const lazy = {};
+ 
+ XPCOMUtils.defineLazyModuleGetters(lazy, {
+-  ActivityStream: "resource://activity-stream/lib/ActivityStream.jsm",
++  //ActivityStream: "resource://activity-stream/lib/ActivityStream.jsm",
+   ObjectUtils: "resource://gre/modules/ObjectUtils.jsm",
+   RemotePages:
+     "resource://gre/modules/remotepagemanager/RemotePageManagerParent.jsm",

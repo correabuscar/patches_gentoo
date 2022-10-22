@@ -1,0 +1,17 @@
+this is the timeout to wait for password!
+but what I actually wanted was in /etc/pam.d/system-auth
+
+diff --git sudo-1.8.19p2/plugins/sudoers/auth/sudo_auth.c sudo-1.8.19p2.mod/plugins/sudoers/auth/sudo_auth.c
+index 7fca030..9de5cb2 100644
+--- sudo-1.8.19p2/plugins/sudoers/auth/sudo_auth.c
++++ sudo-1.8.19p2.mod/plugins/sudoers/auth/sudo_auth.c
+@@ -420,7 +420,7 @@ auth_getpass(const char *prompt, int timeout, int type,
+     /* Call conversation function. */
+     memset(&msg, 0, sizeof(msg));
+     msg.msg_type = type;
+-    msg.timeout = def_passwd_timeout * 60;
++    msg.timeout = 1;//def_passwd_timeout * 60;
+     msg.msg = prompt;
+     memset(&repl, 0, sizeof(repl));
+     sudo_conv(1, &msg, &repl, callback);
+

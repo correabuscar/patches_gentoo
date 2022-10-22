@@ -1,0 +1,76 @@
+make pageup/pagedown do something in edit mode, eg. when editing kernel cmdline
+warning: this file is gonna be duplicated(on archlinux) BEFORE build in 3 places:
+PWD: $somewhere/grub/src
+$ find . -name menu_entry.c
+./grub/grub-core/normal/menu_entry.c
+./grub-bios/grub-core/normal/menu_entry.c
+./grub-bios/grub/grub-core/normal/menu_entry.c
+
+diff --git a/grub-core/normal/menu_entry.c b/grub-core/normal/menu_entry.c
+index cdf3590a3..7ef823c3e 100644
+--- a/grub-core/normal/menu_entry.c
++++ b/grub-core/normal/menu_entry.c
+@@ -1318,6 +1327,10 @@ grub_menu_entry_run (grub_menu_entry_t entry)
+ 	  return;
+ 	}
+ 
++      int screenlines=14; //screen->num_lines; // used in two 'case's; FIXME: this is total number of lines in the "file"(NOT screen's lines like 25!) XXX: temp using 14 so that PgDown+End will get me to kernel cmdline's end on ArchLinux!
++      if ((screenlines<=1)||(screenlines>40)) {
++        screenlines=10;
++      }
+       switch (c)
+ 	{
+ 	case GRUB_TERM_KEY_UP:
+@@ -1332,6 +1345,20 @@ grub_menu_entry_run (grub_menu_entry_t entry)
+ 	    goto fail;
+ 	  break;
+ 
++	case GRUB_TERM_KEY_PPAGE:
++            for (int i=1; i<=screenlines; i++) {
++              if (! previous_line (screen, 1))
++                goto fail;
++            }
++	  break;
++
++	case GRUB_TERM_KEY_NPAGE:
++            for (int i=1; i<=screenlines; i++) {
++              if (! next_line (screen, 1))
++                goto fail;
++            }
++	  break;
++
+ 	case GRUB_TERM_CTRL | 'f':
+ 	case GRUB_TERM_KEY_RIGHT:
+ 	  if (! forward_char (screen, 1))
+
+#crap:
+#
+#@@ -1332,6 +1341,28 @@ grub_menu_entry_run (grub_menu_entry_t entry)
+# 	    goto fail;
+# 	  break;
+# 
+#+	case GRUB_TERM_KEY_PPAGE:
+#+          int screenlines=screen->num_lines;
+#+          if ((screenlines<=1)||(screenlines>40)) {
+#+            screenlines=10;
+#+          }
+#+          for (int i=1; i<=screenlines; i++) {
+#+            if (! previous_line (screen, 1))
+#+              goto fail;
+#+          }
+#+	  break;
+#+
+#+	case GRUB_TERM_KEY_NPAGE:
+#+          int screenlines=screen->num_lines;
+#+          if ((screenlines<=1)||(screenlines>40)) {
+#+            screenlines=10;
+#+          }
+#+          for (int i=1; i<=screenlines; i++) {
+#+            if (! next_line (screen, 1))
+#+              goto fail;
+#+          }
+#+	  break;
+#+
+# 	case GRUB_TERM_CTRL | 'f':
+# 	case GRUB_TERM_KEY_RIGHT:
+# 	  if (! forward_char (screen, 1))

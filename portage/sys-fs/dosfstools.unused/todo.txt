@@ -1,0 +1,4 @@
+things changed in sys-fs/dosfstools-4.2 compared to 4.1 so this patch doesn't
+apply anymore and I'm not sure if they fixed it(differently) or the patch is
+still needed:
+ignore_empty_2nd_FAT_when_FATs_differ.patch

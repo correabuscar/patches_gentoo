@@ -1,0 +1,60 @@
+Index: /var/tmp/portage/x11-misc/rss-glx-0.9.1-r3/work/rss-glx_0.9.1/src/Implicit/impSurface.h
+===================================================================
+--- rss-glx_0.9.1/src/Implicit/impSurface.h
++++ rss-glx_0.9.1/src/Implicit/impSurface.h
+@@ -49,7 +49,7 @@ private:
+ 	std::vector<unsigned int> triStripLengths;
+ 	std::vector<unsigned int> indices;
+ 	std::vector<float> vertices;
+-	size_t vertex_data_size;
++	std::size_t vertex_data_size;
+ 
+ 	inline void addvec(float* dest, float* a, float* b);
+ 	inline void subvec(float* dest, float* a, float* b);
+Index: /var/tmp/portage/x11-misc/rss-glx-0.9.1-r3/work/rss-glx_0.9.1/src/matrixview.c
+===================================================================
+--- rss-glx_0.9.1/src/matrixview.c
++++ rss-glx_0.9.1/src/matrixview.c
+@@ -248,8 +248,9 @@ void loadNextImage ()
+ 		GetExceptionInfo (&exception);
+ #endif
+ 
+-		if (!pics)
++		if (!pics) {
+ 			LOAD_TEXTURE (pics, cpics, cpics_compressedsize, cpics_size)
++		}
+ 
+ 		if ((text_x != 90) || (text_y != 70)) {
+ 			if (!pic)
+@@ -279,8 +280,9 @@ void loadNextImage ()
+ 			DestroyImage (image);
+ 			DestroyImage (scaled_image);
+ 		} else {
+-			if (!pics)
++			if (!pics) {
+ 				LOAD_TEXTURE (pics, cpics, cpics_compressedsize, cpics_size)
++			}
+ 
+ 			pic = (unsigned char *)(pics + ((random () & 15) * (text_x * text_y)));
+ 		}
+Index: /var/tmp/portage/x11-misc/rss-glx-0.9.1-r3/work/rss-glx_0.9.1/src/PixelCity/Building.cpp
+===================================================================
+--- rss-glx_0.9.1/src/PixelCity/Building.cpp
++++ rss-glx_0.9.1/src/PixelCity/Building.cpp
+@@ -279,6 +279,8 @@ void CBuilding::ConstructRoof (float lef
+   //See if this building is special and worthy of fancy roof decorations.
+   if (bottom > 35.0f)
+     addon = RandomVal (ADDON_COUNT);
++  else
++    addon = ADDON_NONE; //was implied, but this gets rid of warning
+   //Build the roof slab
+   ConstructCube (left, right, front, back, bottom, bottom + (float)height);
+   //Consider putting a logo on the roof, if it's tall enough
+@@ -429,6 +431,7 @@ float CBuilding::ConstructWall (int star
+   case SOUTH:
+     step_z = -1; step_x = 0; break;
+   case EAST:
++  default:
+     step_z = 0; step_x = 1; break;
+   }
+   x = start_x;;

@@ -1,0 +1,18 @@
+diff --git a/scripts/libmakepkg/buildenv/debugflags.sh.in b/scripts/libmakepkg/buildenv/debugflags.sh.in
+index 4cd5d003..ba6920e6 100644
+--- a/scripts/libmakepkg/buildenv/debugflags.sh.in
++++ b/scripts/libmakepkg/buildenv/debugflags.sh.in
+@@ -30,9 +30,10 @@ buildenv_functions+=('buildenv_debugflags')
+ 
+ buildenv_debugflags() {
+ 	if check_option "debug" "y"; then
+-		DEBUG_CFLAGS+=" -fdebug-prefix-map=$srcdir=${DBGSRCDIR:-/usr/src/debug}"
+-		DEBUG_CXXFLAGS+=" -fdebug-prefix-map=$srcdir=${DBGSRCDIR:-/usr/src/debug}"
+-		DEBUG_RUSTFLAGS+=" --remap-path-prefix=$srcdir=${DBGSRCDIR:-/usr/src/debug}"
++    #dont' do this, there's nothing ever installed in /usr/src/debug or /usr/src!
++		#DEBUG_CFLAGS+=" -fdebug-prefix-map=$srcdir=${DBGSRCDIR:-/usr/src/debug}"
++		#DEBUG_CXXFLAGS+=" -fdebug-prefix-map=$srcdir=${DBGSRCDIR:-/usr/src/debug}"
++		#DEBUG_RUSTFLAGS+=" --remap-path-prefix=$srcdir=${DBGSRCDIR:-/usr/src/debug}"
+ 		CFLAGS+=" $DEBUG_CFLAGS"
+ 		CXXFLAGS+=" $DEBUG_CXXFLAGS"
+ 		RUSTFLAGS+=" $DEBUG_RUSTFLAGS"

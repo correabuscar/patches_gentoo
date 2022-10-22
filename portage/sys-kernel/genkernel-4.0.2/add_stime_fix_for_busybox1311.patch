@@ -1,0 +1,72 @@
+needed in genkernel-4.0.2 but not in 4.0.4 because it was already added as: https://gitweb.gentoo.org/proj/genkernel.git/log/patches/busybox/1.31.1/busybox-1.31.1-glibc-2.31.patch
+
+--- a/dev/null	2020-02-15 08:56:55.235112574 +0100
++++ b/patches/busybox/1.31.1/modified_commit_d3539be8f27b8cbfdfee460fe08299158f08bcd9.patch	2020-02-15 15:52:12.494956562 +0100
+@@ -0,0 +1,67 @@
++originally from busybox commit d3539be8f27b8cbfdfee460fe08299158f08bcd9
++
++Index: /var/tmp/genkernel/gk_jmz8lwC3/busybox_FQ3D2Srn/busybox-1.31.1/coreutils/date.c
++===================================================================
++--- busybox-1.31.1/coreutils/date.c
+++++ busybox-1.31.1/coreutils/date.c
++@@ -279,6 +279,9 @@ int date_main(int argc UNUSED_PARAM, cha
++ 		time(&ts.tv_sec);
++ #endif
++ 	}
+++#if !ENABLE_FEATURE_DATE_NANO
+++ ts.tv_nsec = 0;
+++#endif
++ 	localtime_r(&ts.tv_sec, &tm_time);
++ 
++ 	/* If date string is given, update tm_time, and maybe set date */
++@@ -301,9 +304,10 @@ int date_main(int argc UNUSED_PARAM, cha
++ 		if (date_str[0] != '@')
++ 			tm_time.tm_isdst = -1;
++ 		ts.tv_sec = validate_tm_time(date_str, &tm_time);
+++		ts.tv_nsec = 0;
++ 
++ 		/* if setting time, set it */
++-		if ((opt & OPT_SET) && stime(&ts.tv_sec) < 0) {
+++		if ((opt & OPT_SET) && clock_settime(CLOCK_REALTIME, &ts) < 0) {
++ 			bb_perror_msg("can't set date");
++ 		}
++ 	}
++Index: /var/tmp/genkernel/gk_1vmPLXmD/busybox_jSfaYF8P/busybox-1.31.1/libbb/missing_syscalls.c
++===================================================================
++--- busybox-1.31.1/libbb/missing_syscalls.c
+++++ busybox-1.31.1/libbb/missing_syscalls.c
++@@ -15,14 +15,6 @@ pid_t getsid(pid_t pid)
++ 	return syscall(__NR_getsid, pid);
++ }
++ 
++-int stime(const time_t *t)
++-{
++-	struct timeval tv;
++-	tv.tv_sec = *t;
++-	tv.tv_usec = 0;
++-	return settimeofday(&tv, NULL);
++-}
++-
++ int sethostname(const char *name, size_t len)
++ {
++ 	return syscall(__NR_sethostname, name, len);
++Index: /var/tmp/genkernel/gk_1vmPLXmD/busybox_jSfaYF8P/busybox-1.31.1/util-linux/rdate.c
++===================================================================
++--- busybox-1.31.1/util-linux/rdate.c
+++++ busybox-1.31.1/util-linux/rdate.c
++@@ -95,9 +95,13 @@ int rdate_main(int argc UNUSED_PARAM, ch
++ 	if (!(flags & 2)) { /* no -p (-s may be present) */
++ 		if (time(NULL) == remote_time)
++ 			bb_error_msg("current time matches remote time");
++-		else
++-			if (stime(&remote_time) < 0)
+++		else {
+++			struct timespec ts;
+++			ts.tv_sec = remote_time;
+++			ts.tv_nsec = 0;
+++			if (clock_settime(CLOCK_REALTIME, &ts) < 0)
++ 				bb_perror_msg_and_die("can't set time of day");
+++		}
++ 	}
++ 
++ 	if (flags != 1) /* not lone -s */

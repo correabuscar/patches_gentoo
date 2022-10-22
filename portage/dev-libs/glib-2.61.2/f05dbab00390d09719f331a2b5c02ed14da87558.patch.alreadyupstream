@@ -1,0 +1,51 @@
+https://gitlab.gnome.org/GNOME/glib/issues/436
+
+From f05dbab00390d09719f331a2b5c02ed14da87558 Mon Sep 17 00:00:00 2001
+From: Philip Withnall <withnall@endlessm.com>
+Date: Fri, 28 Jun 2019 13:00:31 +0100
+Subject: [PATCH] gtestutils: Set coredump rlimit to 0 when calling
+ g_test_trap_fork()
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+g_test_trap_fork() is deprecated, but it’s still tested in the GLib
+tests. If we don’t set the coredump rlimit to 0 to prevent coredumps,
+the test for it creates a coredump (which is expected). On systems with
+systemd-coredump, that causes systemd-coredump to spawn and process the
+coredump for a while. That slows down the tests, and results in spurious
+coredump lists in the system logs.
+
+Signed-off-by: Philip Withnall <withnall@endlessm.com>
+
+Fixes: #436
+---
+ glib/gtestutils.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/glib/gtestutils.c b/glib/gtestutils.c
+index ecef563b7..5f19f3b74 100644
+--- a/glib/gtestutils.c
++++ b/glib/gtestutils.c
+@@ -3311,6 +3311,18 @@ g_test_trap_fork (guint64        usec_timeout,
+         close (stdout_pipe[1]);
+       if (stderr_pipe[1] >= 3)
+         close (stderr_pipe[1]);
++
++      /* We typically expect these child processes to crash, and some
++       * tests spawn a *lot* of them.  Avoid spamming system crash
++       * collection programs such as systemd-coredump and abrt.
++       */
++#ifdef HAVE_SYS_RESOURCE_H
++      {
++        struct rlimit limit = { 0, 0 };
++        (void) setrlimit (RLIMIT_CORE, &limit);
++      }
++#endif
++
+       return TRUE;
+     }
+   else                          /* parent */
+-- 
+2.21.0
+

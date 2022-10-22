@@ -1,0 +1,1 @@
+see more glibc patches from clearlinux at url: https://github.com/clearlinux-pkgs/glibc

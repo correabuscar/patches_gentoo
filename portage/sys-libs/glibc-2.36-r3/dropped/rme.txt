@@ -1,0 +1,5 @@
+spin_smarter.patch doesn't apply to 2.36 anylonger: https://github.com/ms178/archpkgbuilds/commit/fe40d7dfec8f3c68d6ec58b985050f2803422dd1
+
+I looked and it seems to be already in or a slightly different variant is in,
+maybe better variant? or just different, or worse, but it's way different than
+without patch!

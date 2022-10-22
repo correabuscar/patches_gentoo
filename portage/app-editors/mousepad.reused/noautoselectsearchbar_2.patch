@@ -1,0 +1,15 @@
+Index: /var/tmp/portage/app-editors/mousepad-0.4.90/work/mousepad-0.4.90/mousepad/mousepad-search-bar.c
+===================================================================
+#--- .orig/var/tmp/portage/app-editors/mousepad-0.4.90/work/mousepad-0.4.90/mousepad/mousepad-search-bar.c
+#+++ /var/tmp/portage/app-editors/mousepad-0.4.90/work/mousepad-0.4.90/mousepad/mousepad-search-bar.c
+--- a/mousepad/mousepad-search-bar.c
++++ b/mousepad/mousepad-search-bar.c
+@@ -462,7 +462,7 @@ mousepad_search_bar_focus (MousepadSearc
+   gtk_widget_grab_focus (bar->entry);
+ 
+   /* select the entire entry */
+-  gtk_editable_select_region (GTK_EDITABLE (bar->entry), 0, -1);
++  //gtk_editable_select_region (GTK_EDITABLE (bar->entry), 0, -1); // yes this does make me lose PRIMARY selection (ie. MMB paste, or shift+insert)
+ 
+   /* highlighting has been disabled by hiding the search bar */
+   if (bar->highlight_all)

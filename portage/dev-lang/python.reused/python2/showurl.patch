@@ -1,0 +1,10 @@
+--- a/Lib/urllib2.py	2017-08-21 02:37:32.185978465 +0200
++++ b/Lib/urllib2.py	2017-08-21 02:38:12.513471480 +0200
+@@ -151,6 +151,7 @@ def urlopen(url, data=None, timeout=sock
+         _opener = opener = build_opener()
+     else:
+         opener = _opener
++    print >> sys.stderr, '!! url=',url
+     return opener.open(url, data, timeout)
+ 
+ def install_opener(opener):

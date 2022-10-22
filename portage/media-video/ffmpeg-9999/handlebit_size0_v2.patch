@@ -1,0 +1,14 @@
+https://trac.ffmpeg.org/ticket/4749
+diff --git a/libavcodec/get_bits.h b/libavcodec/get_bits.h
+index d7cf286378..a9ea2eb881 100644
+--- a/libavcodec/get_bits.h
++++ b/libavcodec/get_bits.h
+@@ -429,7 +429,7 @@ static inline int init_get_bits(GetBitContext *s, const uint8_t *buffer,
+     int buffer_size;
+     int ret = 0;
+ 
+-    if (bit_size >= INT_MAX - FFMAX(7, AV_INPUT_BUFFER_PADDING_SIZE*8) || bit_size < 0 || !buffer) {
++    if (bit_size >= INT_MAX - FFMAX(7, AV_INPUT_BUFFER_PADDING_SIZE*8) || bit_size <= 0 || !buffer) {
+         bit_size    = 0;
+         buffer      = NULL;
+         ret         = AVERROR_INVALIDDATA;

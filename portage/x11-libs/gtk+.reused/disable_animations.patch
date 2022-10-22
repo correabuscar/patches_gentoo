@@ -1,0 +1,29 @@
+https://gitlab.gnome.org/GNOME/gtk/issues/2041#note_563829
+
+diff --git a/gtk/gtktoolitemgroup.c b/gtk/gtktoolitemgroup.c
+index ad4bf88cca..08a0525935 100644
+--- a/gtk/gtktoolitemgroup.c
++++ b/gtk/gtktoolitemgroup.c
+@@ -35,7 +35,7 @@
+ 
+ #define ANIMATION_TIMEOUT        50
+ #define ANIMATION_DURATION      (ANIMATION_TIMEOUT * 4)
+-#define DEFAULT_ANIMATION_STATE  TRUE
++#define DEFAULT_ANIMATION_STATE  FALSE
+ #define DEFAULT_EXPANDER_SIZE    16
+ #define DEFAULT_HEADER_SPACING   2
+ 
+diff --git a/gtk/gtksettings.c b/gtk/gtksettings.c
+index b83d9d5561..c6246a07de 100644
+--- a/gtk/gtksettings.c
++++ b/gtk/gtksettings.c
+@@ -784,7 +784,8 @@ gtk_settings_class_init (GtkSettingsClass *class)
+                                              g_param_spec_boolean ("gtk-enable-animations",
+                                                                    P_("Enable Animations"),
+                                                                    P_("Whether to enable toolkit-wide animations."),
+-                                                                   TRUE,
++                                                                   //TRUE,
++                                                                   FALSE,
+                                                                    GTK_PARAM_READWRITE),
+                                              NULL);
+ 

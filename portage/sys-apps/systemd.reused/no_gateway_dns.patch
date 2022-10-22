@@ -1,0 +1,232 @@
+diff --git a/meson.build b/meson.build
+index 30b7f1baf..37e0e8f00 100644
+--- a/meson.build
++++ b/meson.build
+@@ -655,7 +655,8 @@ endforeach
+ 
+ conf.set_quoted('FALLBACK_HOSTNAME', get_option('fallback-hostname'))
+ conf.set10('ENABLE_COMPAT_GATEWAY_HOSTNAME', get_option('compat-gateway-hostname'))
+-gateway_hostnames = ['_gateway'] + (conf.get('ENABLE_COMPAT_GATEWAY_HOSTNAME') == 1 ? ['gateway'] : [])
++#gateway_hostnames = ['_gateway'] + (conf.get('ENABLE_COMPAT_GATEWAY_HOSTNAME') == 1 ? ['gateway'] : []) #it is false by default, seen in meson_options.txt
++gateway_hostnames = []
+ 
+ default_hierarchy = get_option('default-hierarchy')
+ conf.set_quoted('DEFAULT_HIERARCHY_NAME', default_hierarchy,
+diff --git a/src/basic/hostname-util.c b/src/basic/hostname-util.c
+index b59e5425a..f49751ad8 100644
+--- a/src/basic/hostname-util.c
++++ b/src/basic/hostname-util.c
+@@ -197,10 +197,11 @@ bool is_gateway_hostname(const char *hostname) {
+          * synthetic "gateway" host. */
+ 
+         return
+-                strcaseeq(hostname, "_gateway") || strcaseeq(hostname, "_gateway.")
+-#if ENABLE_COMPAT_GATEWAY_HOSTNAME
+-                || strcaseeq(hostname, "gateway") || strcaseeq(hostname, "gateway.")
+-#endif
++          false
++//                strcaseeq(hostname, "_gateway") || strcaseeq(hostname, "_gateway.")
++//#if ENABLE_COMPAT_GATEWAY_HOSTNAME
++//                || strcaseeq(hostname, "gateway") || strcaseeq(hostname, "gateway.")
++//#endif
+                 ;
+ }
+ 
+diff --git a/src/nss-myhostname/nss-myhostname.c b/src/nss-myhostname/nss-myhostname.c
+index 5abc0c91bf..5b386fb0dd 100644
+--- a/src/nss-myhostname/nss-myhostname.c
++++ b/src/nss-myhostname/nss-myhostname.c
+@@ -61,14 +61,14 @@ enum nss_status _nss_myhostname_gethostbyname4_r(
+                 canonical = "localhost";
+                 local_address_ipv4 = htobe32(INADDR_LOOPBACK);
+ 
+-        } else if (is_gateway_hostname(name)) {
+-
+-                n_addresses = local_gateways(NULL, 0, AF_UNSPEC, &addresses);
+-                if (n_addresses <= 0)
+-                        goto not_found;
+-
+-                canonical = "_gateway";
+-
++//        } else if (is_gateway_hostname(name)) {
++//
++//                n_addresses = local_gateways(NULL, 0, AF_UNSPEC, &addresses);
++//                if (n_addresses <= 0)
++//                        goto not_found;
++//
++//                canonical = "_gateway";
++//
+         } else {
+                 hn = gethostname_malloc();
+                 if (!hn) {
+@@ -336,14 +336,14 @@ enum nss_status _nss_myhostname_gethostbyname3_r(
+                 canonical = "localhost";
+                 local_address_ipv4 = htobe32(INADDR_LOOPBACK);
+ 
+-        } else if (is_gateway_hostname(name)) {
+-
+-                n_addresses = local_gateways(NULL, 0, af, &addresses);
+-                if (n_addresses <= 0)
+-                        goto not_found;
+-
+-                canonical = "_gateway";
+-
++//        } else if (is_gateway_hostname(name)) {
++//
++//                n_addresses = local_gateways(NULL, 0, af, &addresses);
++//                if (n_addresses <= 0)
++//                        goto not_found;
++//
++//                canonical = "_gateway";
++//
+         } else {
+                 hn = gethostname_malloc();
+                 if (!hn) {
+@@ -443,16 +443,17 @@ enum nss_status _nss_myhostname_gethostbyaddr2_r(
+ 
+         addresses = mfree(addresses);
+ 
+-        n_addresses = local_gateways(NULL, 0, AF_UNSPEC, &addresses);
+-        for (a = addresses, n = 0; (int) n < n_addresses; n++, a++) {
+-                if (af != a->family)
+-                        continue;
+-
+-                if (memcmp(addr, &a->address, FAMILY_ADDRESS_SIZE(af)) == 0) {
+-                        canonical = "_gateway";
+-                        goto found;
+-                }
+-        }
++        //        looks like reverse-dns aka PTR attempt: ie. return hostname _gateway for given IP (if it is an IP gateway!)
++//        n_addresses = local_gateways(NULL, 0, AF_UNSPEC, &addresses);
++//        for (a = addresses, n = 0; (int) n < n_addresses; n++, a++) {
++//                if (af != a->family)
++//                        continue;
++//
++//                if (memcmp(addr, &a->address, FAMILY_ADDRESS_SIZE(af)) == 0) {
++//                        canonical = "_gateway";
++//                        goto found;
++//                }
++//        }
+ 
+         *h_errnop = HOST_NOT_FOUND;
+         return NSS_STATUS_NOTFOUND;
+diff --git a/src/resolve/resolved-dns-synthesize.c b/src/resolve/resolved-dns-synthesize.c
+index e71fcbdcc..82b3cc1cf 100644
+--- a/src/resolve/resolved-dns-synthesize.c
++++ b/src/resolve/resolved-dns-synthesize.c
+@@ -328,27 +328,27 @@ static int synthesize_system_hostname_ptr(Manager *m, int af, const union in_add
+         return added;
+ }
+ 
+-static int synthesize_gateway_rr(Manager *m, const DnsResourceKey *key, int ifindex, DnsAnswer **answer) {
+-        _cleanup_free_ struct local_address *addresses = NULL;
+-        int n = 0, af, r;
+-
+-        assert(m);
+-        assert(key);
+-        assert(answer);
+-
+-        af = dns_type_to_af(key->type);
+-        if (af >= 0) {
+-                n = local_gateways(m->rtnl, ifindex, af, &addresses);
+-                if (n <= 0)
+-                        return n;  /* < 0 means: error; == 0 means we have no gateway */
+-        }
+-
+-        r = answer_add_addresses_rr(answer, dns_resource_key_name(key), addresses, n);
+-        if (r < 0)
+-                return r;
+-
+-        return 1; /* > 0 means: we have some gateway */
+-}
++//static int synthesize_gateway_rr(Manager *m, const DnsResourceKey *key, int ifindex, DnsAnswer **answer) {
++//        _cleanup_free_ struct local_address *addresses = NULL;
++//        int n = 0, af, r;
++//
++//        assert(m);
++//        assert(key);
++//        assert(answer);
++//
++//        af = dns_type_to_af(key->type);
++//        if (af >= 0) {
++//                n = local_gateways(m->rtnl, ifindex, af, &addresses);
++//                if (n <= 0)
++//                        return n;  /* < 0 means: error; == 0 means we have no gateway */
++//        }
++//
++//        r = answer_add_addresses_rr(answer, dns_resource_key_name(key), addresses, n);
++//        if (r < 0)
++//                return r;
++//
++//        return 1; /* > 0 means: we have some gateway */
++//}
+ 
+ static int synthesize_gateway_ptr(Manager *m, int af, const union in_addr_union *address, int ifindex, DnsAnswer **answer) {
+         _cleanup_free_ struct local_address *addresses = NULL;
+@@ -362,7 +362,8 @@ static int synthesize_gateway_ptr(Manager *m, int af, const union in_addr_union
+         if (n <= 0)
+                 return n;
+ 
+-        return answer_add_addresses_ptr(answer, "_gateway", addresses, n, af, address);
++        //return answer_add_addresses_ptr(answer, "_gateway", addresses, n, af, address);
++        return 1;//pretending it was added
+ }
+ 
+ int dns_synthesize_answer(
+@@ -401,16 +402,16 @@ int dns_synthesize_answer(
+                         if (r < 0)
+                                 return log_error_errno(r, "Failed to synthesize system hostname RRs: %m");
+ 
+-                } else if (is_gateway_hostname(name)) {
+-
+-                        r = synthesize_gateway_rr(m, key, ifindex, &answer);
+-                        if (r < 0)
+-                                return log_error_errno(r, "Failed to synthesize gateway RRs: %m");
+-                        if (r == 0) { /* if we have no gateway return NXDOMAIN */
+-                                nxdomain = true;
+-                                continue;
+-                        }
+-
++//                } else if (is_gateway_hostname(name)) {
++//
++//                        r = synthesize_gateway_rr(m, key, ifindex, &answer);
++//                        if (r < 0)
++//                                return log_error_errno(r, "Failed to synthesize gateway RRs: %m");
++//                        if (r == 0) { /* if we have no gateway return NXDOMAIN */
++//                                nxdomain = true;
++//                                continue;
++//                        }
++//
+                 } else if ((dns_name_endswith(name, "127.in-addr.arpa") > 0 && dns_name_equal(name, "2.0.0.127.in-addr.arpa") == 0) ||
+                            dns_name_equal(name, "1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.ip6.arpa") > 0) {
+ 
+diff --git a/src/test/test-nss.c b/src/test/test-nss.c
+index 20aa6cf01f..d5458cf05d 100644
+--- a/src/test/test-nss.c
++++ b/src/test/test-nss.c
+@@ -467,7 +467,9 @@ static int parse_argv(int argc, char **argv,
+                 if (!hostname)
+                         return -ENOMEM;
+ 
+-                names = strv_new("localhost", "_gateway", "foo_no_such_host", hostname);
++                names = strv_new("localhost", 
++                    //"_gateway", 
++                    "foo_no_such_host", hostname);
+                 if (!names)
+                         return -ENOMEM;
+ 
+diff --git a/src/test/test-dns-domain.c b/src/test/test-dns-domain.c
+index 0ad7d088a..923ce0559 100644
+--- a/src/test/test-dns-domain.c
++++ b/src/test/test-dns-domain.c
+@@ -684,8 +684,8 @@ static void test_dns_name_apply_idna(void) {
+         test_dns_name_apply_idna_one("_443._tcp.fedoraproject.org", ret2,
+                                      "_443._tcp.fedoraproject.org");
+         test_dns_name_apply_idna_one("_443", ret2, "_443");
+-        test_dns_name_apply_idna_one("gateway", ret, "gateway");
+-        test_dns_name_apply_idna_one("_gateway", ret2, "_gateway");
++//        test_dns_name_apply_idna_one("gateway", ret, "gateway");
++//        test_dns_name_apply_idna_one("_gateway", ret2, "_gateway");
+ 
+         test_dns_name_apply_idna_one("r3---sn-ab5l6ne7.googlevideo.com", ret2,
+                                      ret2 ? "r3---sn-ab5l6ne7.googlevideo.com" : "");

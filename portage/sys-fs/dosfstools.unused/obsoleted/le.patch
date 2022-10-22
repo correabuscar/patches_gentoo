@@ -1,0 +1,78 @@
+obsoleted by newer/simpler patch named: ignore_empty_2nd_FAT_when_FATs_differ.patch
+
+diff -upr '--exclude=*.Po' dosfstools-4.1/src/fat.c dosfstools-4.1.mod/src/fat.c
+--- dosfstools-4.1/src/fat.c	2017-01-22 04:50:09.000000000 +0100
++++ dosfstools-4.1.mod/src/fat.c	2017-05-05 13:52:32.340570871 +0200
+@@ -29,6 +29,8 @@
+ #include <string.h>
+ #include <unistd.h>
+ 
++#include <inttypes.h>
++
+ #include "common.h"
+ #include "fsck.fat.h"
+ #include "io.h"
+@@ -116,11 +118,39 @@ void read_fat(DOS_FS * fs)
+ 	fs_read(fs->fat_start + fs->fat_size, eff_size, second);
+     }
+     if (second && memcmp(first, second, eff_size) != 0) {
++      FILE *f1= fopen("/tmp/1.fat", "wb");
++      size_t siz= fwrite(first, 1, eff_size,f1);
++      printf("Wrote first fat size: %d\n", siz);
++      fclose(f1);
++      f1=fopen("/tmp/2.fat","wb");
++      siz= fwrite(second, 1, eff_size,f1);
++      printf("Wrote second fat size: %d\n", siz);
++      fclose(f1);
+ 	FAT_ENTRY first_media, second_media;
+ 	get_fat(&first_media, first, 0, fs);
+ 	get_fat(&second_media, second, 0, fs);
+ 	first_ok = (first_media.value & FAT_EXTD(fs)) == FAT_EXTD(fs);
+ 	second_ok = (second_media.value & FAT_EXTD(fs)) == FAT_EXTD(fs);
++
++  if (second_ok) {
++    uint8_t *end=second+eff_size;//using <, so no -1
++    int count=0;
++    uint8_t *cur=second+12;
++    //cur[100]=9;
++    if (end >= cur) {
++      //first 12 chars are these: f8 ff ff 0f ff ff ff 0f  ff ff ff 0f
++      for (; cur < end && 0 == *cur; cur++) {count++;}
++      printf("count=%d eff_size=%d cur==end?%d\n",count, eff_size, cur == end);
++      second_ok = (cur < end);
++      if (!second_ok) {
++        printf("Second FAT is empty/unused - ignoring it.\n");
++      }
++    }
++  }
++/*  printf("first_media.value=%"PRIu32"\n", first_media.value);
++  printf("second_media.value=%"PRIu32"\n", second_media.value);
++  printf("1&=%"PRIu32"\n", first_media.value & FAT_EXTD(fs));
++  printf("2&=%"PRIu32"\n", second_media.value & FAT_EXTD(fs));*/
+ 	if (first_ok && !second_ok) {
+ 	    printf("FATs differ - using first FAT.\n");
+ 	    fs_write(fs->fat_start + fs->fat_size, eff_size, first);
+diff -upr '--exclude=*.Po' dosfstools-4.1/src/fsck.fat.c dosfstools-4.1.mod/src/fsck.fat.c
+--- dosfstools-4.1/src/fsck.fat.c	2016-05-10 11:58:39.000000000 +0200
++++ dosfstools-4.1.mod/src/fsck.fat.c	2017-05-05 14:42:02.572230002 +0200
+@@ -207,7 +207,7 @@ int main(int argc, char **argv)
+ exit:
+     if (fs_changed()) {
+ 	if (rw) {
+-	    if (interactive)
++	    if (interactive && !write_immed)
+ 		rw = get_key("yn", "Perform changes ? (y/n)") == 'y';
+ 	    else
+ 		printf("Performing changes.\n");
+diff -upr '--exclude=*.Po' dosfstools-4.1/src/io.c dosfstools-4.1.mod/src/io.c
+--- dosfstools-4.1/src/io.c	2016-09-16 01:17:27.000000000 +0200
++++ dosfstools-4.1.mod/src/io.c	2017-05-05 14:19:39.604113398 +0200
+@@ -142,6 +142,8 @@ static void fs_flush(void)
+     CHANGE *this;
+     int size;
+ 
++    printf("FLUSHING!\n");
++
+     while (changes) {
+ 	this = changes;
+ 	changes = changes->next;

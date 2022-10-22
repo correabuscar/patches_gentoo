@@ -1,0 +1,33 @@
+eg.
+!! took 8.762901 seconds to read history. You probably have one huge history line!
+
+diff --git a/lib/readline/histfile.c b/lib/readline/histfile.c
+index a38d3952..61a7cf71 100644
+--- a/lib/readline/histfile.c
++++ b/lib/readline/histfile.c
+@@ -404,8 +404,10 @@ read_history_range (const char *filename, int from, int to)
+ 	  }
+       }
+ 
++  clock_t clock_start = clock();
+   /* If there are lines left to gobble, then gobble them now. */
+   for (line_end = line_start; line_end < bufend; line_end++)
++  {
+     if (*line_end == '\n')
+       {
+ 	/* Change to allow Windows-like \r\n end of line delimiter. */
+@@ -442,7 +444,13 @@ read_history_range (const char *filename, int from, int to)
+ 
+ 	line_start = line_end + 1;
+       }
+-
++  }
++  clock_t clock_end = clock();
++  float seconds = (float)(clock_end - clock_start) / CLOCKS_PER_SEC; // thanks for this code to: https://stackoverflow.com/questions/3557221/how-do-i-measure-time-in-c/3557272#3557272
++  if (seconds>=1) {
++    fprintf(stderr, "!! took %f seconds to read history. You probably have one huge history line!\n", seconds);
++    fflush(stderr);
++  }
+   history_lines_read_from_file = current_line;
+   if (reset_comment_char)
+     history_comment_char = '\0';

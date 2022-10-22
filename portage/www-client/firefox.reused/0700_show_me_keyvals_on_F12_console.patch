@@ -1,0 +1,11 @@
+diff -r cfdbecb2e230 browser/components/newtab/lib/ActivityStreamPrefs.jsm
+--- a/browser/components/newtab/lib/ActivityStreamPrefs.jsm	Sat Nov 03 23:44:05 2018 +0200
++++ b/browser/components/newtab/lib/ActivityStreamPrefs.jsm	Sun Nov 04 01:56:43 2018 +0100
+@@ -79,6 +79,7 @@
+       }
+ 
+       try {
++        console.log("setDefaultPref '"+pref+"'='"+value+"'");
+         this.set(pref, value);
+       } catch (ex) {
+         // Potentially the user somehow set an unexpected value type, so we fail

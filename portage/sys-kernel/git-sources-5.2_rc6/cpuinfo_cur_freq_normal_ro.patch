@@ -1,0 +1,38 @@
+$ l /sys/devices/system/cpu/cpufreq/policy0/
+total 0
+drwxr-xr-x 6 root root    0 10.03.2018 08:06 ../
+drwxr-xr-x 3 root root    0 10.03.2018 08:06 ./
+drwxr-xr-x 2 root root    0 10.03.2018 15:59 stats/
+ -r--r--r-- 1 root root 4096 10.03.2018 08:06 related_cpus
+ -rw-r--r-- 1 root root 4096 10.03.2018 08:06 scaling_governor
+ -r--r--r-- 1 root root 4096 10.03.2018 08:06 scaling_driver
+ -r--r--r-- 1 root root 4096 10.03.2018 08:06 scaling_cur_freq
+ -r--r--r-- 1 root root 4096 10.03.2018 08:06 scaling_available_governors
+ -r--r--r-- 1 root root 4096 10.03.2018 08:06 scaling_available_frequencies
+ -r--r--r-- 1 root root 4096 10.03.2018 08:07 cpuinfo_max_freq
+ -rw-r--r-- 1 root root 4096 10.03.2018 08:47 scaling_min_freq
+ -rw-r--r-- 1 root root 4096 10.03.2018 09:03 scaling_max_freq
+ -r--r--r-- 1 root root 4096 10.03.2018 15:49 cpuinfo_transition_latency
+ -r--r--r-- 1 root root 4096 10.03.2018 15:49 cpuinfo_min_freq
+ -r--r--r-- 1 root root 4096 10.03.2018 15:49 affected_cpus
+ -r--r--r-- 1 root root 4096 10.03.2018 15:59 freqdomain_cpus
+ -r--r--r-- 1 root root 4096 10.03.2018 15:59 bios_limit
+ -r-------- 1 root root 4096 10.03.2018 16:02 cpuinfo_cur_freq
+ -rw-r--r-- 1 root root 4096 10.03.2018 16:02 scaling_setspeed
+
+^ that will not stand!
+
+diff --git a/drivers/cpufreq/cpufreq.c b/drivers/cpufreq/cpufreq.c
+index de33ebf008ad..da6e03cda2fe 100644
+--- a/drivers/cpufreq/cpufreq.c
++++ b/drivers/cpufreq/cpufreq.c
+@@ -883,7 +883,8 @@ static ssize_t show_bios_limit(struct cpufreq_policy *policy, char *buf)
+ 	return sprintf(buf, "%u\n", policy->cpuinfo.max_freq);
+ }
+ 
+-cpufreq_freq_attr_ro_perm(cpuinfo_cur_freq, 0400);
++//cpufreq_freq_attr_ro_perm(cpuinfo_cur_freq, 0400);//why tehf read only by root?! guessing because "(asserted by call to hardware)" ie. it's expensive and can be used to hw DDoS?
++cpufreq_freq_attr_ro(cpuinfo_cur_freq);//added by je
+ cpufreq_freq_attr_ro(cpuinfo_min_freq);
+ cpufreq_freq_attr_ro(cpuinfo_max_freq);
+ cpufreq_freq_attr_ro(cpuinfo_transition_latency);

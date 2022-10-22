@@ -1,0 +1,39 @@
+this works but is no longer needed for xf86-video-ati-git-18.1.0.r29.g15697ee2-1-x86_64.pkg.tar
+//
+this fixes the tearfree being disabled after waking up from a dpms suspend
+patch for tag: xf86-video-ati-18.1.0
+
+These are still appearing though:
+[    33.005] (WW) RADEON(0): flip queue failed: Device or resource busy
+[    33.005] (WW) RADEON(0): Page flip failed: Device or resource busy
+but these are not:
+[  2691.018] (EE) RADEON(0): present flip failed
+[  2691.020] (WW) RADEON(0): flip queue failed in radeon_scanout_flip: Device or resource busy, TearFree inactive until next modeset
+
+
+
+diff --git a/src/drmmode_display.c b/src/drmmode_display.c
+index 8445ef2a..8d530ed4 100644
+--- a/src/drmmode_display.c
++++ b/src/drmmode_display.c
+@@ -3359,12 +3359,14 @@ Bool radeon_do_pageflip(ScrnInfoPtr scrn, ClientPtr client,
+ 						 extents);
+ 			radeon_cs_flush_indirect(crtc->scrn);
+ 
+-			if (drmmode_crtc->scanout_update_pending) {
+-				radeon_drm_wait_pending_flip(crtc);
+-				handle_deferred = TRUE;
+-				radeon_drm_abort_entry(drmmode_crtc->scanout_update_pending);
+-				drmmode_crtc->scanout_update_pending = 0;
+-			}
++			if (drmmode_crtc->scanout_update_pending) {
++				radeon_drm_wait_pending_flip(crtc);
++				handle_deferred = TRUE;
++//				radeon_drm_abort_entry(drmmode_crtc->scanout_update_pending);
++//				drmmode_crtc->scanout_update_pending = 0;
++			}
++//      drmmode_crtc_wait_pending_event(drmmode_crtc, pRADEONEnt->fd,
++//             drmmode_crtc->scanout_update_pending);
+ 		} else {
+ 			drmmode_fb_reference(pRADEONEnt->fd, &flipdata->fb[i], fb);
+ 		}

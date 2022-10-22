@@ -1,0 +1,13 @@
+diff --git a/usr/Kconfig b/usr/Kconfig
+index 43658b8a975e..9f6171d76657 100644
+--- a/usr/Kconfig
++++ b/usr/Kconfig
+@@ -86,6 +86,8 @@ config RD_XZ
+ 	select DECOMPRESS_XZ
+ 	help
+ 	  Support loading of a XZ encoded initial ramdisk or cpio buffer.
++	  You must use xz arg --check=crc32 when compressing it!
++	  (only tested xz-ed initramfs with uncompressed cpio amd ucode prepended)
+ 	  If unsure, say N.
+ 
+ config RD_LZO

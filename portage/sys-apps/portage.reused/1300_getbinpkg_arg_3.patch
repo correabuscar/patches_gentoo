@@ -1,0 +1,31 @@
+Index: /var/tmp/portage/sys-apps/portage-3.0.12/work/portage-3.0.12/lib/_emerge/actions.py
+===================================================================
+--- .orig/lib/_emerge/actions.py
++++ /lib/_emerge/actions.py
+@@ -2921,8 +2921,12 @@ def run_action(emerge_config):
+ 	if "--buildpkgonly" in emerge_config.opts:
+ 		emerge_config.opts["--buildpkg"] = True
+ 
+-	if "getbinpkg" in emerge_config.target_config.settings.features:
++	if ("getbinpkg" in emerge_config.target_config.settings.features and \
++			None == emerge_config.opts.get('--getbinpkg')) or (\
++			emerge_config.opts.get('--getbinpkg') not in [None,'n']):
+ 		emerge_config.opts["--getbinpkg"] = True
++	else:
++		emerge_config.opts.pop("--getbinpkg", None)
+ 
+ 	if "--getbinpkgonly" in emerge_config.opts:
+ 		emerge_config.opts["--getbinpkg"] = True
+Index: /var/tmp/portage/sys-apps/portage-3.0.12/work/portage-3.0.12/lib/_emerge/main.py
+===================================================================
+--- .orig/lib/_emerge/main.py
++++ /lib/_emerge/main.py
+@@ -976,8 +976,6 @@ def parse_opts(tmpcmdline, silent=False)
+ 
+ 	if myoptions.getbinpkg in true_y:
+ 		myoptions.getbinpkg = True
+-	else:
+-		myoptions.getbinpkg = None
+ 
+ 	if myoptions.getbinpkgonly in true_y:
+ 		myoptions.getbinpkgonly = True

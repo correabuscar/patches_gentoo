@@ -1,0 +1,13 @@
+diff --git a/src/duplicacy_snapshotmanager.go b/src/duplicacy_snapshotmanager.go
+index f072092..955433f 100644
+--- a/src/duplicacy_snapshotmanager.go
++++ b/src/duplicacy_snapshotmanager.go
+@@ -678,7 +678,7 @@ func (manager *SnapshotManager) ListSnapshots(snapshotID string, revisionsToList
+ 			if len(snapshot.Tag) > 0 {
+ 				tagWithSpace = snapshot.Tag + " "
+ 			}
+-			LOG_INFO("SNAPSHOT_INFO", "Snapshot %s revision %d created at %s %s%s",
++			LOG_INFO("SNAPSHOT_INFO", "Snapshot [41m%s(B[m revision %d created at %s %s%s",
+ 				snapshotID, revision, creationTime, tagWithSpace, snapshot.Options)
+ 
+ 			if tag != "" && snapshot.Tag != tag {

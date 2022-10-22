@@ -1,0 +1,4 @@
+see if can remove dependency: webrtc-audio-processing
+if so, then recompile and use this pulseaudio
++ add to ignorepkgs in /etc/pacman.conf
+

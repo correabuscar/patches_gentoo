@@ -1,0 +1,28 @@
+this:
+[7892] WARNING: Unable to read system value: 'aValue > 0', file /home/user/build/1packages/firefox-hg/makepkg_pacman/firefox-hg/src/firefox-hg/xpcom/base/nsSystemInfo.cpp, line 911
+
+becomes:
+[12306] WARNING: Unable to read system value 'cpustepping': 'aValue > 0', file /home/user/build/1packages/firefox-hg/makepkg_pacman/firefox-hg/src/firefox-hg/xpcom/base/nsSystemInfo.cpp, line 915
+
+well:
+$ cat /proc/cpuinfo |grep stepping
+stepping	: 0
+stepping	: 0
+stepping	: 0
+stepping	: 0
+
+
+diff -r b762378e8c7e xpcom/base/nsSystemInfo.cpp
+--- a/xpcom/base/nsSystemInfo.cpp	Fri Jan 04 00:04:46 2019 +0200
++++ b/xpcom/base/nsSystemInfo.cpp	Fri Jan 04 04:42:19 2019 +0100
+@@ -1003,7 +1003,9 @@
+ 
+ void nsSystemInfo::SetInt32Property(const nsAString& aPropertyName,
+                                     const int32_t aValue) {
+-  NS_WARNING_ASSERTION(aValue > 0, "Unable to read system value");
++  //NS_WARNING_ASSERTION(aValue > 0, "Unable to read system value");
++  NS_LossyConvertUTF16toASCII asciiData(aPropertyName);
++  NS_WARNING_ASSERTION(aValue > 0, nsPrintfCString("Unable to read system value(aka property) '%s'", asciiData.get()).get());
+   if (aValue > 0) {
+ #ifdef DEBUG
+     nsresult rv =

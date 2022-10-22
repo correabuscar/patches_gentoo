@@ -1,0 +1,93 @@
+when /proc/cmdline has cpuidle.governor=teo
+and both CPU_IDLE_GOV_MENU=y and CONFIG_CPU_IDLE_GOV_TEO=y in kernel .config ie. /proc/config.gz
+I wanna avoid seeing these 2 msgs in succession:
+kernel: cpuidle: using governor menu
+kernel: cpuidle: using governor teo
+
+ie. see only the last msg instead!
+solution: it's enough to just change their order in the Makefile !
+
+btw, with WARN_ON(1) you'll see:
+May 12 21:31:19 i87k kernel: cpuidle: using governor menu
+May 12 21:31:19 i87k kernel: WARNING: CPU: 0 PID: 1 at drivers/cpuidle/governor.c:70 cpuidle_switch_governor.part.1+0x93/0xb0
+May 12 21:31:19 i87k kernel: Modules linked in:
+May 12 21:31:19 i87k kernel: CPU: 0 PID: 1 Comm: swapper/0 Not tainted 5.1.1-gb724e9356404 #7
+May 12 21:31:19 i87k kernel: Hardware name: System manufacturer System Product Name/PRIME Z370-A, BIOS 1002 07/02/2018
+May 12 21:31:19 i87k kernel: RIP: 0010:cpuidle_switch_governor.part.1+0x93/0xb0
+May 12 21:31:19 i87k kernel: Code: 48 8b 83 a0 02 00 00 48 8d 98 60 fd ff ff 48 3d 80 51 08 ac 75 e2 e8 fc fa ff ff 48 89 ee 48 c7 c7 80 fd ea ab e8 f6 88 a4 ff <0f> 0b 31 c0 5>
+May 12 21:31:19 i87k kernel: RSP: 0000:ffffbc1b4317fdf0 EFLAGS: 00010246
+May 12 21:31:19 i87k kernel: RAX: 000000000000001c RBX: ffffffffac084ee0 RCX: ffffffffac03e018
+May 12 21:31:19 i87k kernel: RDX: 0000000000000000 RSI: 0000000000000092 RDI: ffffffffac55d2cc
+May 12 21:31:19 i87k kernel: RBP: ffffffffac085560 R08: 000000000000010f R09: 000000000000002b
+May 12 21:31:19 i87k kernel: R10: 0000000000000775 R11: ffffbc1b4317fc98 R12: 0000000000000000
+May 12 21:31:19 i87k kernel: R13: ffffffffac085570 R14: ffffffffac0851c0 R15: 0000000000000000
+May 12 21:31:19 i87k kernel: FS:  0000000000000000(0000) GS:ffff9dc4ed800000(0000) knlGS:0000000000000000
+May 12 21:31:19 i87k kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+May 12 21:31:19 i87k kernel: CR2: 0000000000000000 CR3: 000000065f00e001 CR4: 00000000003606f0
+May 12 21:31:19 i87k kernel: DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+May 12 21:31:19 i87k kernel: DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+May 12 21:31:19 i87k kernel: Call Trace:
+May 12 21:31:19 i87k kernel:  cpuidle_register_governor+0x12a/0x150
+May 12 21:31:19 i87k kernel:  ? cpuidle_sysfs_setup+0x10/0x10
+May 12 21:31:19 i87k kernel:  ? do_early_param+0x89/0x89
+May 12 21:31:19 i87k kernel:  do_one_initcall+0x42/0x165
+May 12 21:31:19 i87k kernel:  ? do_early_param+0x89/0x89
+May 12 21:31:19 i87k kernel:  kernel_init_freeable+0x176/0x223
+May 12 21:31:19 i87k kernel:  ? rest_init+0x9a/0x9a
+May 12 21:31:19 i87k kernel:  kernel_init+0x5/0xf6
+May 12 21:31:19 i87k kernel:  ret_from_fork+0x35/0x40
+May 12 21:31:19 i87k kernel: ---[ end trace 9c617f2740e36448 ]---
+May 12 21:31:19 i87k kernel: cpuidle: using governor teo
+May 12 21:31:19 i87k kernel: WARNING: CPU: 1 PID: 1 at drivers/cpuidle/governor.c:70 cpuidle_switch_governor.part.1+0x93/0xb0
+May 12 21:31:19 i87k kernel: Modules linked in:
+May 12 21:31:19 i87k kernel: CPU: 1 PID: 1 Comm: swapper/0 Tainted: G        W         5.1.1-gb724e9356404 #7
+May 12 21:31:19 i87k kernel: Hardware name: System manufacturer System Product Name/PRIME Z370-A, BIOS 1002 07/02/2018
+May 12 21:31:19 i87k kernel: RIP: 0010:cpuidle_switch_governor.part.1+0x93/0xb0
+May 12 21:31:19 i87k kernel: Code: 48 8b 83 a0 02 00 00 48 8d 98 60 fd ff ff 48 3d 80 51 08 ac 75 e2 e8 fc fa ff ff 48 89 ee 48 c7 c7 80 fd ea ab e8 f6 88 a4 ff <0f> 0b 31 c0 5>
+May 12 21:31:19 i87k kernel: RSP: 0000:ffffbc1b4317fdf0 EFLAGS: 00010246
+May 12 21:31:19 i87k kernel: RAX: 000000000000001b RBX: ffffffffac084ee0 RCX: ffffffffac03e018
+May 12 21:31:19 i87k kernel: RDX: 0000000000000000 RSI: 0000000000000092 RDI: ffffffffac55d2cc
+May 12 21:31:19 i87k kernel: RBP: ffffffffac0855c0 R08: 000000000000012c R09: 000000000000002a
+May 12 21:31:19 i87k kernel: R10: 000000000000076f R11: ffffbc1b4317fc98 R12: 0000000000000000
+May 12 21:31:19 i87k kernel: R13: ffffffffac0855d0 R14: ffffffffac0851c0 R15: 0000000000000000
+May 12 21:31:19 i87k kernel: FS:  0000000000000000(0000) GS:ffff9dc4ed840000(0000) knlGS:0000000000000000
+May 12 21:31:19 i87k kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+May 12 21:31:19 i87k kernel: CR2: 0000000000000000 CR3: 000000065f00e001 CR4: 00000000003606e0
+May 12 21:31:19 i87k kernel: DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+May 12 21:31:19 i87k kernel: DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+May 12 21:31:19 i87k kernel: Call Trace:
+May 12 21:31:19 i87k kernel:  cpuidle_register_governor+0x12a/0x150
+May 12 21:31:19 i87k kernel:  ? init_menu+0xc/0xc
+May 12 21:31:19 i87k kernel:  ? do_early_param+0x89/0x89
+May 12 21:31:19 i87k kernel:  do_one_initcall+0x42/0x165
+May 12 21:31:19 i87k kernel:  ? do_early_param+0x89/0x89
+May 12 21:31:19 i87k kernel:  kernel_init_freeable+0x176/0x223
+May 12 21:31:19 i87k kernel:  ? rest_init+0x9a/0x9a
+May 12 21:31:19 i87k kernel:  kernel_init+0x5/0xf6
+May 12 21:31:19 i87k kernel:  ret_from_fork+0x35/0x40
+May 12 21:31:19 i87k kernel: ---[ end trace 9c617f2740e36449 ]---
+
+diff --git a/drivers/cpuidle/governor.c b/drivers/cpuidle/governor.c
+index 9fddf828a76f..e81e275320af 100644
+--- a/drivers/cpuidle/governor.c
++++ b/drivers/cpuidle/governor.c
+@@ -67,6 +67,7 @@ int cpuidle_switch_governor(struct cpuidle_governor *gov)
+ 			cpuidle_enable_device(dev);
+ 		cpuidle_install_idle_handler();
+ 		printk(KERN_INFO "cpuidle: using governor %s\n", gov->name);
++    //WARN_ON(1);
+ 	}
+ 
+ 	return 0;
+diff --git a/drivers/cpuidle/governors/Makefile b/drivers/cpuidle/governors/Makefile
+index 4d8aff5248a8..938fb980fb67 100644
+--- a/drivers/cpuidle/governors/Makefile
++++ b/drivers/cpuidle/governors/Makefile
+@@ -2,6 +2,6 @@
+ # Makefile for cpuidle governors.
+ #
+ 
++obj-$(CONFIG_CPU_IDLE_GOV_TEO) += teo.o
+ obj-$(CONFIG_CPU_IDLE_GOV_LADDER) += ladder.o
+ obj-$(CONFIG_CPU_IDLE_GOV_MENU) += menu.o
+-obj-$(CONFIG_CPU_IDLE_GOV_TEO) += teo.o

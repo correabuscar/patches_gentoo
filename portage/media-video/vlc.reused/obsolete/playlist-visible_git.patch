@@ -1,0 +1,21 @@
+playlist-visible by default!
+
+actually this doesn't work anymore because code was removed in commit e1c82853965d44b4390af78d9184bd0b60ccc3fb
+and it thus ignores the value for playlist-visible or playlistVisible ! I check this to be true in latest HEAD: commit 36715d9b79f34824e126c2bc3aee2f1c1c16af46 (HEAD -> makepkg, origin/master, origin/HEAD)
+
+
+diff --git a/modules/gui/qt/main_interface.cpp b/modules/gui/qt/main_interface.cpp
+index 7f135f93ba..5f79ea0bd4 100644
+--- a/modules/gui/qt/main_interface.cpp
++++ b/modules/gui/qt/main_interface.cpp
+@@ -232,6 +232,10 @@ MainInterface::MainInterface( intf_thread_t *_p_intf ) : QVLCMW( _p_intf ),
+     var_AddCallback( libvlc, "intf-popupmenu", PopupMenuCB, p_intf );
+ 
+ 
++    if( settings->value( "MainWindow/playlist-visible", true ).toBool() ) {
++      togglePlaylist();
++    }
++
+     QVLCTools::restoreWidgetPosition( settings, this, QSize(600, 420) );
+ 
+     b_interfaceFullScreen = isFullScreen();

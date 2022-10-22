@@ -1,0 +1,26 @@
+this will have effect when running ./go
+lines like this will be seen correctly:
+submodules = false #XXX false is needed here when you ... blah blah
+
+
+diff --git a/src/bootstrap/bootstrap.py b/src/bootstrap/bootstrap.py
+index 86901792d79..8357da8c1df 100644
+--- a/src/bootstrap/bootstrap.py
++++ b/src/bootstrap/bootstrap.py
+@@ -527,13 +527,14 @@ class RustBuild(object):
+ 
+         cur_section = None
+         for line in self.config_toml.splitlines():
+-            section_match = re.match(r'^\s*\[(.*)\]\s*$', line)
++            section_match = re.match(r'^\s*\[([^#]+)\]\s*(#.*)?$', line)
+             if section_match is not None:
+                 cur_section = section_match.group(1)
+ 
+-            match = re.match(r'^{}\s*=(.*)$'.format(key), line)
++            match = re.match(r'^\s*{}\s*=\s*([^#]*)\s*(#.*)?$'.format(key), line)
+             if match is not None:
+                 value = match.group(1)
++                #print(key,line,match,"!",value,"!",match.group(2))
+                 if section is None or section == cur_section:
+                     return self.get_string(value) or value.strip()
+         return None

@@ -1,0 +1,36 @@
+diff --git a/modules/gui/qt/components/playlist/views.cpp b/modules/gui/qt/components/playlist/views.cpp
+index ecc6b9918d..d3fd76da1a 100644
+--- a/modules/gui/qt/components/playlist/views.cpp
++++ b/modules/gui/qt/components/playlist/views.cpp
+@@ -35,6 +35,7 @@
+ #include <QMetaType>
+ #include <QHeaderView>
+ #include <QSvgRenderer>
++#include <QPainterPath>
+ 
+ #include <assert.h>
+ 
+diff --git a/modules/gui/qt/dialogs/plugins.cpp b/modules/gui/qt/dialogs/plugins.cpp
+index 93c92b9fa6..e05ec0594a 100644
+--- a/modules/gui/qt/dialogs/plugins.cpp
++++ b/modules/gui/qt/dialogs/plugins.cpp
+@@ -66,6 +66,7 @@
+ #include <QSplitter>
+ #include <QToolButton>
+ #include <QStackedWidget>
++#include <QPainterPath>
+ 
+ //match the image source (width/height)
+ #define SCORE_ICON_WIDTH_SCALE 4
+diff --git a/modules/gui/qt/util/timetooltip.hpp b/modules/gui/qt/util/timetooltip.hpp
+index b6d7c646c9..4f789ce3de 100644
+--- a/modules/gui/qt/util/timetooltip.hpp
++++ b/modules/gui/qt/util/timetooltip.hpp
+@@ -24,6 +24,7 @@
+ 
+ #include "qt.hpp"
+ 
++#include <QPainterPath>
+ #include <QWidget>
+ 
+ class TimeTooltip : public QWidget

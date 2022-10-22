@@ -1,0 +1,18 @@
+ie.
+in xfce4-terminal pressing Ctrl+F brings up Find dialog and autoselects whatever you searched for from before
+which clears the PRIMARY selection(the MMB clipboard, or shift+insert which can also paste like MMB does)
+
+diff --git a/gtk/gtksettings.c b/gtk/gtksettings.c
+index 71a1c29902..4952bb9f99 100644
+--- a/gtk/gtksettings.c
++++ b/gtk/gtksettings.c
+@@ -1366,7 +1367,8 @@ gtk_settings_class_init (GtkSettingsClass *class)
+                                              g_param_spec_boolean ("gtk-entry-select-on-focus",
+                                                                    P_("Select on focus"),
+                                                                    P_("Whether to select the contents of an entry when it is focused"),
+-                                                                   TRUE,
++                                                                   //TRUE, //overwrites PRIMARY selection ie. Ctrl+F opens Find dialog and you lose what you had previously selected!
++                                                                   FALSE, // so let's not select by default, unless the app specifically overrides it!
+                                                                    GTK_PARAM_READWRITE),
+                                              NULL);
+   g_assert (result == PROP_ENTRY_SELECT_ON_FOCUS);

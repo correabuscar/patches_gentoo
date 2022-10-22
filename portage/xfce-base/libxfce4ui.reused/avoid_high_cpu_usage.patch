@@ -1,0 +1,132 @@
+new 25 jan 2021: not needed anymore, apparently fixed by: https://gitlab.xfce.org/atomsymbol/libxfce4ui/-/commit/85d8d390f9f2265613da4291992523937a7a2519
+in xfce-base/libxfce4ui-4.16.0::gentoo
+
+old:
+apr 23 2020: for libxfce4ui-4.15.3-r1
+
+to mitigate https://bugzilla.xfce.org/show_bug.cgi?id=16737
+patch from https://bugzilla.xfce.org/show_bug.cgi?id=15032#c4
+
+From c7e7c2f2051d49d8b3de98c6f0de0bf5243a5b46 Mon Sep 17 00:00:00 2001
+From: Igor Kushnir <igorkuo@gmail.com>
+Date: Wed, 6 Feb 2019 16:21:19 +0200
+Subject: [PATCH] Regrab keys once on repeated "keys-changed" signals
+
+Whenever I connect an external USB keyboard, xfsettingsd's and Xorg's
+CPU usage increases. In GNOME System Monitor xfsettingsd's Status
+changes from Sleeping to Running and it takes 1-2% CPU; Xorg's CPU usage
+jumps from 1-2% to 25%, i.e. the entire CPU core in my 4-core system.
+During this high CPU usage time (~15s) keyboard shortcuts - configured
+in Xfce settings -> Keyboard -> Application Shortcuts - don't work.
+
+A similar shortcuts-not-working-for-a-time issue happens when resuming
+from hibernation.
+
+Turns out that when a USB keyboard is connected, the GDK keys-changed
+signal is emitted 525 times on my system. And all the shortcuts are
+regrabbed after each of those signals.
+
+I think that this issue is caused by xfsettingsd or libxfce4ui, not GDK.
+GTK applications (such as gnome-system-monitor and gtk3-demo) don't
+receive any keys-changed signals in KDE Plasma 5 session when I
+reconnect a USB keyboard. But they do receive hundreds of keys-changed
+signals when I reconnect a USB keyboard while xfsettingsd is running in
+the KDE session (and in Xfce session too).
+
+I can't figure out why the running xfsettingsd causes all
+GTK applications to receive hundreds of these signals. So I resorted to
+implementing this simple workaround. The 300ms timeout is sufficient
+to merge all keys-changed signals into one after USB keyboard
+reconnection or after hibernation on my system. If the timeout is
+insufficient on some other system, 2 or 3 regrabbings might happen,
+which is still much better than hundreds of them.
+---
+ libxfce4kbd-private/xfce-shortcuts-grabber.c | 28 +++++++++++++++++++-
+ 1 file changed, 27 insertions(+), 1 deletion(-)
+
+diff --git a/libxfce4kbd-private/xfce-shortcuts-grabber.c b/libxfce4kbd-private/xfce-shortcuts-grabber.c
+#index 43dfca6..0f29afd 100644
+#--- a/libxfce4kbd-private/xfce-shortcuts-grabber.c
+#+++ b/libxfce4kbd-private/xfce-shortcuts-grabber.c
+Index: libxfce4ui-4.15.1/libxfce4kbd-private/xfce-shortcuts-grabber.c
+===================================================================
+--- libxfce4ui-4.15.1.orig/libxfce4kbd-private/xfce-shortcuts-grabber.c
++++ libxfce4ui-4.15.1/libxfce4kbd-private/xfce-shortcuts-grabber.c
+@@ -54,6 +54,7 @@ static void            xfce_shortcuts_grabber_constructed      (GObject
+ static void            xfce_shortcuts_grabber_finalize         (GObject                   *object);
+ static void            xfce_shortcuts_grabber_keys_changed     (GdkKeymap                 *keymap,
+                                                                 XfceShortcutsGrabber      *grabber);
++static gboolean        xfce_shortcuts_grabber_regrab           (gpointer                  data);
+ static void            xfce_shortcuts_grabber_grab_all         (XfceShortcutsGrabber      *grabber);
+ static void            xfce_shortcuts_grabber_ungrab_all       (XfceShortcutsGrabber      *grabber);
+ static void            xfce_shortcuts_grabber_grab             (XfceShortcutsGrabber      *grabber,
+@@ -68,6 +69,7 @@ static GdkFilterReturn xfce_shortcuts_grabber_event_filter     (GdkXEvent
+ struct _XfceShortcutsGrabberPrivate
+ {
+   GHashTable *keys;
++  guint regrab_timeout_id;
+ };
+ 
+ struct _XfceKey
+#@@ -112,6 +114,7 @@ xfce_shortcuts_grabber_init (XfceShortcutsGrabber *grabber)
+# {
+#   grabber->priv = XFCE_SHORTCUTS_GRABBER_GET_PRIVATE (grabber);
+#   grabber->priv->keys = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+#+  grabber->priv->regrab_timeout_id = 0;
+# 
+#   /* Workaround: Make sure modmap is up to date
+#    * There is possibly a bug in GTK+ where virtual modifiers are not
+@@ -117,6 +117,7 @@ xfce_shortcuts_grabber_init (XfceShortcu
+ 
+   grabber->priv = XFCE_SHORTCUTS_GRABBER_GET_PRIVATE (grabber);
+   grabber->priv->keys = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
++  grabber->priv->regrab_timeout_id = 0;
+ 
+   /* Workaround: Make sure modmap is up to date
+    * There is possibly a bug in GTK+ where virtual modifiers are not
+@@ -152,6 +155,8 @@ xfce_shortcuts_grabber_finalize (GObject *object)
+   XfceShortcutsGrabber *grabber = XFCE_SHORTCUTS_GRABBER (object);
+ 
+   xfce_shortcuts_grabber_ungrab_all (grabber);
++  if (grabber->priv->regrab_timeout_id != 0)
++    g_source_remove (grabber->priv->regrab_timeout_id);
+   g_hash_table_unref (grabber->priv->keys);
+ 
+   (*G_OBJECT_CLASS (xfce_shortcuts_grabber_parent_class)->finalize) (object);
+@@ -165,10 +170,31 @@ xfce_shortcuts_grabber_keys_changed (GdkKeymap            *keymap,
+ {
+   g_return_if_fail (XFCE_IS_SHORTCUTS_GRABBER (grabber));
+ 
+-  TRACE ("Keys changed, regrabbing");
++  /* "Merge" repeated "keys-changed" signals to improve performance */
++  if (grabber->priv->regrab_timeout_id == 0)
++    {
++      grabber->priv->regrab_timeout_id = g_timeout_add (300, xfce_shortcuts_grabber_regrab, grabber);
++      TRACE ("Scheduled regrabbing");
++    }
++  else
++    TRACE ("Cancelled regrabbing");
++}
++
+ 
++
++static gboolean
++xfce_shortcuts_grabber_regrab (gpointer data)
++{
++  XfceShortcutsGrabber *grabber = data;
++  g_return_val_if_fail (XFCE_IS_SHORTCUTS_GRABBER (grabber), G_SOURCE_REMOVE);
++  g_return_val_if_fail (grabber->priv->regrab_timeout_id != 0, G_SOURCE_REMOVE);
++
++  TRACE ("Keys recently changed, regrabbing");
+   xfce_shortcuts_grabber_ungrab_all (grabber);
+   xfce_shortcuts_grabber_grab_all (grabber);
++
++  grabber->priv->regrab_timeout_id = 0;
++  return G_SOURCE_REMOVE;
+ }
+ 
+ 
+-- 
+2.20.1
+
+

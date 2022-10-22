@@ -1,0 +1,31 @@
+to check if this bug was fixed (apparently was):
+https://bugzilla.kernel.org/show_bug.cgi?id=97231#c12
+
+updated for 4.18-rc2
+updated for 5.1-rc3
+
+diff --git a/net/netfilter/nf_tables_core.c b/net/netfilter/nf_tables_core.c
+index d0f168c2670f..541b4cdcb537 100644
+--- a/net/netfilter/nf_tables_core.c
++++ b/net/netfilter/nf_tables_core.c
+@@ -173,6 +173,7 @@ nft_do_chain(struct nft_pktinfo *pkt, void *priv)
+ next_rule:
+ 	rule = *rules;
+ 	regs.verdict.code = NFT_CONTINUE;
++  BUG_ON(NULL == chain);
+ 	for (; *rules ; rules++) {
+ 		rule = *rules;
+ 		nft_rule_for_each_expr(expr, last, rule) {
+@@ -221,7 +222,12 @@ nft_do_chain(struct nft_pktinfo *pkt, void *priv)
+ 				 NFT_TRACETYPE_RULE);
+ 
+ 		chain = regs.verdict.chain;
++    if (NULL != chain) {
+ 		goto do_chain;
++    } else {
++      printk(KERN_DEBUG "avoiding oops, stackptr: %d chain: %p rule: %p\n", stackptr, chain, rule); //rulenum was removed in this commit e65eebec9c67dfd973d8b79844b992ff828d00df and maybe this won't be hit anymore?(according to that commits description)
++      break;
++    }
+ 	case NFT_CONTINUE:
+ 	case NFT_RETURN:
+ 		nft_trace_packet(&info, chain, rule,

@@ -1,0 +1,13 @@
+Index: /var/tmp/portage/sys-kernel/gentoo-sources-5.8.1/work/linux-5.8.1-gentoo/drivers/media/Kconfig
+===================================================================
+--- .orig/drivers/media/Kconfig
++++ linux-5.8.1-gentoo/drivers/media/Kconfig
+@@ -156,7 +156,7 @@ endmenu # media device types
+ 
+ 
+ menu "Media core support"
+-	visible if !MEDIA_SUPPORT_FILTER
++	visible if MEDIA_SUPPORT_FILTER
+ 
+ config VIDEO_DEV
+ 	tristate "Video4Linux core"

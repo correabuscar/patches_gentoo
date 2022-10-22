@@ -1,0 +1,68 @@
+From 55def6b3e86d829eefd476a9d6df37edd882ac71 Mon Sep 17 00:00:00 2001
+From: Arun Raghavan <arun@arunraghavan.net>
+Date: Thu, 11 Jul 2019 10:57:31 +0530
+Subject: [PATCH] svolume: Mark channel parameter as earlyclobber
+
+For all our MMX/SSE code, we use a temporary channel variable, assigned
+to the DI register, which is zero'ed as the very first operation in the
+inline assembly code, before any other code is run.
+
+With GCC 9.1, while using -O2, the DI register is also used for the
+input operand. This is perfectly legal, but causes our code to become
+incorrect because the output operand that is assigned to DI is not
+explicitly marked as being clobbered before inputs are read.
+
+This change fixes the problem by adding an earlyclobber annotation (&)
+to the DI output argument.
+---
+ src/pulsecore/svolume_mmx.c | 4 ++--
+ src/pulsecore/svolume_sse.c | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/pulsecore/svolume_mmx.c b/src/pulsecore/svolume_mmx.c
+index 5d39234f7..c5848cc0f 100644
+--- a/src/pulsecore/svolume_mmx.c
++++ b/src/pulsecore/svolume_mmx.c
+@@ -149,7 +149,7 @@ static void pa_volume_s16ne_mmx(int16_t *samples, const int32_t *volumes, unsign
+         "6:                             \n\t"
+         " emms                          \n\t"
+ 
+-        : "+r" (samples), "+r" (volumes), "+r" (length), "=D" (channel), "=&r" (temp)
++        : "+r" (samples), "+r" (volumes), "+r" (length), "=&D" (channel), "=&r" (temp)
+ #if defined (__i386__)
+         : "m" (channels)
+ #else
+@@ -228,7 +228,7 @@ static void pa_volume_s16re_mmx(int16_t *samples, const int32_t *volumes, unsign
+         "6:                             \n\t"
+         " emms                          \n\t"
+ 
+-        : "+r" (samples), "+r" (volumes), "+r" (length), "=D" (channel), "=&r" (temp)
++        : "+r" (samples), "+r" (volumes), "+r" (length), "=&D" (channel), "=&r" (temp)
+ #if defined (__i386__)
+         : "m" (channels)
+ #else
+diff --git a/src/pulsecore/svolume_sse.c b/src/pulsecore/svolume_sse.c
+index f6d638206..222ff1859 100644
+--- a/src/pulsecore/svolume_sse.c
++++ b/src/pulsecore/svolume_sse.c
+@@ -147,7 +147,7 @@ static void pa_volume_s16ne_sse2(int16_t *samples, const int32_t *volumes, unsig
+         " jne 7b                        \n\t"
+         "8:                             \n\t"
+ 
+-        : "+r" (samples), "+r" (volumes), "+r" (length), "=D" (channel), "=&r" (temp)
++        : "+r" (samples), "+r" (volumes), "+r" (length), "=&D" (channel), "=&r" (temp)
+ #if defined (__i386__)
+         : "m" (channels)
+ #else
+@@ -239,7 +239,7 @@ static void pa_volume_s16re_sse2(int16_t *samples, const int32_t *volumes, unsig
+         " jne 7b                        \n\t"
+         "8:                             \n\t"
+ 
+-        : "+r" (samples), "+r" (volumes), "+r" (length), "=D" (channel), "=&r" (temp)
++        : "+r" (samples), "+r" (volumes), "+r" (length), "=&D" (channel), "=&r" (temp)
+ #if defined (__i386__)
+         : "m" (channels)
+ #else
+-- 
+2.21.0
+

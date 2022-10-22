@@ -1,0 +1,47 @@
+will make sure the sudo password prompt for installing the pkg after building it doesn't timeout after 5mins;
+also uncache sudo credentials(sudo -K), mainly after installing deps before building!
+and do return the correct pacman exit code!
+
+diff --git a/scripts/makepkg.sh.in b/scripts/makepkg.sh.in
+index bca71c70..35c114da 100644
+--- a/scripts/makepkg.sh.in
++++ b/scripts/makepkg.sh.in
+@@ -215,6 +216,20 @@ missing_source_file() {
+ 	exit $E_MISSING_FILE
+ }
+ 
++ensure_no_sudo_timeout() {
++  # ask for sudo password before using it
++  # also makes sure it doesn't timeout and thus fail the script!
++	echo "Wants to execute next:"
++	echo "$@"
++	#will execute that, just not here and now!
++  while ! sudo -v ; do
++    echo "freaking timeout, amirite?! $(date)"
++    echo "waiting 3 sec... C-c if you really wanna"
++    sleep 3
++  done
++}
++
++
+ run_pacman() {
+ 	local cmd
+ 	if [[ $1 = -@(T|Q)*([[:alpha:]]) ]]; then
+@@ -223,6 +238,7 @@ run_pacman() {
+ 		cmd=("$PACMAN_PATH" "${PACMAN_OPTS[@]}" "$@")
+ 		if type -p sudo >/dev/null; then
+ 			cmd=(sudo "${cmd[@]}")
++      ensure_no_sudo_timeout "${cmd[@]}"
+ 		else
+ 			cmd=(su root -c "$(printf '%q ' "${cmd[@]}")")
+ 		fi
+@@ -237,6 +253,9 @@ run_pacman() {
+ 		done
+ 	fi
+ 	"${cmd[@]}"
++  local ret="$?"
++  sudo --remove-timestamp
++  return "$ret"
+ }
+ 
+ check_deps() {

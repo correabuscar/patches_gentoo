@@ -1,0 +1,216 @@
+FIXME: ok, can't use use_udev=false because we hit the 150% CPU usage for no reason thing!
+
+FIXED: re-trying use_udev=false in 77.0.3865.90-1 now, yields:
+ccache clang++ -Wl,--version-script=../../build/linux/chrome.map -fPIC -Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now -Wl,-z,defs -Wl,--as-needed -fuse-ld=lld -Wl,--icf=all -Wl,--color-diagnostics -m64 -Wl,-O2 -Wl,--gc-sections -rdynamic -pie -Wl,--disable-new-dtags -Wl,-O1,--sort-common,--as-needed,-z,relro -o "./chrome" -Wl,--start-group @"./chrome.rsp"  -Wl,--end-group   -latomic -ldl -lpthread -lrt -lX11 -lX11-xcb -lxcb -lXcomposite -lXcursor -lXdamage -lXext -lXfixes -lXi -lXrender -lXtst -lgmodule-2.0 -lgobject-2.0 -lgthread-2.0 -lglib-2.0 -ljsoncpp -licui18n -licuuc -licudata -lsmime3 -lnss3 -lnssutil3 -lplds4 -lplc4 -lnspr4 -lcups -lxml2 -lfontconfig -ldbus-1 -levent -lresolv -lgio-2.0 -lz -ljpeg -lwebpdemux -lwebpmux -lwebp -lfreetype -lexpat -lharfbuzz-subset -lharfbuzz -lre2 -lsnappy -ldrm -lXrandr -lpci -lXss -lasound -lpulse -lavcodec -lavformat -lavutil -lvpx -lm -lopus -latk-1.0 -latk-bridge-2.0 -lpangocairo-1.0 -lpango-1.0 -lcairo -latspi -lFLAC -lminizip -lgtk-3 -lgdk-3 -lcairo-gobject -lgdk_pixbuf-2.0 -lxslt -llcms2 -lopenjp2 
+ld.lld: error: undefined symbol: storage_monitor::StorageMonitor::CreateInternal()
+ >>> referenced by storage_monitor.cc:58 (../../components/storage_monitor/storage_monitor.cc:58)
+ >>>               storage_monitor/storage_monitor.o:(storage_monitor::StorageMonitor::Create(std::unique_ptr<service_manager::Connector, std::default_delete<service_manager::Connector> >)) in archive obj/components/storage_monitor/libstorage_monitor.a
+clang-8: error: linker command failed with exit code 1 (use -v to see invocation)
+ninja: build stopped: subcommand failed.
+
+
+
+can't(compile error) in 76.0.3809.132-1//also doing use_udev=false in args.gn via PKGBUILD
+
+This patch assumes use_udev=true though!
+
+now chrome://usb-internals/  Devices tab doesn't list anything
+see also chrome://device-log/  (bluetooth still there)
+
+--- a/services/device/usb/usb_service_linux.cc	2019-08-09 16:48:09.000000000 +0200
++++ b/services/device/usb/usb_service_linux.cc	2019-08-21 21:12:33.504250066 +0200
+@@ -78,7 +78,7 @@ class UsbServiceLinux::BlockingTaskRunne
+   void OnDeviceRemoved(ScopedUdevDevicePtr device) override;
+   void OnDeviceChanged(ScopedUdevDevicePtr device) override;
+ 
+-  std::unique_ptr<UdevWatcher> watcher_;
++  //std::unique_ptr<UdevWatcher> watcher_;
+ 
+   // |service_| can only be checked for validity on |task_runner_|'s sequence.
+   base::WeakPtr<UsbServiceLinux> service_;
+@@ -108,9 +108,9 @@ void UsbServiceLinux::BlockingTaskRunner
+ 
+   // Initializing udev for device enumeration and monitoring may fail. In that
+   // case this service will continue to exist but no devices will be found.
+-  watcher_ = UdevWatcher::StartWatching(this);
+-  if (watcher_)
+-    watcher_->EnumerateExistingDevices();
++//  watcher_ = UdevWatcher::StartWatching(this);
++//  if (watcher_)
++//    watcher_->EnumerateExistingDevices();
+ 
+   task_runner_->PostTask(
+       FROM_HERE, base::BindOnce(&UsbServiceLinux::HelperStarted, service_));
+
+This nullptr returner causes 150% CPU usage a few seconds after startup:
+#--- a/services/device/usb/usb_service.cc	2019-08-09 16:48:09.000000000 +0200
+#+++ b/services/device/usb/usb_service.cc	2019-08-21 21:20:55.392940471 +0200
+#@@ -45,20 +45,20 @@ constexpr base::TaskTraits UsbService::k
+# 
+# // static
+# std::unique_ptr<UsbService> UsbService::Create() {
+#-#if defined(OS_ANDROID)
+#-  return base::WrapUnique(new UsbServiceAndroid());
+#-#elif defined(USE_UDEV)
+#-  return base::WrapUnique(new UsbServiceLinux());
+#-#elif defined(OS_WIN)
+#-  if (base::FeatureList::IsEnabled(kNewUsbBackend))
+#-    return base::WrapUnique(new UsbServiceWin());
+#-  else
+#-    return base::WrapUnique(new UsbServiceImpl());
+#-#elif defined(OS_MACOSX)
+#-  return base::WrapUnique(new UsbServiceImpl());
+#-#else
+#+//#if defined(OS_ANDROID)
+#+//  return base::WrapUnique(new UsbServiceAndroid());
+#+//#elif defined(USE_UDEV)
+#+//  return base::WrapUnique(new UsbServiceLinux());
+#+//#elif defined(OS_WIN)
+#+//  if (base::FeatureList::IsEnabled(kNewUsbBackend))
+#+//    return base::WrapUnique(new UsbServiceWin());
+#+//  else
+#+//    return base::WrapUnique(new UsbServiceImpl());
+#+//#elif defined(OS_MACOSX)
+#+//  return base::WrapUnique(new UsbServiceImpl());
+#+//#else
+#   return nullptr;
+#-#endif
+#+//#endif
+# }
+# 
+# // static
+
+#--- /tmp/removable_storage_provider_linux.cc	2019-08-22 03:53:31.566039286 +0200
+#+++ chrome/browser/extensions/api/image_writer_private/removable_storage_provider_linux.cc	2019-08-22 05:09:11.943539549 +0200
+#@@ -79,7 +79,7 @@ RemovableStorageProvider::PopulateDevice
+#     if (!removable || !get_int_attr(removable)) {
+#       // This is not a removable storage device.
+#       continue;
+#-    }
+#+    }else { continue; } // hack
+# 
+#     /* Get the parent SCSI device that contains the model
+#        and manufacturer.  You can look at the hierarchy with
+
+ok a better way:
+--- a/chrome/browser/extensions/api/image_writer_private/removable_storage_provider_linux.cc	2019-08-22 03:53:31.566039286 +0200
++++ b/chrome/browser/extensions/api/image_writer_private/removable_storage_provider_linux.cc	2019-08-22 08:10:41.711273578 +0200
+@@ -61,7 +61,7 @@ RemovableStorageProvider::PopulateDevice
+   udev_list_entry* devices =
+       device::udev_enumerate_get_list_entry(enumerate.get());
+ 
+-  udev_list_entry* dev_list_entry;
++/*  udev_list_entry* dev_list_entry;
+   udev_list_entry_foreach(dev_list_entry, devices) {
+     const char* path = device::udev_list_entry_get_name(dev_list_entry);
+     device::ScopedUdevDevicePtr cur_device(
+@@ -84,7 +84,7 @@ RemovableStorageProvider::PopulateDevice
+     /* Get the parent SCSI device that contains the model
+        and manufacturer.  You can look at the hierarchy with
+        udevadm info -a -n /dev/<device> */
+-    udev_device* parent_device =
++/*    udev_device* parent_device =
+         device::udev_device_get_parent_with_subsystem_devtype(
+             cur_device.get(), "scsi", NULL);
+     if (!parent_device) {
+#@@ -106,7 +106,7 @@ RemovableStorageProvider::PopulateDevice
+#     device_item.removable = removable;
+# 
+#     device_list->data.push_back(std::move(device_item));
+#-  }
+#+  }*/
+# 
+#   return device_list;
+# }
+###ok a USE_UDEV ifdef got added(which probably means I could get away without patching this?), but still:
+@@ -112,7 +112,7 @@ RemovableStorageProvider::PopulateDevice
+     device_item.removable = removable;
+ 
+     device_list->data.push_back(std::move(device_item));
+-  }
++  }*/
+ 
+   return device_list;
+ #else
+
+
+fixing:
+ld.lld: error: undefined symbol: storage_monitor::StorageMonitor::CreateInternal()
+ >>> referenced by storage_monitor.cc:58 (../../components/storage_monitor/storage_monitor.cc:58)
+ >>>               storage_monitor/storage_monitor.o:(storage_monitor::StorageMonitor::Create(std::unique_ptr<service_manager::Connector, std::default_delete<service_manager::Connector> >)) in archive obj/components/storage_monitor/libstorage_monitor.a
+clang-8: error: linker command failed with exit code 1 (use -v to see invocation)
+ninja: build stopped: subcommand failed.
+
+this fix causes 150% CPU usage due to nullptr:
+diff --git a/components/storage_monitor/storage_monitor.cc b/components/storage_monitor/storage_monitor.cc
+index c7b2798ba42b..412d53ee07d3 100644
+--- a/components/storage_monitor/storage_monitor.cc
++++ b/components/storage_monitor/storage_monitor.cc
+@@ -55,8 +55,12 @@ void StorageMonitor::ReceiverImpl::MarkInitialized() {
+ void StorageMonitor::Create(
+     std::unique_ptr<service_manager::Connector> connector) {
+   delete g_storage_monitor;
++#if defined(USE_UDEV)
+   g_storage_monitor = CreateInternal();
+   g_storage_monitor->connector_ = std::move(connector);
++#else
++  g_storage_monitor = nullptr;
++#endif
+ }
+ 
+ service_manager::Connector* StorageMonitor::GetConnector() {
+diff --git a/components/storage_monitor/storage_monitor.h b/components/storage_monitor/storage_monitor.h
+index f7f88e6f17c3..a91a565dce39 100644
+--- a/components/storage_monitor/storage_monitor.h
++++ b/components/storage_monitor/storage_monitor.h
+@@ -160,7 +160,9 @@ class StorageMonitor {
+ 
+  private:
+   // Internal method for creating platform specific StorageMonitor.
++#if defined(USE_UDEV)
+   static StorageMonitor* CreateInternal();
++#endif
+ 
+   class ReceiverImpl;
+   friend class ReceiverImpl;
+
+
+still 150% CPU usage with:
+#diff --git a/chrome/browser/browser_process_impl.cc b/chrome/browser/browser_process_impl.cc
+#index ec674868e08c..5deb1f0b61f7 100644
+#--- a/chrome/browser/browser_process_impl.cc
+#+++ b/chrome/browser/browser_process_impl.cc
+#@@ -1151,12 +1148,12 @@ void BrowserProcessImpl::PreMainMessageLoopRun() {
+#   plugins_resource_service_->Init();
+# #endif  // BUILDFLAG(ENABLE_PLUGINS)
+# 
+#-#if !defined(OS_ANDROID)
+#-  storage_monitor::StorageMonitor::Create(
+#-      content::ServiceManagerConnection::GetForProcess()
+#-          ->GetConnector()
+#-          ->Clone());
+#-#endif
+#+//#if !defined(OS_ANDROID)
+#+//  storage_monitor::StorageMonitor::Create(
+#+//      content::ServiceManagerConnection::GetForProcess()
+#+//          ->GetConnector()
+#+//          ->Clone());
+#+//#endif
+# 
+#   CacheDefaultWebClientState();
+# 
+#diff --git a/extensions/shell/browser/shell_browser_main_parts.cc b/extensions/shell/browser/shell_browser_main_parts.cc
+#index 762d16580b65..e518c264a070 100644
+#--- a/extensions/shell/browser/shell_browser_main_parts.cc
+#+++ b/extensions/shell/browser/shell_browser_main_parts.cc
+#@@ -215,8 +215,8 @@ void ShellBrowserMainParts::PreMainMessageLoopRun() {
+#       content::GetContextFactoryPrivate());
+# #endif
+# 
+#-  storage_monitor::StorageMonitor::Create(
+#-      content::GetSystemConnector()->Clone());
+#+//  storage_monitor::StorageMonitor::Create(
+#+//      content::GetSystemConnector()->Clone());
+# 
+#   desktop_controller_.reset(
+#       browser_main_delegate_->CreateDesktopController(browser_context_.get()));

@@ -1,0 +1,141 @@
+https://bugs.freedesktop.org/show_bug.cgi?id=97914#c32
+
+From 45af73c07f5c7353a9f525c828bcfd739447f7ec Mon Sep 17 00:00:00 2001
+From: Chris Wilson <chris@chris-wilson.co.uk>
+Date: Tue, 8 Nov 2016 10:16:21 +0000
+Subject: [PATCH] i965: Only update the drawables once per cycle
+
+This prevents us from grabbing a new buffer from the Xserver halfway,
+e.g. after we have cleared the target render buffer, leaving garbage
+in the new buffer. If the drawable doesn't match when we try to swap
+later on, X will either discard the frame or fudge a copy onto the
+right output. That is better than showing garbage.
+
+Bugzilla: https://bugs.freedesktop.org/show_bug.cgi?id=98635
+Signed-off-by: Chris Wilson <chris@chris-wilson.co.uk>
+---
+ src/egl/drivers/dri2/egl_dri2.c          |  1 +
+ src/egl/drivers/dri2/platform_x11_dri3.c |  3 ++-
+ src/mesa/drivers/dri/common/dri_util.c   |  3 +++
+ src/mesa/drivers/dri/common/dri_util.h   |  2 ++
+ src/mesa/drivers/dri/i965/brw_context.h  | 12 ++++++++++++
+ src/mesa/drivers/dri/i965/intel_screen.c |  6 +++++-
+ 6 files changed, 25 insertions(+), 2 deletions(-)
+
+diff --git a/src/egl/drivers/dri2/egl_dri2.c b/src/egl/drivers/dri2/egl_dri2.c
+index 4ed8c12..26f4ee6 100644
+--- a/src/egl/drivers/dri2/egl_dri2.c
++++ b/src/egl/drivers/dri2/egl_dri2.c
+@@ -1408,6 +1408,7 @@ dri2_flush_drawable_for_swapbuffers(_EGLDisplay *disp, _EGLSurface *draw)
+          dri2_dpy->flush->flush_with_flags(dri2_ctx->dri_context,
+                                            dri_drawable,
+                                            __DRI2_FLUSH_DRAWABLE |
++                                           __DRI2_FLUSH_CONTEXT |
+                                            __DRI2_FLUSH_INVALIDATE_ANCILLARY,
+                                            __DRI2_THROTTLE_SWAPBUFFER);
+       } else {
+diff --git a/src/egl/drivers/dri2/platform_x11_dri3.c b/src/egl/drivers/dri2/platform_x11_dri3.c
+index 475ec05..fbcbb6d 100644
+--- a/src/egl/drivers/dri2/platform_x11_dri3.c
++++ b/src/egl/drivers/dri2/platform_x11_dri3.c
+@@ -410,7 +410,8 @@ dri3_swap_buffers(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *draw)
+       return 0;
+ 
+    return loader_dri3_swap_buffers_msc(&dri3_surf->loader_drawable,
+-                                       0, 0, 0, 0,
++                                       0, 0, 0,
++				       __DRI2_FLUSH_DRAWABLE | __DRI2_FLUSH_CONTEXT,
+                                        draw->SwapBehavior == EGL_BUFFER_PRESERVED) != -1;
+ }
+ 
+diff --git a/src/mesa/drivers/dri/common/dri_util.c b/src/mesa/drivers/dri/common/dri_util.c
+index 68fa0fe..93ec933 100644
+--- a/src/mesa/drivers/dri/common/dri_util.c
++++ b/src/mesa/drivers/dri/common/dri_util.c
+@@ -452,6 +452,8 @@ driCreateContextAttribs(__DRIscreen *screen, int api,
+         return NULL;
+     }
+ 
++    context->dri2.render ^= rand();
++
+     *error = __DRI_CTX_ERROR_SUCCESS;
+     return context;
+ }
+@@ -667,6 +669,7 @@ driCreateNewDrawable(__DRIscreen *screen,
+     }
+ 
+     pdraw->dri2.stamp = pdraw->lastStamp + 1;
++    pdraw->dri2.render = 0;
+ 
+     return pdraw;
+ }
+diff --git a/src/mesa/drivers/dri/common/dri_util.h b/src/mesa/drivers/dri/common/dri_util.h
+index eb761d4..98b5434 100644
+--- a/src/mesa/drivers/dri/common/dri_util.h
++++ b/src/mesa/drivers/dri/common/dri_util.h
+@@ -217,6 +217,7 @@ struct __DRIcontextRec {
+     struct {
+ 	int draw_stamp;
+ 	int read_stamp;
++	unsigned int render;
+     } dri2;
+ };
+ 
+@@ -273,6 +274,7 @@ struct __DRIdrawableRec {
+      */
+     struct {
+ 	unsigned int stamp;
++	unsigned int render;
+     } dri2;
+ };
+ 
+diff --git a/src/mesa/drivers/dri/i965/brw_context.h b/src/mesa/drivers/dri/i965/brw_context.h
+index 42bd991..bf6af1b 100644
+--- a/src/mesa/drivers/dri/i965/brw_context.h
++++ b/src/mesa/drivers/dri/i965/brw_context.h
+@@ -1364,6 +1364,18 @@ intel_update_renderbuffers(__DRIcontext *context,
+    __DRIscreen *dri_screen = context->driScreenPriv;
+    unsigned int stamp = drawable->dri2.stamp + dri_screen->dri2.stamp;
+ 
++   /* Only update the drawable the first time we use it on this frame.
++    * This prevents us from grabbing a new buffer from the Xserver halfway,
++    * e.g. after we have cleared the target render buffer, leaving garbage
++    * in the new buffer. If the drawable doesn't match when we try to swap
++    * later on, X will either discard the frame or fudge a copy onto the
++    * right output. That is better than showing garbage.
++    */
++   if (drawable->dri2.render == context->dri2.render)
++      return;
++
++   drawable->dri2.render = context->dri2.render;
++
+    if (stamp == drawable->lastStamp && !force)
+       return;
+ 
+diff --git a/src/mesa/drivers/dri/i965/intel_screen.c b/src/mesa/drivers/dri/i965/intel_screen.c
+index bb4a33e..b55c775 100644
+--- a/src/mesa/drivers/dri/i965/intel_screen.c
++++ b/src/mesa/drivers/dri/i965/intel_screen.c
+@@ -190,6 +190,9 @@ intel_dri2_flush_with_flags(__DRIcontext *cPriv,
+    if (INTEL_DEBUG & DEBUG_AUB) {
+       aub_dump_bmp(ctx);
+    }
++
++   if (flags & __DRI2_FLUSH_CONTEXT)
++      cPriv->dri2.render ^= rand();
+ }
+ 
+ /**
+@@ -202,7 +205,8 @@ static void
+ intel_dri2_flush(__DRIdrawable *drawable)
+ {
+    intel_dri2_flush_with_flags(drawable->driContextPriv, drawable,
+-                               __DRI2_FLUSH_DRAWABLE,
++                               __DRI2_FLUSH_DRAWABLE |
++                               __DRI2_FLUSH_CONTEXT,
+                                __DRI2_THROTTLE_SWAPBUFFER);
+ }
+ 
+-- 
+2.10.2
+

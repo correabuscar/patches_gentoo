@@ -1,0 +1,42 @@
+https://bugs.archlinux.org/task/64900
+running VirtualBox will always attempt to https to update.virtualbox.org
+
+ 
+--- a/src/VBox/Frontends/VirtualBox/src/net/UIUpdateDefs.cpp	2019-12-10 18:52:27.000000000 +0100
++++ b/src/VBox/Frontends/VirtualBox/src/net/UIUpdateDefs.cpp	2019-12-20 01:19:04.963713898 +0100
+@@ -65,7 +65,7 @@ QStringList VBoxUpdateData::list()
+ 
+ VBoxUpdateData::VBoxUpdateData(const QString &strData)
+     : m_strData(strData)
+-    , m_enmPeriodIndex(Period1Day)
++    , m_enmPeriodIndex(PeriodNever)
+     , m_enmBranchIndex(BranchStable)
+ {
+     decode();
+@@ -73,7 +73,7 @@ VBoxUpdateData::VBoxUpdateData(const QSt
+ 
+ VBoxUpdateData::VBoxUpdateData(PeriodType enmPeriodIndex, BranchType enmBranchIndex)
+     : m_strData(QString())
+-    , m_enmPeriodIndex(enmPeriodIndex)
++    , m_enmPeriodIndex(PeriodNever)
+     , m_enmBranchIndex(enmBranchIndex)
+ {
+     encode();
+@@ -82,7 +82,7 @@ VBoxUpdateData::VBoxUpdateData(PeriodTyp
+ bool VBoxUpdateData::isNoNeedToCheck() const
+ {
+     /* No need to check if Period == Never: */
+-    return m_enmPeriodIndex == PeriodNever;
++    return true; //was: m_enmPeriodIndex == PeriodNever;
+ }
+ 
+ bool VBoxUpdateData::isNeedToCheck() const
+@@ -110,7 +110,7 @@ QString VBoxUpdateData::data() const
+ 
+ VBoxUpdateData::PeriodType VBoxUpdateData::periodIndex() const
+ {
+-    return m_enmPeriodIndex;
++    return PeriodNever;//m_enmPeriodIndex;
+ }
+ 
+ QString VBoxUpdateData::date() const

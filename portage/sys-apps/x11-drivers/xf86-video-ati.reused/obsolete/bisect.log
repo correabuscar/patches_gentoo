@@ -1,0 +1,18 @@
+xf86-video-ati-git $ git bisect log
+git bisect start
+# good: [fdba5373522c008f43e9ca5a9e76e35c6e7ad73d] Bump version for 18.0.1 release
+git bisect good fdba5373522c008f43e9ca5a9e76e35c6e7ad73d
+# bad: [80514b7b1b88f46f3965ff023035dea83b57e652] Bump version for 18.1.0 release
+git bisect bad 80514b7b1b88f46f3965ff023035dea83b57e652
+# bad: [16ddc109660dbe813c457765eda66422fb745a3e] Remove #if 0'd code
+git bisect bad 16ddc109660dbe813c457765eda66422fb745a3e
+# good: [731d4b386a55cdb468e37b69d41284150952cf8c] Do not export the DriverRec RADEON
+git bisect good 731d4b386a55cdb468e37b69d41284150952cf8c
+# bad: [e9d2d149481e2a9c7cba50d43c6a5146124be3f2] Simplify drmmode_handle_transform
+git bisect bad e9d2d149481e2a9c7cba50d43c6a5146124be3f2
+# bad: [05390ae36a0abb19f1d533ff95a3fceaafdf79c8] Abort scanout_update_pending event when possible
+git bisect bad 05390ae36a0abb19f1d533ff95a3fceaafdf79c8
+# good: [290291a11598ba9aa594417998502b0e0ac96970] Track DRM event queue sequence number in scanout_update_pending
+git bisect good 290291a11598ba9aa594417998502b0e0ac96970
+# first bad commit: [05390ae36a0abb19f1d533ff95a3fceaafdf79c8] Abort scanout_update_pending event when possible
+

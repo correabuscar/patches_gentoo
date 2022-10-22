@@ -1,0 +1,120 @@
+before:
+$ sudo sshd -dddddddd -T |& grep -i kex  #thanks for this command to <BasketCase> on freenode irc #openssh channel
+[sudo] password for user: 
+debug3: /etc/ssh/sshd_config:106 setting KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256
+debug3: kex names ok: [curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256]
+debug3: /etc/ssh/sshd_config:108 setting KexAlgorithms curve25519-sha256@libssh.org
+debug3: kex names ok: [curve25519-sha256@libssh.org]
+kexalgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256
+
+after:
+$ sudo sshd -dddddddd -T
+debug2: load_server_config: filename /etc/ssh/sshd_config
+debug2: load_server_config: done config len = 1294
+debug2: parse_server_config: config /etc/ssh/sshd_config len 1294
+debug3: /etc/ssh/sshd_config:13 setting Port 22
+debug3: /etc/ssh/sshd_config:15 setting AddressFamily inet
+debug3: /etc/ssh/sshd_config:16 setting ListenAddress 0.0.0.0
+debug3: /etc/ssh/sshd_config:20 setting Protocol 2
+debug2: /etc/ssh/sshd_config line 20: Deprecated option Protocol
+debug3: /etc/ssh/sshd_config:28 setting HostKey /etc/ssh/ssh_host_ed25519_key
+debug3: /etc/ssh/sshd_config:40 setting LogLevel VERBOSE
+debug3: /etc/ssh/sshd_config:41 setting LoginGraceTime 30s
+debug3: /etc/ssh/sshd_config:42 setting PermitRootLogin yes
+debug3: /etc/ssh/sshd_config:43 setting StrictModes yes
+debug3: /etc/ssh/sshd_config:44 setting MaxSessions 10
+debug3: /etc/ssh/sshd_config:56 setting PubkeyAuthentication yes
+debug3: /etc/ssh/sshd_config:57 setting HostbasedAuthentication no
+debug3: /etc/ssh/sshd_config:58 setting IgnoreUserKnownHosts yes
+debug3: /etc/ssh/sshd_config:59 setting IgnoreRhosts yes
+debug3: /etc/ssh/sshd_config:60 setting PermitEmptyPasswords no
+debug3: /etc/ssh/sshd_config:61 setting AllowAgentForwarding no
+debug3: /etc/ssh/sshd_config:62 setting GatewayPorts no
+debug3: /etc/ssh/sshd_config:63 setting TCPKeepAlive yes
+debug3: /etc/ssh/sshd_config:64 setting PermitUserEnvironment no
+debug3: /etc/ssh/sshd_config:65 setting Compression delayed
+debug3: /etc/ssh/sshd_config:66 setting ClientAliveInterval 30
+debug3: /etc/ssh/sshd_config:67 setting ClientAliveCountMax 5
+debug3: /etc/ssh/sshd_config:68 setting UseDNS no
+debug3: /etc/ssh/sshd_config:69 setting PermitTunnel point-to-point
+debug3: /etc/ssh/sshd_config:70 setting Ciphers aes256-ctr
+debug3: /etc/ssh/sshd_config:73 setting AllowUsers root user
+debug3: /etc/ssh/sshd_config:74 setting DenyUsers portage a
+debug3: /etc/ssh/sshd_config:85 setting MaxAuthTries 2
+debug3: /etc/ssh/sshd_config:86 setting AuthenticationMethods keyboard-interactive:pam
+debug3: /etc/ssh/sshd_config:87 setting PasswordAuthentication no
+debug3: /etc/ssh/sshd_config:98 setting UsePAM yes
+debug3: /etc/ssh/sshd_config:100 setting ChallengeResponseAuthentication yes
+debug3: /etc/ssh/sshd_config:105 setting MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-512
+debug3: /etc/ssh/sshd_config:106 setting KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256
+debug3: kex names ok: [curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256]
+debug3: /etc/ssh/sshd_config:107 setting MACs hmac-sha2-512-etm@openssh.com
+/etc/ssh/sshd_config line 107: Ignored duplicated SSH2 mac spec line(because already encountered one already) 'hmac-sha2-512-etm@openssh.com'.
+
+
+note that only the keyname (not its value) is considered a duplicate!
+
+#diff --git a/servconf.c b/servconf.c
+#index 340045b2..f5bd23d4 100644
+#--- a/servconf.c
+#+++ b/servconf.c
+#@@ -1729,8 +1729,12 @@ process_server_config_line(ServerOptions *options, char *line,
+# 		if (*arg != '-' && !mac_valid(*arg == '+' ? arg + 1 : arg))
+# 			fatal("%s line %d: Bad SSH2 mac spec '%s'.",
+# 			    filename, linenum, arg ? arg : "<NONE>");
+#-		if (options->macs == NULL)
+#+		if (options->macs == NULL) {
+# 			options->macs = xstrdup(arg);
+#+    } else {
+#+			fatal("%s line %d: Ignored duplicated SSH2 mac spec line(because already encountered one already and first one won) '%s'.",
+#+			    filename, linenum, arg ? arg : "<NONE>");
+#+    }
+# 		break;
+# 
+# 	case sKexAlgorithms:
+#@@ -1742,8 +1746,12 @@ process_server_config_line(ServerOptions *options, char *line,
+# 		    !kex_names_valid(*arg == '+' ? arg + 1 : arg))
+# 			fatal("%s line %d: Bad SSH2 KexAlgorithms '%s'.",
+# 			    filename, linenum, arg ? arg : "<NONE>");
+#-		if (options->kex_algorithms == NULL)
+#+		if (options->kex_algorithms == NULL) {
+# 			options->kex_algorithms = xstrdup(arg);
+#+    } else {
+#+			fatal("%s line %d: Ignored duplicated SSH2 KexAlgorithm line(because already encountered one already and first one won) '%s'.",
+#+			    filename, linenum, arg ? arg : "<NONE>");
+#+    }
+# 		break;
+# 
+# 	case sSubsystem:
+Index: openssh/makepkg_pacman/openssh/src/openssh-8.1p1/servconf.c
+===================================================================
+--- openssh-8.1p1/servconf.c
++++ openssh-8.1p1/servconf.c
+@@ -1732,8 +1732,12 @@ process_server_config_line(ServerOptions
+ 		    !mac_valid(*arg == '+' || *arg == '^' ? arg + 1 : arg))
+ 			fatal("%s line %d: Bad SSH2 mac spec '%s'.",
+ 			    filename, linenum, arg ? arg : "<NONE>");
+-		if (options->macs == NULL)
++		if (options->macs == NULL) {
+ 			options->macs = xstrdup(arg);
++		} else {
++			fatal("%s line %d: Ignored duplicated SSH2 mac spec line(because already encountered one already and first one won) '%s'.",
++					filename, linenum, arg ? arg : "<NONE>");
++		}
+ 		break;
+ 
+ 	case sKexAlgorithms:
+@@ -1746,8 +1750,12 @@ process_server_config_line(ServerOptions
+ 		    arg + 1 : arg))
+ 			fatal("%s line %d: Bad SSH2 KexAlgorithms '%s'.",
+ 			    filename, linenum, arg ? arg : "<NONE>");
+-		if (options->kex_algorithms == NULL)
++		if (options->kex_algorithms == NULL) {
+ 			options->kex_algorithms = xstrdup(arg);
++		} else {
++			fatal("%s line %d: Ignored duplicated SSH2 KexAlgorithm line(because already encountered one already and first one won) '%s'.",
++					filename, linenum, arg ? arg : "<NONE>");
++		}
+ 		break;
+ 
+ 	case sSubsystem:

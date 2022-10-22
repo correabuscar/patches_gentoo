@@ -1,0 +1,46 @@
+Do you want to sync your ebuild repository with the mirror at
+rsync.gentoo.org (rsync://91.186.30.235/gentoo-portage) ? [Yes/No]
+
+although that IP may not the the one used if rsync fails the first try, it can go to the next one:
+ 91.186.30.235 rsync.gentoo.org
+ 89.238.71.6 rsync.gentoo.org
+ 2a00:1828:a00d:ffff::6 rsync.gentoo.org
+
+For example:
+#Do you want to sync your ebuild repository with the mirror at
+#rsync://89.238.71.6/gentoo-portage? [Yes/No] y
+#>>> Starting rsync with rsync://89.238.71.6/gentoo-portage...
+#>>> Checking server timestamp ...
+#glibc64:../sysdeps/posix/getaddrinfo.c:2197/getaddrinfo: rsync[3192](full:'rsync') for user root(0(eff:root(0))) 1of2 attempting to resolve (requested)hostname:
+#89.238.71.6
+#glibc64:../sysdeps/posix/getaddrinfo.c:2197/getaddrinfo: rsync[3192](full:'rsync') for user root(0(eff:root(0))) 2of2 successfully resolved requested hostname('89.238.71.6') which was not transformed('89.238.71.6') as follows:
+#89.238.71.6 89.238.71.6
+#rsync: did not see server greeting
+#rsync error: error starting client-server protocol (code 5) at main.c(1657) [Receiver=3.1.3]
+#>>> Retrying...
+#
+#
+#>>> Starting retry 1 of 1 with rsync://91.186.30.235/gentoo-portage
+#>>> Checking server timestamp ...
+#glibc64:../sysdeps/posix/getaddrinfo.c:2197/getaddrinfo: rsync[3194](full:'rsync') for user root(0(eff:root(0))) 1of2 attempting to resolve (requested)hostname:
+#91.186.30.235
+#glibc64:../sysdeps/posix/getaddrinfo.c:2197/getaddrinfo: rsync[3194](full:'rsync') for user root(0(eff:root(0))) 2of2 successfully resolved requested hostname('91.186.30.235') which was not transformed('91.186.30.235') as follows:
+#91.186.30.235 91.186.30.235
+#Welcome to boobie.gentoo.org / rsync.gentoo.org
+#
+
+those >>> are rsync.py's messages
+
+diff --git a/lib/portage/sync/modules/rsync/rsync.py b/lib/portage/sync/modules/rsync/rsync.py
+index a40e1c854..56137849f 100644
+--- a/lib/portage/sync/modules/rsync/rsync.py
++++ b/lib/portage/sync/modules/rsync/rsync.py
+@@ -315,7 +315,7 @@ class RsyncSync(NewBase):
+ 					if "--ask" in opts:
+ 						uq = UserQuery(opts)
+ 						if uq.query("Do you want to sync your ebuild repository " + \
+-							"with the mirror at\n" + blue(dosyncuri) + bold("?"),
++							"with the mirror at\n" + blue(_unicode_decode(hostname)) + " (" + blue(dosyncuri) + ") " + bold("?"),
+ 							enter_invalid) == "No":
+ 							print()
+ 							print("Quitting.")

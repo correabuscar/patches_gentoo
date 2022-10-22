@@ -1,0 +1,18 @@
+
+Index: /var/tmp/portage/sys-devel/binutils-2.35.1-r1/work/binutils-2.35.1/gold/target-reloc.h
+===================================================================
+--- .orig/gold/target-reloc.h
++++ mod/gold/target-reloc.h
+@@ -136,8 +136,10 @@ class Default_comdat_behavior
+     if (Layout::is_debug_info_section(name))
+       return CB_PRETEND;
+     if (strcmp(name, ".eh_frame") == 0
+-#define ATTR_SECTION_PREFIX ".gnu.build.attributes"
+-	|| strncmp(name, ATTR_SECTION_PREFIX, sizeof (ATTR_SECTION_PREFIX) - 1) == 0
++        || strncmp(name, ".stack_sizes", 12+1) == 0
++//#define ATTR_SECTION_PREFIX ".gnu.build.attributes"
++	//|| strncmp(name, ATTR_SECTION_PREFIX, sizeof (ATTR_SECTION_PREFIX) - 1) == 0
++        //old line: || strncmp(name, ".gnu.build.attributes", 21) == 0  // FIXME: We should really be checking the section type for ST_NOTE... // NOTE: this line(and inspiration for the above .stack_sizes line) from: https://bugzilla.redhat.com/show_bug.cgi?id=1600431#c6 ) // decided to comment out this line since I cannot repro that bug that this line supposedly fixes with GNU gold (GNU Binutils 2.31.1) 1.16 or with GNU gold (GNU Binutils 2.32) 1.16
+ 	|| strcmp(name, ".gcc_except_table") == 0)
+       return CB_IGNORE;
+     return CB_ERROR;

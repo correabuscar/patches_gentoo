@@ -1,0 +1,44 @@
+works if rust is compiled with patch make_target_cpus_work_rustside.patch
+
+//
+patch won't work due to this rust code: https://github.com/rust-lang/rust/commit/881a7246606cb6ced8ba63a8d58b7e54fed90b7c
+so it also needs to rust to be compiled with -DLLVM_RUSTLLVM as per https://github.com/rust-lang/rust/commit/ce50bedd8ce2bca3bde12f6397f6d13889d2dae1
+it's due to USE=system-llvm when compiling rust! or not, unsure, because there's no trace of LLVM_RUSTLLV in rust-1.48.0.ebuild
+
+problem is here: https://github.com/rust-lang/rust/blob/75042566d1c90d912f22e4db43b6d3af98447986/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp#L374
+
+//old info:
+will make this work:
+rustc -C target-cpu=help
+OR rustc --print target-cpus
+instead of show: "Target CPU help is not supported by this LLVM version."
+
+found a PR now: https://github.com/espressif/llvm-project/pull/27/files
+
+hmm, same info gotten via llm directly as per: https://github.com/rust-lang/rust/pull/49428#issuecomment-376662144
+$ llc -mcpu=help --mtriple=x86_64-pc-linux-gnu
+
+From 68e1e29618b2bd094d82faac16cf8e89959bbd68 Mon Sep 17 00:00:00 2001
+From: Cameron Hart <cameron.hart@gmail.com>
+Date: Sun, 10 Jul 2016 23:55:53 +1000
+Subject: [PATCH] Add accessors for MCSubtargetInfo CPU and Feature tables
+
+Index: /var/tmp/portage/sys-devel/llvm-11.0.0/work/llvm/include/llvm/MC/MCSubtargetInfo.h
+===================================================================
+--- .orig/llvm/include/llvm/MC/MCSubtargetInfo.h
++++ mod/llvm/include/llvm/MC/MCSubtargetInfo.h
+@@ -222,6 +222,14 @@ public:
+     return Found != ProcDesc.end() && StringRef(Found->Key) == CPU;
+   }
+ 
++  ArrayRef<SubtargetSubTypeKV> getCPUTable() const {
++    return ProcDesc;
++  }
++
++  ArrayRef<SubtargetFeatureKV> getFeatureTable() const {
++    return ProcFeatures;
++  }
++
+   virtual unsigned getHwMode() const { return 0; }
+ 
+   /// Return the cache size in bytes for the given level of cache.

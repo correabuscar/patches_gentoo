@@ -1,0 +1,91 @@
+this was applied originally on ArchLinux, not yet tested on Gentoo! (04dec2020)
+
+thanks to Egmont Koblinger https://gitlab.gnome.org/GNOME/vte/issues/154#note_556701
+for this info:
+Stopping/resuming processing the input is done by (dis)connect_pty_read() (not sure about their _write() counterparts).
+
+note: after applying this and updating vte3, xfce4-terminal(and gnome-terminal?) needs to be recompiled for this to have effect AND then you have to completely quit all instances of xfce4-terminal then start a new one or you won't see the change!
+
+test with vte3 directly(not using xfce4-terminal):
+$ VTE_DEBUG=selection,io /home/user/build/1packages/1unused/vte3/makepkg_pacman/vte3-git/src/vte/builddir/src/app/vte-2.91
+and just use simplified steps:
+
+a way to reproduce without any scrolling: (at xfce4-terminal command prompt)
+
+ 1. select some text via LMB (or shift+LMB, doesn't matter) - you can even hold LMB down here, it works as intended: no selection will be lost if typing during this!
+ 2. now press Shift+LMB and keep holding LMB(at least) and make sure the selection changes (ie. is extended or shrunk) otherwise this has no effect.
+ 3. press a letter or numeric key so that it appears on the command prompt.
+(if the selection got modified in step 2 then)after this step you notice that the selection is lost and the key appeared.(otherwise, if selection wasn't modified in step 2, the key appears but the selection is not lost)
+ 4. release LMB
+
+The second part of the patch is a workaround(not a fix because contents of selection can change beneath me aka during selection  but still without selection getting lost) the original case(which the simplified steps above did not cover! Thanks to Egmont Koblinger for telling me!) see https://gitlab.gnome.org/GNOME/vte/issues/154 for STR(steps to reproduce) or basically:
+$ VTE_DEBUG=selection,io,timeout,parser /home/user/build/1packages/1unused/vte3/makepkg_pacman/vte3-git/src/vte/builddir/src/app/vte-2.91
+was used to start a vte3 terminal to debug/test inside it via:
+$ ls -laR / & jobpid="$!"; sleep 1; kill -SIGINT "$jobpid" ; while true; do echo "a"; sleep 10; done
+
+
+diff --git a/src/vte.cc b/src/vte.cc
+index e7815b44..ec6fc3ad 100644
+--- a/src/vte.cc
++++ b/src/vte.cc
+@@ -7262,6 +7263,8 @@ Terminal::widget_button_press(GdkEventButton *event)
+ 				/* The whole selection code needs to be
+ 				 * rewritten.  For now, put this here to
+ 				 * fix bug 614658 */
++				/* Temporarily stop caring about input from the child. */
++				disconnect_pty_read(); 
+ 				m_selecting = TRUE;
+                                 selection_maybe_swap_endpoints (pos);
+                                 modify_selection(pos);
+#diff --git a/src/vte.cc b/src/vte.cc
+#index e7815b44..ff914df0 100644
+#--- a/src/vte.cc
+#+++ b/src/vte.cc
+#@@ -3986,12 +3988,20 @@ Terminal::process_incoming()
+# 		}
+# 		/* Deselect the current selection if its contents are changed
+# 		 * by this insertion. */
+#-                if (!m_selection_resolved.empty()) {
+#+                if (!m_selection_resolved.empty() and !m_selecting) {
+#                         //FIXMEchpe: this is atrocious
+# 			auto selection = get_selected_text();
+# 			if ((selection == nullptr) ||
+# 			    (m_selection[VTE_SELECTION_PRIMARY] == nullptr) ||
+# 			    (strcmp(selection->str, m_selection[VTE_SELECTION_PRIMARY]->str) != 0)) {
+#+          /*_vte_debug_print(VTE_DEBUG_SELECTION, "selection=%p m_selection[VTE_SELECTION_PRIMARY]=%p\n\
+#+selection->str=                         '%s'\n\
+#+m_selection[VTE_SELECTION_PRIMARY]->str='%s'\n",
+#+            selection,
+#+            m_selection[VTE_SELECTION_PRIMARY],
+#+            (selection == nullptr? "NULL":selection->str),
+#+            (m_selection[VTE_SELECTION_PRIMARY] == nullptr?"NULL":m_selection[VTE_SELECTION_PRIMARY]->str)
+#+            );*/
+# 				deselect_all();
+# 			}
+#                         if (selection)
+Index: /var/tmp/portage/x11-libs/vte-0.64.1/work/vte-0.64.1/src/vte.cc
+===================================================================
+--- vte-0.64.1/src/vte.cc
++++ vte-0.64.1/src/vte.cc
+@@ -3530,12 +3530,20 @@ Terminal::process_incoming()
+                 }
+                 /* Deselect the current selection if its contents are changed
+                  * by this insertion. */
+-                if (!m_selection_resolved.empty()) {
++                if (!m_selection_resolved.empty() and !m_selecting) {
+                         //FIXMEchpe: this is atrocious
+                         auto selection = get_selected_text();
+                         if ((selection == nullptr) ||
+                             (m_selection[vte::to_integral(vte::platform::ClipboardType::PRIMARY)] == nullptr) ||
+                             (strcmp(selection->str, m_selection[vte::to_integral(vte::platform::ClipboardType::PRIMARY)]->str) != 0)) {
++          /*_vte_debug_print(VTE_DEBUG_SELECTION, "selection=%p m_selection[VTE_SELECTION_PRIMARY]=%p\n\
++selection->str=                         '%s'\n\
++m_selection[VTE_SELECTION_PRIMARY]->str='%s'\n",
++            selection,
++            m_selection[VTE_SELECTION_PRIMARY],
++            (selection == nullptr? "NULL":selection->str),
++            (m_selection[VTE_SELECTION_PRIMARY] == nullptr?"NULL":m_selection[VTE_SELECTION_PRIMARY]->str)
++            );*/
+                                 deselect_all();
+                         }
+                         if (selection)

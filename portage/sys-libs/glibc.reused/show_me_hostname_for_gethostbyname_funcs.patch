@@ -1,0 +1,116 @@
+diff -upr glibc-2.27.orig/inet/gethstbynm2.c glibc-2.27/inet/gethstbynm2.c
+--- glibc-2.27.orig/inet/gethstbynm2.c	2018-02-01 17:17:18.000000000 +0100
++++ glibc-2.27/inet/gethstbynm2.c	2018-04-26 12:43:21.125725772 +0200
+@@ -24,6 +24,7 @@
+ #include <netinet/in.h>
+ 
+ 
++#define _mumu_gethostbyname 1//added by je
+ #define LOOKUP_TYPE	struct hostent
+ #define FUNCTION_NAME	gethostbyname2
+ #define DATABASE_NAME	hosts
+diff -upr glibc-2.27.orig/inet/gethstbynm2_r.c glibc-2.27/inet/gethstbynm2_r.c
+--- glibc-2.27.orig/inet/gethstbynm2_r.c	2018-02-01 17:17:18.000000000 +0100
++++ glibc-2.27/inet/gethstbynm2_r.c	2018-04-26 12:44:11.558091751 +0200
+@@ -24,6 +24,7 @@
+ #include <netinet/in.h>
+ #include <resolv/res_hconf.h>
+ 
++#define _mumu_gethostbyname_r 1//added by je
+ #define LOOKUP_TYPE	struct hostent
+ #define FUNCTION_NAME	gethostbyname2
+ #define DATABASE_NAME	hosts
+diff -upr glibc-2.27.orig/inet/gethstbynm.c glibc-2.27/inet/gethstbynm.c
+--- glibc-2.27.orig/inet/gethstbynm.c	2018-02-01 17:17:18.000000000 +0100
++++ glibc-2.27/inet/gethstbynm.c	2018-04-26 12:43:25.861666233 +0200
+@@ -24,6 +24,7 @@
+ #include <netinet/in.h>
+ 
+ 
++#define _mumu_gethostbyname 1//added by je
+ #define LOOKUP_TYPE	struct hostent
+ #define FUNCTION_NAME	gethostbyname
+ #define DATABASE_NAME	hosts
+diff -upr glibc-2.27.orig/inet/gethstbynm_r.c glibc-2.27/inet/gethstbynm_r.c
+--- glibc-2.27.orig/inet/gethstbynm_r.c	2018-02-01 17:17:18.000000000 +0100
++++ glibc-2.27/inet/gethstbynm_r.c	2018-04-26 12:44:21.390968135 +0200
+@@ -24,6 +24,7 @@
+ #include <netinet/in.h>
+ #include <resolv/res_hconf.h>
+ 
++#define _mumu_gethostbyname_r 1//added by je
+ #define LOOKUP_TYPE	struct hostent
+ #define FUNCTION_NAME	gethostbyname
+ #define DATABASE_NAME	hosts
+diff -upr glibc-2.27.orig/nscd/gethstbynm3_r.c glibc-2.27/nscd/gethstbynm3_r.c
+--- glibc-2.27.orig/nscd/gethstbynm3_r.c	2018-02-01 17:17:18.000000000 +0100
++++ glibc-2.27/nscd/gethstbynm3_r.c	2018-04-26 12:44:48.457627861 +0200
+@@ -23,6 +23,7 @@
+ #include <netinet/in.h>
+ 
+ 
++#define _mumu_gethostbyname_r 1//added by je
+ #define LOOKUP_TYPE	struct hostent
+ #define FUNCTION_NAME	gethostbyname3
+ #define FUNCTION2_NAME	gethostbyname2
+diff -upr glibc-2.27.orig/nss/getXXbyYY.c glibc-2.27/nss/getXXbyYY.c
+--- glibc-2.27.orig/nss/getXXbyYY.c	2018-02-01 17:17:18.000000000 +0100
++++ glibc-2.27/nss/getXXbyYY.c	2018-04-26 12:46:47.912126115 +0200
+@@ -21,6 +21,8 @@
+ #include <stdlib.h>
+ #include <resolv.h>
+ 
++#include <syslog.h> //for syslog, below
++
+ #include "nsswitch.h"
+ 
+ /*******************************************************************\
+@@ -99,6 +101,16 @@ FUNCTION_NAME (ADD_PARAMS)
+   int h_errno_tmp = 0;
+ #endif
+ 
++  //additions block starts:
++#if defined(_mumu_gethostbyname)
++  #define ASSTR_RND22985(two) # two
++  #define ASSTR_RND78(name) ASSTR_RND22985(name)
++  openlog(NULL, LOG_CONS | LOG_NDELAY | LOG_PERROR, LOG_LOCAL1);
++  syslog(LOG_NOTICE, "!! FUNCTION_NAME == '%s' hostname='%s'", ASSTR_RND78(FUNCTION_NAME), name); //list: getgrgid_r getgrgid_r getgrnam_r gethostbyaddr_r gethostbyname2_r gethostbyname_r getprotobyname_r getpwnam_r getpwnam_r getpwuid_r getpwuid_r getspnam_r (via dmesg --color=always --nopager --notime|grep REENTRANT_NAME|cut -f3 -d '='|tr -d "'"|tr -d ' '|sort -u|tr '\n' ' ';echo)
++  closelog();
++#endif
++  //additions block ends.
++
+ #ifdef HANDLE_DIGITS_DOTS
+   /* Wrap both __nss_hostname_digits_dots and the actual lookup
+      function call in the same context.  */
+diff -upr glibc-2.27.orig/nss/getXXbyYY_r.c glibc-2.27/nss/getXXbyYY_r.c
+--- glibc-2.27.orig/nss/getXXbyYY_r.c	2018-02-01 17:17:18.000000000 +0100
++++ glibc-2.27/nss/getXXbyYY_r.c	2018-04-26 12:47:34.789536786 +0200
+@@ -20,6 +20,9 @@
+ #include <atomic.h>
+ #include <errno.h>
+ #include <stdbool.h>
++
++#include <syslog.h> //for syslog, below
++
+ #include "nsswitch.h"
+ #include "sysdep.h"
+ #ifdef USE_NSCD
+@@ -211,6 +214,18 @@ INTERNAL (REENTRANT_NAME) (ADD_PARAMS, L
+   bool any_service = false;
+ #endif
+ 
++  //additions block starts:
++#if defined(_mumu_gethostbyname_r)
++  #define ASSTR_RND22985(two) # two
++  #define ASSTR_RND78(name) ASSTR_RND22985(name)
++//#if ASSTR_RND78(REENTRANT_NAME) == "gethostbyname2_r" || ASSTR_RND78(REENTRANT_NAME) == "gethostbyname_r" || REENTRANT_NAME == gethostbyname2_r || REENTRANT_NAME == gethostbyname_r//yes, ptr comparison should be ok due to static strings deduplication that gcc does, rite?
++  openlog(NULL, LOG_CONS | LOG_NDELAY | LOG_PERROR, LOG_LOCAL1);
++  syslog(LOG_NOTICE, "!! REENTRANT_NAME == '%s' hostname='%s'", ASSTR_RND78(REENTRANT_NAME), name); //list: getgrgid_r getgrgid_r getgrnam_r gethostbyaddr_r gethostbyname2_r gethostbyname_r getprotobyname_r getpwnam_r getpwnam_r getpwuid_r getpwuid_r getspnam_r (via dmesg --color=always --nopager --notime|grep REENTRANT_NAME|cut -f3 -d '='|tr -d "'"|tr -d ' '|sort -u|tr '\n' ' ';echo)
++  closelog();
++#endif
++  //additions block ends.
++
++
+ #ifdef NEED__RES
+   /* The HANDLE_DIGITS_DOTS case below already needs the resolver
+      configuration, so this has to happen early.  */

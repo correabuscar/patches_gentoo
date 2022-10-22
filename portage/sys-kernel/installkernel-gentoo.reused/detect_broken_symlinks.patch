@@ -1,0 +1,30 @@
+fixed in installkernel-gentoo-3 by using -L instead of -h which are equivalent ie. aliases
+
+installkernel won't update broken symlinks
+eg. vmlinuz -> hdlsakhdla
+won't be updated because test -f will fail on it
+but test -h won't
+
+This applied to gentoo(didn't exist on manjaro)
+(originally it was on debianutils package which had installkernel, but now it's sys-kernel/installkernel-gentoo package which has it, so I updated the patch for this package!)
+
+installkernel isn't part of debianutils(on gentoo) anymore, as per: https://bugs.gentoo.org/702164
+it's part of package: sys-kernel/installkernel-gentoo
+
+https://github.com/mgorny/installkernel-gentoo/issues/2
+
+here's the patch:
+
+Index: /var/tmp/portage/sys-kernel/installkernel-gentoo-2/work/installkernel-gentoo-2/installkernel
+===================================================================
+--- installkernel-gentoo-2/installkernel
++++ installkernel-gentoo-2/installkernel
+@@ -42,7 +42,7 @@ updatever () {
+   cat "$2" > "$dir/$1-$ver$3"
+ 
+   # This section is for backwards compatibility only
+-  if test -f "$dir/$1$3" ; then
++  if test -f "$dir/$1$3" || test -h "$dir/$1$3"; then
+     # The presence of "$dir/$1$3" is unusual in modern intallations, and
+     # the results are mostly unused.  So only recreate them if they
+     # already existed.

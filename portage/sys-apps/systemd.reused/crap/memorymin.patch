@@ -1,0 +1,14 @@
+no effect, memory.min is still 0
+diff --git a/src/core/load-fragment.c b/src/core/load-fragment.c
+index 3288b0b838..ba7a9ba046 100644
+--- a/src/core/load-fragment.c
++++ b/src/core/load-fragment.c
+@@ -3185,6 +3185,8 @@ int config_parse_memory_limit(
+                 }
+         }
+ 
++        c->default_memory_min_set = true;
++        c->default_memory_min = CGROUP_LIMIT_MAX;
+         if (streq(lvalue, "DefaultMemoryLow")) {
+                 c->default_memory_low_set = true;
+                 if (isempty(rvalue))

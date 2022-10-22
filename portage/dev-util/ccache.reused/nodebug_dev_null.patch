@@ -1,0 +1,40 @@
+diff --git a/src/ccache.cpp b/src/ccache.cpp
+index 5560e1c4..2c8d53d9 100644
+--- a/src/ccache.cpp
++++ b/src/ccache.cpp
+@@ -373,7 +373,7 @@ static void
+ dump_debug_log_buffer_exitfn(void* context)
+ {
+   Context& ctx = *static_cast<Context*>(context);
+-  if (!ctx.config.debug()) {
++  if ((!ctx.config.debug()) || (std::string("/dev/null").compare(ctx.args_info.output_obj) == 0)) {
+     return;
+   }
+ 
+@@ -389,7 +389,7 @@ init_hash_debug(const Context& ctx,
+                 const char* section_name,
+                 FILE* debug_text_file)
+ {
+-  if (!ctx.config.debug()) {
++  if ((!ctx.config.debug()) || (std::string("/dev/null").compare(ctx.args_info.output_obj) == 0)) {
+     return;
+   }
+ 
+@@ -3533,7 +3533,7 @@ do_cache_compilation(Context& ctx, char* argv[])
+   }
+   MTR_END("main", "clean_up_internal_tempdir");
+ 
+-  if (!ctx.config.log_file().empty() || ctx.config.debug()) {
++  if (!ctx.config.log_file().empty() || (ctx.config.debug()&&(std::string("/dev/null").compare(ctx.args_info.output_obj) != 0))) {
+     ctx.config.visit_items(configuration_logger);
+   }
+ 
+@@ -3613,7 +3613,7 @@ do_cache_compilation(Context& ctx, char* argv[])
+   exitfn_add_last(dump_debug_log_buffer_exitfn, &ctx);
+ 
+   FILE* debug_text_file = nullptr;
+-  if (ctx.config.debug()) {
++  if ((ctx.config.debug())&&(std::string("/dev/null").compare(ctx.args_info.output_obj) != 0)) {
+     std::string path =
+       fmt::format("{}.ccache-input-text", ctx.args_info.output_obj);
+     debug_text_file = fopen(path.c_str(), "w");

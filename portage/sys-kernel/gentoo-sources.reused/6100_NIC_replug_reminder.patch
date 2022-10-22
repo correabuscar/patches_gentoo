@@ -1,0 +1,15 @@
+NIC_replug_reminder.patch #just in case you either apply NIC_replug.patch twice(because 5.5.5 already has it, and 'patch' will apply it either way!) or you forgot to apply it!
+
+diff --git a/drivers/net/phy/phy-core.c b/drivers/net/phy/phy-core.c
+index 769a076514b0..efe7309f80f7 100644
+--- a/drivers/net/phy/phy-core.c
++++ b/drivers/net/phy/phy-core.c
+@@ -697,7 +697,7 @@ EXPORT_SYMBOL_GPL(phy_modify_mmd);
+ 
+ static int __phy_read_page(struct phy_device *phydev)
+ {
+-	if (WARN_ONCE(!phydev->drv->read_page, "read_page callback not available, PHY driver not loaded?\n"))
++	if (WARN_ONCE(!phydev->drv->read_page, "read_page callback not available, PHY driver not loaded? (actually this means it loaded the generic PHY driver on Z575 laptop(ie. 'Generic PHY r8169-100:00: attached PHY driver [Generic PHY]', instead of the one that it should (ie. 'RTL8208 Fast Ethernet r8169-100:00: attached PHY driver [RTL8208 Fast Ethernet]' as per the fixes in 5.5.5(or 5.5) stable kernel, or the NIC_replug.patch in 5.4.21 that I added from https://bugzilla.kernel.org/show_bug.cgi?id=202103)\n"))
+ 		return -EOPNOTSUPP;
+ 
+ 	return phydev->drv->read_page(phydev);

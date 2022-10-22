@@ -1,0 +1,50 @@
+this patch is to be applied on top of sys-apps/portage-2.3.96-r1
+thanks to <grknight> on #gentoo freenode irc for leading me to this .portage_user_patches_applied file instead of .unpacked
+
+ <dwfreed> that file is touched to indicate eapply_user was *run*
+ <dwfreed> eapply_user does not necessarily apply any patches
+ <dwfreed> but all that portage cares about is that eapply_user was run
+
+Index: /usr/lib/portage/python3.6/phase-helpers.sh
+===================================================================
+--- orig/bin/phase-helpers.sh
++++ mod/bin/phase-helpers.sh
+@@ -1094,7 +1094,6 @@ if ___eapi_has_eapply_user; then
+ 		# keep path in __dyn_prepare in sync!
+ 		local tagfile=${T}/.portage_user_patches_applied
+ 		[[ -f ${tagfile} ]] && return
+-		>> "${tagfile}"
+ 
+ 		local basedir=${PORTAGE_CONFIGROOT%/}/etc/portage/patches
+ 
+#@@ -1138,6 +1137,7 @@ if ___eapi_has_eapply_user; then
+# 
+# 		${prev_shopt}
+# 
+#+		>> "${tagfile}"  #ok so this means that file is created either if all patches applied successfully or if there were no patches to apply, either way this is done only when successful!
+# 		[[ -n ${applied} ]] && ewarn "User patches applied."
+# 	}
+# fi
+
+Index: /var/tmp/portage/sys-apps/portage-3.0.30-r1/work/portage-3.0.30/bin/phase-helpers.sh
+===================================================================
+--- portage-3.0.30/bin/phase-helpers.sh
++++ portage-3.0.30/bin/phase-helpers.sh
+@@ -1182,16 +1182,17 @@ if ___eapi_has_eapply_user; then
+ 					applied=1
+ 				fi
+ 			done < <(printf -- '%s\0' "${!_eapply_user_patches[@]}" |
+ 				LC_ALL=C sort -z)
+ 		fi
+ 
+ 		${prev_shopt}
+ 
++		>> "${tagfile}"  #ok so this means that file is created either if all patches applied successfully or if there were no patches to apply, either way this is done only when successful!
+ 		if [[ -n ${applied} ]]; then
+ 			einfo "User patches applied."
+ 			einfo "${PORTAGE_COLOR_INFO}$(for ((column = 0; column < ${columns} - 3; column++)); do echo -n =; done)${PORTAGE_COLOR_NORMAL}"
+ 		fi
+ 	}
+ fi
+ 
+ if ___eapi_has_in_iuse; then

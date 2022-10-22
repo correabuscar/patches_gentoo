@@ -1,0 +1,214 @@
+also posted it in: https://superuser.com/questions/706042/how-can-i-diff-binary-files-in-git/1741622#1741622
+
+Index: /var/tmp/portage/dev-vcs/git-2.37.3/work/git-2.37.3/diff.c
+===================================================================
+--- git-2.37.3/diff.c
++++ git-2.37.3/diff.c
+@@ -743,7 +743,8 @@ enum diff_symbol {
+ 	DIFF_SYMBOL_NO_LF_EOF,
+ 	DIFF_SYMBOL_CONTEXT_FRAGINFO,
+ 	DIFF_SYMBOL_CONTEXT_MARKER,
+-	DIFF_SYMBOL_SEPARATOR
++	DIFF_SYMBOL_SEPARATOR,
++  DIFF_SYMBOL_BINARY_HEXDUMP_DIFF_HEADER,
+ };
+ /*
+  * Flags for content lines:
+@@ -1472,6 +1473,9 @@ static void emit_diff_symbol_from_struct
+ 	case DIFF_SYMBOL_BINARY_DIFF_HEADER:
+ 		fprintf(o->file, "%sGIT binary patch\n", diff_line_prefix(o));
+ 		break;
++	case DIFF_SYMBOL_BINARY_HEXDUMP_DIFF_HEADER:
++		fprintf(o->file, "%sGIT binary hexdump (non-reusable, for human eyes only) patch\n", diff_line_prefix(o));
++		break;
+ 	case DIFF_SYMBOL_BINARY_DIFF_HEADER_DELTA:
+ 		fprintf(o->file, "%sdelta %s\n", diff_line_prefix(o), line);
+ 		break;
+@@ -3237,10 +3241,11 @@ static void emit_binary_diff_body(struct
+ 				  mmfile_t *one, mmfile_t *two)
+ {
+ 	void *cp;
+-	void *delta;
++	void *delta,*plaindelta;
++  char *hexdump_ptr;
+ 	void *deflated;
+ 	void *data;
+-	unsigned long orig_size;
++	unsigned long orig_size,hexdump_size;
+ 	unsigned long delta_size;
+ 	unsigned long deflate_size;
+ 	unsigned long data_size;
+@@ -3249,20 +3254,31 @@ static void emit_binary_diff_body(struct
+ 	 * whichever is smaller.
+ 	 */
+ 	delta = NULL;
++  plaindelta=NULL;
++  hexdump_ptr=NULL;
++  hexdump_size=0;
+ 	deflated = deflate_it(two->ptr, two->size, &deflate_size);
+ 	if (one->size && two->size) {
+-		delta = diff_delta(one->ptr, one->size,
++		plaindelta = diff_delta(one->ptr, one->size,
+ 				   two->ptr, two->size,
+ 				   &delta_size, deflate_size);
+-		if (delta) {
+-			void *to_free = delta;
++		if (plaindelta) {
++			//void *to_free = plaindelta;
+ 			orig_size = delta_size;
+-			delta = deflate_it(delta, delta_size, &delta_size);
+-			free(to_free);
++			delta = deflate_it(plaindelta, delta_size, &delta_size);
++			//free(to_free);
++      if (!(o->output_format & DIFF_FORMAT_HEXDUMP)) {
++        free(plaindelta);
++        plaindelta=NULL;
++      }
+ 		}
+ 	}
+ 
+ 	if (delta && delta_size < deflate_size) {
++    //using delta (z packed aka deflated)
++    // show plaindelta & orig_size
++    hexdump_ptr=plaindelta;
++    hexdump_size=orig_size;
+ 		char *s = xstrfmt("%"PRIuMAX , (uintmax_t)orig_size);
+ 		emit_diff_symbol(o, DIFF_SYMBOL_BINARY_DIFF_HEADER_DELTA,
+ 				 s, strlen(s), 0);
+@@ -3271,6 +3287,10 @@ static void emit_binary_diff_body(struct
+ 		data = delta;
+ 		data_size = delta_size;
+ 	} else {
++    //using deflated two (the second file, z packed ie. gzipped or similar)
++    // show two->ptr & two->size
++    hexdump_ptr=two->ptr;
++    hexdump_size=two->size;
+ 		char *s = xstrfmt("%lu", two->size);
+ 		emit_diff_symbol(o, DIFF_SYMBOL_BINARY_DIFF_HEADER_LITERAL,
+ 				 s, strlen(s), 0);
+@@ -3280,6 +3300,64 @@ static void emit_binary_diff_body(struct
+ 		data_size = deflate_size;
+ 	}
+ 
++  if (o->output_format & DIFF_FORMAT_HEXDUMP) {
++#define LINELEN 16
++#define LINELENPLUSZERO (LINELEN+1)
++#define UNPRINTABLECHAR '.'
++    char line[LINELENPLUSZERO];
++    memset(line,'\0',LINELENPLUSZERO);
++    //line[LINELEN]=0;
++    assert(0 == line[LINELEN]);
++    int i=0;
++    const unsigned long origlen=hexdump_size;
++    for (; i<origlen; i++) {
++      const char c=hexdump_ptr[i];
++      const int mod=i%16;
++      if (isprint(c)) {
++        line[mod]=c;
++      } else {
++        line[mod]=UNPRINTABLECHAR;
++      }
++      fprintf(o->file,"%02X ", c & 0xff);
++      if (i>0){
++        if ((i+1) % 8==0) {
++          fprintf(o->file," ");
++        }
++        if ((i+1) % 16==0) {
++          assert(0 == line[16]);
++          fprintf(o->file," |%s|\n",line);
++        }
++      }
++    }
++    int weat=i%16;
++    if (weat != 0) {
++      line[weat]=0;
++      if (weat<8){
++        fprintf(o->file," ");
++      }
++      for (int i=weat;i<16;i++) {
++        fprintf(o->file,"   ");
++      }
++      fprintf(o->file," ");
++      fprintf(o->file," |%s",line);
++      for (int i=weat;i<16;i++) {
++        fprintf(o->file," ");
++      }
++      fprintf(o->file,"|\n");
++    }
++    //for (int i=0; i<origlen; i++) {
++    //  printf("%02X ",fp[i] & 0xff);
++    //}
++    //fprintf(o->file,"\n");//this is FOOTER below
++    //emit_diff_symbol(o, DIFF_SYMBOL_BINARY_DIFF_BODY,
++    //		 line, len, 0);
++
++    if (plaindelta) {
++      free(plaindelta);
++      plaindelta=NULL;
++    }
++  } else { //not re-indenting the below, for an easier-on-the-eyes patch.
++
+ 	/* emit data encoded in base85 */
+ 	cp = data;
+ 	while (data_size) {
+@@ -3301,6 +3379,7 @@ static void emit_binary_diff_body(struct
+ 		emit_diff_symbol(o, DIFF_SYMBOL_BINARY_DIFF_BODY,
+ 				 line, len, 0);
+ 	}
++  }
+ 	emit_diff_symbol(o, DIFF_SYMBOL_BINARY_DIFF_FOOTER, NULL, 0, 0);
+ 	free(data);
+ }
+@@ -3308,7 +3387,11 @@ static void emit_binary_diff_body(struct
+ static void emit_binary_diff(struct diff_options *o,
+ 			     mmfile_t *one, mmfile_t *two)
+ {
+-	emit_diff_symbol(o, DIFF_SYMBOL_BINARY_DIFF_HEADER, NULL, 0, 0);
++  if (o->output_format & DIFF_FORMAT_HEXDUMP) {
++    emit_diff_symbol(o, DIFF_SYMBOL_BINARY_HEXDUMP_DIFF_HEADER, NULL, 0, 0);
++  } else {
++    emit_diff_symbol(o, DIFF_SYMBOL_BINARY_DIFF_HEADER, NULL, 0, 0);
++  }
+ 	emit_binary_diff_body(o, one, two);
+ 	emit_binary_diff_body(o, two, one);
+ }
+@@ -4710,7 +4793,7 @@ void diff_setup_done(struct diff_options
+ 				      DIFF_FORMAT_NAME_STATUS |
+ 				      DIFF_FORMAT_CHECKDIFF |
+ 				      DIFF_FORMAT_NO_OUTPUT))
+-		options->output_format &= ~(DIFF_FORMAT_RAW |
++		options->output_format &= ~(DIFF_FORMAT_RAW | DIFF_FORMAT_HEXDUMP | //this clears these bits
+ 					    DIFF_FORMAT_NUMSTAT |
+ 					    DIFF_FORMAT_DIFFSTAT |
+ 					    DIFF_FORMAT_SHORTSTAT |
+@@ -5389,6 +5472,9 @@ static void prep_parse_options(struct di
+ 		OPT_BIT_F(0, "raw", &options->output_format,
+ 			  N_("generate the diff in raw format"),
+ 			  DIFF_FORMAT_RAW, PARSE_OPT_NONEG),
++		OPT_BIT_F(0, "hexdump", &options->output_format,
++			  N_("generate the diff in hexdump format for human eyes only(ie. can't git apply it!)"),
++			  DIFF_FORMAT_PATCH | DIFF_FORMAT_HEXDUMP, PARSE_OPT_NONEG),
+ 		OPT_BITOP(0, "patch-with-raw", &options->output_format,
+ 			  N_("synonym for '-p --raw'"),
+ 			  DIFF_FORMAT_PATCH | DIFF_FORMAT_RAW,
+@@ -6755,7 +6841,7 @@ void diffcore_std(struct diff_options *o
+ {
+ 	int output_formats_to_prefetch = DIFF_FORMAT_DIFFSTAT |
+ 		DIFF_FORMAT_NUMSTAT |
+-		DIFF_FORMAT_PATCH |
++		DIFF_FORMAT_PATCH | //DIFF_FORMAT_HEXDUMP | //we don't use hexdump here because it implies DIFF_FORMAT_PATCH.
+ 		DIFF_FORMAT_SHORTSTAT |
+ 		DIFF_FORMAT_DIRSTAT;
+ 
+Index: /var/tmp/portage/dev-vcs/git-2.37.3/work/git-2.37.3/diff.h
+===================================================================
+--- git-2.37.3/diff.h
++++ git-2.37.3/diff.h
+@@ -103,6 +103,7 @@ typedef struct strbuf *(*diff_prefix_fn_
+ #define DIFF_FORMAT_PATCH	0x0010
+ #define DIFF_FORMAT_SHORTSTAT	0x0020
+ #define DIFF_FORMAT_DIRSTAT	0x0040
++#define DIFF_FORMAT_HEXDUMP	0x0080
+ 
+ /* These override all above */
+ #define DIFF_FORMAT_NAME	0x0100

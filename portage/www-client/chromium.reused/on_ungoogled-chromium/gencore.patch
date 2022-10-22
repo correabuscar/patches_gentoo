@@ -1,0 +1,33 @@
+#--- a/base/debug/stack_trace_posix.cc	2019-09-22 15:33:26.738557313 +0200
+#+++ b/base/debug/stack_trace_posix.cc	2019-09-22 15:34:05.450070644 +0200
+#@@ -426,8 +426,9 @@ void StackDumpSignalHandler(int signal,
+#   // Non-Mac OSes should probably reraise the signal as well, but the Linux
+#   // sandbox tests break on CrOS devices.
+#   // https://code.google.com/p/chromium/issues/detail?id=551681
+#-  PrintToStderr("Calling _exit(1). Core file will not be generated.\n");
+#-  _exit(1);
+#+  PrintToStderr("Not calling _exit(1). Core file will be generated.\n");
+#+//  PrintToStderr("Calling _exit(1). Core file will not be generated.\n");
+#+//  _exit(1);
+# #endif  // defined(OS_MACOSX) && !defined(OS_IOS)
+# }
+# 
+
+diff --git a/base/debug/stack_trace_posix.cc b/base/debug/stack_trace_posix.cc
+index f4ddf9c1e0aa..5b967c0b8332 100644
+--- a/base/debug/stack_trace_posix.cc
++++ b/base/debug/stack_trace_posix.cc
+@@ -425,9 +425,10 @@ void StackDumpSignalHandler(int signal, siginfo_t* info, void* void_context) {
+ #else
+   // Non-Mac OSes should probably reraise the signal as well, but the Linux
+   // sandbox tests break on CrOS devices.
+-  // https://code.google.com/p/chromium/issues/detail?id=551681
+-  PrintToStderr("Calling _exit(1). Core file will not be generated.\n");
+-  _exit(1);
++  // https://code.9oo91e.qjz9zk/p/chromium/issues/detail?id=551681
++  PrintToStderr("Not calling _exit(1). Core file will be generated.\n");
++  //PrintToStderr("Calling _exit(1). Core file will not be generated.\n");
++  //_exit(1);
+ #endif  // defined(OS_MACOSX) && !defined(OS_IOS)
+ }
+ 

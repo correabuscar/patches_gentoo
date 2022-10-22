@@ -1,0 +1,566 @@
+
+source "/swcode/swcode.bash"
+
+if is_i87k; then
+  BUILD_DEBUG=1 #any non '0' value means enable debug mode!
+elif is_Z575; then
+  BUILD_DEBUG=0 #any non '0' value means enable debug mode!
+fi
+
+groups=('builtbydaddy')
+#^src:https://wiki.archlinux.org/index.php/Arch_Build_System#Preserve_modified_packages
+
+# Maintainer:  Bartłomiej Piotrowski <bpiotrowski@archlinux.org>
+# Contributor: Allan McRae <allan@archlinux.org>
+
+# toolchain build order: linux-api-headers->glibc->binutils->gcc->binutils->glibc
+# NOTE: valgrind requires rebuilt with each major glibc version
+
+ALSO_BUILD_32_BIT_STUFF=1  #needed for virtualbox building!
+#STUCK_TO_SPECIFIC_VERSION=2.29
+STUCK_TO_SPECIFIC_VERSION=git
+#^ use 'git'(or undefined, or empty value) to always get latest git version, or use a version number like '2.27' to get tag glibc-2.27 (see `git tag` in /home/user/build/1packages/4used/glibc/makepkg_pacman/glibc/src/glibc  for possible values!)
+APPLY_PATCHES_ONLY_TO_GIT_VERSION=1 #set to 0 to apply to any version that is specified in $STUCK_TO_SPECIFIC_VERSION , not just to git version! set to 1 to only apply when using git version
+
+pkgbase=glibc
+pkgname=(glibc)
+if pacman -Qsq lib32-glibc >/dev/null; then
+  build32=1
+else
+  build32=0
+fi
+if test "$ALSO_BUILD_32_BIT_STUFF" == "1"; then
+  build32=1
+fi
+if test "$build32" == "1"; then
+  pkgname+=(lib32-glibc)
+fi
+
+pkgver=2.31.9000.r308.ga9d42c09a32
+pkgrel=1
+arch=(x86_64)
+url='https://www.gnu.org/software/libc'
+license=(GPL LGPL)
+makedepends=(git 
+#gd #it's vulnerable: https://security.archlinux.org/AVG-865
+python bison)
+if test "$build32" == "1"; then
+makedepends+=(lib32-gcc-libs)
+fi
+options=(!strip staticlibs)
+if test "x$BUILD_DEBUG" != "x0"; then
+  options+=(debug)
+  #^ uses /etc/makepkg.conf DEBUG_* env. flags for CFLAGS etc.
+  #FIXME: this may not work because "!debug' already exists in the array from /etc/makepkg.conf ? or why else would this report it as "!debug" ?? this: /home/user/build/1packages/4used/glibc/makepkg_pacman/glibc/pkg/glibc/.BUILDINFO
+fi
+
+allpatches=(
+    bz20338.patch
+#        bz23497.patch
+#    0001-Revert-elf-Correct-absolute-SHN_ABS-symbol-run-time-.patch #seems already upstream!
+    #file-truncated-while-reading-soname-after-patchelf.patch #already upstream
+
+    show_getaddrinfo_requests.patch
+    show_getnameinfo_requests.patch
+#show_me_the_func.patch #temp debug
+    show_me_hostname_for_gethostbyname_funcs.patch
+    #deny_some_bad_modes_on_creation.patch #doesn't work, but just use -D_FORTIFY_SOURCE=2 when building your .c program!
+
+#clearlinux patches from https://github.com/clearlinux-pkgs/glibc/tree/5a9f96d0e21583891d7898256e8f0a082ae4cb27
+#glibc-stable-branch.patch
+#0001-Set-host.conf-multi-to-on-by-default.patch #XXX: don't set.
+#skip-error-msg-ld.so.conf.patch #don't
+#ldconfig-format-new.patch #nope
+#0001-sysdeps-unix-Add-support-for-usr-lib32-as-a-system-l.patch #nope
+#nsswitch-altfiles.patch #nope
+#ld-so-cache-in-var.patch # nope, this is in /etc/ld.so.cache on Archlinux, not in /var/cache/ldconfig/ld.so.cache
+#fewerlocales.patch
+mkdir-ldconfig.patch #ok
+#locale-var-cache.patch #nope, this is in /usr/lib/locale/locale-archive on ArchLinux, not /var/cache/locale/locale-archive
+nonscd.patch
+#alternate_trim.patch #what? let's go with no on this one
+madvise-bss.patch #seems good
+spinaphore.patch #ok...?
+#tzselect-proper-zone-file.patch
+large-page-huge-page.patch #ok
+use_madv_free.patch #ok
+malloc_tune.patch #ok...?
+#0001-misc-Support-fallback-stateless-shells-path-in-absen.patch #no
+ldconfig-Os.patch #ok...?
+#stateless.patch #XXX no way!
+#nsswitch-altfiles-bugfix.patch #ok, but depends on stateless.patch
+mathlto.patch #ok
+vzeroupper-2.27.patch #ok...?
+#0001-x86-64-Remove-sysdeps-x86_64-fpu-s_sinf.S.patch #deleted file is already gone! sysdeps/x86_64/fpu/s_sinf.S
+pause.patch #ok? replaced pause with lfence
+gcc-8-fix.patch #ok
+spin-smarter.patch #ok
+nostackshrink.patch #ok
+#0001-Compile-branred.c-with-mprefer-vector-width-128.patch #ok # already upstream
+0001-Set-vector-width-and-alignment-to-fix-GCC-AVX-issue.patch #ok, https://www.phoronix.com/scan.php?page=news_item&px=Clear-Linux-libc-AVX2-AVX512
+fix-ld-audit-performance.patch #ok...?
+#c-utf8-locale.patch #ok...? already exists!
+
+#le.patch #testing/patch
+
+    lame-o-chromium_setproctitle_spotted.patch
+#showme_progname.patch
+
+)
+
+#_commit=5a74abda201907cafbdabd1debf98890313ff71e
+#_commit=067fc32968b601493f4b247a3ac00caeea3f3d61
+#_commit=30ba0375464
+#source=(https://ftp.gnu.org/gnu/glibc/glibc-$pkgver.tar.xz{,.sig}
+if test -z "$STUCK_TO_SPECIFIC_VERSION" -o "$STUCK_TO_SPECIFIC_VERSION" == "git" -o "$STUCK_TO_SPECIFIC_VERSION" == "0" -o "$STUCK_TO_SPECIFIC_VERSION" == "no" -o "$STUCK_TO_SPECIFIC_VERSION" == "undefined"; then
+  suffixextra=""
+elif test -n "$STUCK_TO_SPECIFIC_VERSION" -a "${STUCK_TO_SPECIFIC_VERSION/./0}" -ge "2028"; then
+  suffixextra="#tag=${pkgbase}-${STUCK_TO_SPECIFIC_VERSION}"
+  if test "0$APPLY_PATCHES_ONLY_TO_GIT_VERSION" != "00"; then
+    allpatches=()
+    #TODO: this requires `updpkgsums` one time too! maybe find a way to remove them at runtime from the arrays?
+  fi
+else
+  error "glibc prior to 2.28 will b0rk the system if installed, unless you've somehow managed to recompile everything using this new(prior/old) glibc and I don't see how"
+  exit 1
+fi
+source=(
+#) # <-- for vim syntax highligting!
+"${pkgbase}::git+https://sourceware.org/git/glibc.git${suffixextra}" # specific version or git version
+#"${pkgbase}::git+https://sourceware.org/git/glibc.git#tag=${pkgbase}-2.27" # specific version
+#"${pkgbase}::git+https://sourceware.org/git/glibc.git" #latest
+#"${pkgbase}::git+https://sourceware.org/git/glibc.git#commit=$_commit"
+        locale.gen.txt
+        locale-gen
+        lib32-glibc.conf
+        )
+source+=("${allpatches[@]}")
+validpgpkeys=(7273542B39962DF7B299931416792B4EA25340F8 # Carlos O'Donell
+  BC7C7372637EC10C57D7AA6579C43DFBF1CF2187) # Siddhesh Poyarekar  (TODO I don't have this yet)
+md5sums=('SKIP'
+         '07ac979b6ab5eeb778d55f041529d623'
+         '476e9113489f93b348b21e144b6a8fcf'
+         '6e052f1cb693d5d3203f50f9d4e8c33b'
+         'b53b29a79e230620ee87a4c60f318dd7'
+         '90e7ae89b0b0f76e4d249b845a541701'
+         '55ed1bb5de5906992dc7af9e7fc82734'
+         '41faca9f3c02f29be0c152ca6086fe7f'
+         'a2f3bf3888598a87f80766c4ef7ea368'
+         '4dec27ee9a2efb2fe72b2b14cc224f28'
+         'f966477dc6e0ac52cf32662196f1a112'
+         '5cda914ef4a35d1a21ce3bd71954820b'
+         'cbb093c5b989d055cd15f9a5b4c8cb85'
+         'd641d1105b61a9c0eb8c93e9a9411578'
+         '21b190f92ead0b537b0c499f3b4b58e4'
+         '5fb16de6c9a4be13978199ee09c45b10'
+         '7d001b86170402b6499b9531b8280a21'
+         'aae1b792a24c63b5ab434612bf53a171'
+         'e1b819213515de6f0e3c8f466a329f62'
+         '3d02d61e0325eaf96afc3716b96ff4ef'
+         '2819faa1fb184fc622f045d07235e3c8'
+         '15ce96f7415600e6ae9053e72cd205f0'
+         'af0708d23a28d141c4bb0764aeaeabb2'
+         '6efd1c873946e2965d62d50b8f9c1172'
+         '08f2a82c12c5c441980fc327128d2bb6')
+sha1sums=('SKIP'
+          '61f72da0b1f44af013c8a6873a298c2b6efb3f3d'
+          '6be06024b1ab1261ff60b039c69fe66a7c5872fc'
+          '70bfb387236a8917816dd70a1982145fc18cd805'
+          '969437a0e813dab02a07d3b228446312208ed983'
+          '4e00d16c1e9bc3dfd95098a1e2b85471d6b5d571'
+          '4a3c6909f7052522cf2588e97301d7f18385684f'
+          'a50ae9c281db5f798afb8098410d5aadadc1098a'
+          'f405e535765ef575dc52a88b43d6f327dfbf7e3c'
+          'd2ab5fbc6ceea005aa99ed1cad52be395974a607'
+          '50b59295d185328d286228d89c0b96464a954043'
+          'f671a90ccea822c7d51e740540fa9b03d3410de9'
+          'e9671e4f33fc5f13c7fcd52c8799af841f24a7e7'
+          'd90a3ae95b72ac7e8c450de407c7927b10984d59'
+          'eab2ba72121465a8ffa37b508c8a246c68e53071'
+          '5513a19c4449378355f40d40482e2bb9ee49d00a'
+          '60fec07c9e45847bd89bf6e6a479dcfeaec4e24f'
+          '79e1cb92104542340d887c1fc6604964dad9f700'
+          '6a69f6db79de623ce399bf7e3a0362aecc7b58a1'
+          '248c0e642bb37b41952131d45ea78a412d91d693'
+          'f8e90d7752a23ae84d4c4f659dfe0417c77b2291'
+          '9ce7d52aeb0dcbff682a8182b78a63a440b88a0f'
+          '2eff74c5879025a86a7e028c13a760693f7bd858'
+          '08892320f8591a524269f575c3905828a7e85796'
+          'bde20f0ebde52380e6c3608a71b753a3aef47ae7')
+sha256sums=('SKIP'
+            'd42648cea552ba5353a32e264686e992263289d5cc86207314dffc54ab514981'
+            '83f108f915863c7ed0338e2d3e8f2e071a531a090ef8f8b2eb3a956a3c4f04d7'
+            'c27424154a6096ae32c0824b785e05de6acef33d9224fd6147d1936be9b4962b'
+            'e8751ecbcd3929a07ddf9e68053da40018169b3e80430478059440b15279e39a'
+            '7e201d7543ba047161c39d9b8c9ea4c454806e173be0a9742d1f8acdbac1682c'
+            '331431e5576f7691a1a6da38a3b55033fee861e339a6915153772c9ca45a123c'
+            'd8de22e64a6f7aea7ff5a06012f7973e549c5683e4ada32557051de4b6f0a75d'
+            '3045fd8174cb3b504f7372dd192aac9db1c16ca7303d0c9b72a7e7d4ac1bcd07'
+            '54cf2580aa1bb15dbaccaa8186da1baf82032b0978db1f83bd27ee986ec35fd7'
+            '6f128e05a54c39be4be173d70ad7c256b559fa97ceb95f55f1de314b61fc8cba'
+            '8a078e4588d219b5fa85c4ab6fd72cfdb15e5b0043a8ca5d5a27759f5c9f5cc0'
+            '0b0a34f96506ac638951b6a7f7d95ee2756571e6c85e4470ada3da473aa837e8'
+            'f4da28e273acf2816d4fcc46e183ff0a1156d4b1b97a64d1b07d3776dfc8cea6'
+            'a10ea0c65e8f38b832455eb5399a6277e6daa04b302f40ef7bb8e64544baeabf'
+            '9dd793fa2795adebb93880975bcc7c8e1c0387ac0dceda32b625a047bd5d15e4'
+            '118cf9c8977ef9b4e522d279e51a2d45013e22814a1ac530ade83f156ac3c4c5'
+            '6b4a10e5701a3587b38a5595f0856e703e347fb778d6de100c508fc7b67a92bb'
+            'a9e263ea197234cec851e27551b35c13334929d77ad340f4cdcd04934cad4b85'
+            '387637ed342494c9b5a32043436563aafcb47e36ddb6bace18114d1c1802b5c0'
+            'ec627e5bc4c0faa5fb6f5b8490824c88366ecc60e1f37d6742c5585223c0631b'
+            '9d801181e794fea0652a4f4f3b64a83437b3a516bfbdc25e2974ff95f5655ef7'
+            '50c9fa695deed49f9d47bbad5f2a5fe5b9ec3550b29839da580ade48d7a65c57'
+            '7a5123b77d2214bf2e0be182b8f222cfb41ede2725b13c2ccef380fb5685686b'
+            'ae0257f9ee384b522d72202dc63e6079400f57c0d6e7a7ff12a59906a3f87bf6')
+sha512sums=('SKIP'
+            '3d9facc6da5159dcd877473c8a4d77006ef5615e2619ef743255112bfa136baf65239367222e87e7ada823d5c7d747aa5204f8365a806141e5884477898ccd14'
+            'd92e6ba83ee86c3602e74c52bf5f99ca751f3867edb894dd22c179003cd58a1b4e11237a293a54fe126edafd5add78a65bf3368826b8bfa40451ee374e301961'
+            '8fdfb757ed0749f227c5de73488c1654168e6efb8c156ae079339476982dadaa69a54805862b1ff7358c56d873d4496029015ea41b38a587523e4fa32a18dece'
+            '8a002573993c9e9af08aa7b1019bbcd3c5fdcc9d74fd5245a224119a5d25406fc6f9a13b068fb070825c3acfc700044a5bb187a8859f4e7191f34ac327cd238c'
+            '5bcae0622c624f9be18bbbd09ce21e3db9d234e0a91a2ba23c8cc02c03f0b639fb3da18197878eb1320a71740e57604abc23f4a3221a0d8e61a18e603ee5f916'
+            '7be76c55fc42b36fcd2e7e0b8fc6f791c7e62b0dd9fab7a45f401d4074d5e6a7a303e63bb9007d12df3307e0a56f3ed08a7f7bf1f2dfad8ac08436ab191f3baf'
+            '61c377a486845582f04401caa7d1d6850b3ae6c66a8421954470c9c53052f895cc54b72e59701a54a94bdb5c004f86273c0f268bb34c72bfdd3099b3450a1684'
+            '9cfce1e33217681a6863231916f069492849e37082d8e82c1995377cf49fb78e5d15890b0be546892716ec452b6ce18cd3e1fec454754d98416559dc4fe2fd5d'
+            'd90b4eca1c0467526c6e145d027df9e0c5eb58796ae56f7fd5a82f84789e635664c35e4a8b96bfa1050d704b96dfc449056c8f8e7916881a97c4b67d8570a8bf'
+            'dca8695b127d341bc9dcbf2b1cd4c78babc2489cba5b2b8ef65d61220a7b1b79f04fca62831fcc6276efc7920832dfe4e8dee01e6b384067b354b80875da831f'
+            'ab484fb2eedd4fbb16cee878f1e0eae7df7e2220cdd1f45e5158539fcdbd6aa29348b3896e4418129905f21ba5898e4591590883f4e419c5562bccce210f8aa7'
+            '51a00eacf2edfecd1154a5753e12bf95457df87decf86a85ded042c1cf96ce32ab2d2b9bb01606bc7327768c7a2547314814fe8ccb48cef64f5ec8df41b2cf7a'
+            '58c787932fbfc41d3e7ed16ec79a04b5de01fa19a9fcb1c12a2ae68231a84d802a7f29a0c3f651564bab27d4f78dc3840a1a1a2c4344a513572cd6dc7ffbb7c3'
+            '7e1491fe0d1e75f36764dab0d74735cc8f8a70c49d0e79fc9bb2bd980c906dad2a3ec919fa4acac2bf4492439f54accce52a3360864b81b434bd09be78f59b63'
+            '5412aeed0a38b6ae0fec320807f131797a59d4ddc9ba5ed91f1bc97b065f0042878fb89b788bc684f5d7f4f6311148c624c9b40ac9ef851dfae90d83ac06cf2f'
+            '4bafda461c3273dca90763c8c3c3c5feee54dc1083e3a688ee8bd50f2f018bb9110035d5d9465bcf18ca0a61bc0361ee9eec8c745f65d1248c2f1cfec01f1b3b'
+            '1c0d6eb3138f1c6ddea4e5ce63b89bee5da1a4c06239713b10c74f0773f574b445be86ab9bcef59c27481e42ea992a70882b7a6e020c74a1b8e6a7ab7e12395d'
+            '2b06936056b8157806e8768f075e5b6df0644bdea38c952bf9a1347e5ba6566ccb376a8777cb77e0a3b2f011fcc43e6f6d2ae04e6cc2d8d5c114b6fc9885f12d'
+            'ce5528f0a9880eab2f9fcb19b90b81d16bc45485f2b49dff02b0009ecf085c1099d75b51971e4aa4717102ddecca1f7a0900adcdcfcae5b67b9d622425d88189'
+            '316fbf21bac91c5aae996508997bcb83220bf98ace79f7c0166d2285847905b0bb7f0e21f5eefde824fa66268a61818a45af830a8586d1c3a33140ce24bb28fa'
+            'f8cf3a59519ce2a7d919d64f7fddd149d01159a803aae284ab71e9dc9a3b58ccdc1be11dc3c61845c6437db429a4485c5ed9e7862fd38ea089e287505f569cac'
+            '12e0419f96502fa58640780e54797ec3bbeac7a98ea6d67ae5f541bc4bb26ca283ecb8164486872939b7744c60fa0704694c548a08908bdeb2b0f8a658b45d0d'
+            'e211cf50975223785b473b39cb4596f339cde367eb779cf118b224e41667aeeb031ecae2c3d225cce0f06e5c2af06ba1515c5ccd16242d77e28de310707e866d'
+            'dedea2c81d2bbf8d55e5b050bc3f1fc3df84bd7edc28958c5b8aca083a4570aabcd397cb4bea5e467077c86f9c721aab3ced6fe02658d1de69e67dda05fad7e3')
+
+pkgver() {
+  cd "$srcdir/$pkgbase"
+  #git describe --long --tags|sed -re "s/^${pkgbase}-//;s/([^-]*-g)/r\1/;s/-/./g"
+  git describe --long |sed -re "s/^${pkgbase}-//;s/([^-]*-g)/r\1/;s/-/./g"
+}
+
+prepare() {
+  cd "$srcdir"
+
+  pwd
+  #always clean:
+  mkdir -p glibc-build lib32-glibc-build
+  rm -rf glibc-build lib32-glibc-build #no: || true
+  mkdir -p glibc-build
+  if test "$build32" == "1"; then
+    mkdir -p lib32-glibc-build
+  fi
+
+  [[ -d glibc-$pkgver ]] && ln -frs glibc-$pkgver glibc
+  cd glibc
+  #make distclean #addition - well this isn't working here!
+
+  pwd
+  applyallpatches
+#  local i; for i in ${source[@]}; do
+#    case ${i%::*} in
+#      *.patch)
+#        msg2 "Applying ${i}"
+#        patch -p1 -i "$srcdir/${i}"
+#        ;;
+#    esac
+#  done
+}
+
+build() {
+  export -n LD_LIBRARY_PATH #remove the export property
+  unset -v LD_LIBRARY_PATH #remove the corresponding shell variable
+
+  local _configure_flags=(
+      --enable-option-checking
+      --prefix=/usr
+      --with-headers=/usr/include
+      --with-bugurl=https://bugs.archlinux.org/
+      #--enable-add-ons
+      #configure: WARNING: unrecognized options: --enable-add-ons, --enable-lock-elision, --without-cvs, --enable-debug
+      #--enable-lock-elision
+      --enable-bind-now
+      --enable-cet # https://git.archlinux.org/svntogit/packages.git/commit/trunk?h=packages/glibc&id=68d86028d792f4e7488ad6ebdaa321fde93dae83 https://bugs.archlinux.org/task/63015
+      --enable-multi-arch
+      --enable-stack-protector=strong
+      --enable-stackguard-randomization
+      --enable-static-pie
+      --disable-profile
+      --disable-werror
+      #--with-cpu=native #added by je, ok no good 'checking sysdep dirs... configure: error: The native subspecies of x86_64 is not supported.' because -mtune=native AND -mcpu=native
+  )
+
+  cd "$srcdir/glibc-build"
+
+  #start with empty file:
+  echo -n "" > configparms
+
+  echo "slibdir=/usr/lib" >> configparms
+  echo "rtlddir=/usr/lib" >> configparms
+  echo "sbindir=/usr/bin" >> configparms
+  echo "rootsbindir=/usr/bin" >> configparms
+
+  # remove fortify for building libraries
+  CPPFLAGS=${CPPFLAGS/-D_FORTIFY_SOURCE=2/}
+
+  #Stuff from glibc.spec of https://github.com/clearlinux-pkgs/glibc.git commit 5a9f96d0e21583891d7898256e8f0a082ae4cb27 (HEAD -> master, tag: 2.29-268, origin/master, origin/HEAD)
+  if is_i87k; then
+  #    _configure_flags+=(
+  #        --with-cpu=native  #testing, TODO: does it work? nope, same: checking sysdep dirs... configure: error: The native subspecies of x86_64 is not supported.
+  #    )
+    extraSTUFF="-march=skylake -mtune=skylake-avx512 -mprefer-vector-width=128 -g2 -Wl,-z,max-page-size=0x1000 -O3 -fPIC"
+  #added -mprefer-vector-width=128 on 28May2019 due to https://www.phoronix.com/scan.php?page=news_item&px=7980XE-AVX-GCC9-Benchmarks
+  fi
+  #doneFIXME: something causes the lib32-glibc to fail at configure step: - it's -m64 (now removed)
+  #^ configure: error: linker support for static PIE needed  and config.log says conftest.s:4: Error: relocated field and relocation type differ in signedness
+
+  #cc1: note: valid arguments to '-march=' switch are: nocona core2 nehalem corei7 westmere sandybridge corei7-avx ivybridge core-avx-i haswell core-avx2 broadwell skylake skylake-avx512 cannonlake icelake-client icelake-server bonnell atom silvermont slm knl knm x86-64 eden-x2 nano nano-1000 nano-2000 nano-3000 nano-x2 eden-x4 nano-x4 k8 k8-sse3 opteron opteron-sse3 athlon64 athlon64-sse3 athlon-fx amdfam10 barcelona bdver1 bdver2 bdver3 bdver4 znver1 btver1 btver2 native; did you mean 'cannonlake'? gcc (GCC) 8.3.0
+  #cc1: note: valid arguments to ‘-mtune=’ switch are: nocona core2 nehalem corei7 westmere sandybridge corei7-avx ivybridge core-avx-i haswell core-avx2 broadwell skylake skylake-avx512 cannonlake icelake-client icelake-server bonnell atom silvermont slm knl knm intel x86-64 eden-x2 nano nano-1000 nano-2000 nano-3000 nano-x2 eden-x4 nano-x4 k8 k8-sse3 opteron opteron-sse3 athlon64 athlon64-sse3 athlon-fx amdfam10 barcelona bdver1 bdver2 bdver3 bdver4 znver1 btver1 btver2 generic native
+  CPPFLAGS="${CPPFLAGS} $extraSTUFF"
+  CXXFLAGS="${CXXFLAGS} $extraSTUFF"
+  CFLAGS="${CFLAGS} $extraSTUFF"
+  LDFLAGS="${LDFLAGS} -Wl,-z,max-page-size=0x1000 "
+  #export ASFLAGS="-D__AVX__=1 -D__AVX2__=1 -msse2avx -D__FMA__=1" #this was set when -march=skylake-avx512 -mtune=skylake
+  _configure_flags+=(
+  --without-gd
+  #--without-cvs
+  #configure: WARNING: unrecognized options: --enable-add-ons, --enable-lock-elision, --without-cvs, --enable-debug
+
+  )
+  #end of glibc.spec stuff
+
+  if test "x$BUILD_DEBUG" != "x0"; then
+    #CPPFLAGS="${CPPFLAGS} -fno-omit-frame-pointer -ftrack-macro-expansion=2 -ggdb -fvar-tracking-assignments -O2" #-O2 required (see below error) - has effect only if it's here on CPPFLAGS, not on CXXFLAGS and not on CFLAGS (tested both w/o CPPFLAGS!)
+    CPPFLAGS="${CPPFLAGS} -fno-omit-frame-pointer -ftrack-macro-expansion=2 -ggdb -fvar-tracking-assignments -O3" #-O2 required (see below error) - has effect only if it's here on CPPFLAGS, not on CXXFLAGS and not on CFLAGS (tested both w/o CPPFLAGS!)
+    #The following error is caused by -Ofast (aka last seen -O arg in the gcc invocation!)  PLUS because of the args added above in that CPPFLAGS (that is, one(or more) of: -fno-omit-frame-pointer -ftrack-macro-expansion=2 -ggdb -fvar-tracking-assignments) :
+    #{standard input}: Assembler messages:
+    #{standard input}:8966: Error: symbol `__x86.get_pc_thunk.cx' is already defined
+    #make[2]: *** [../o-iterator.mk:9: /home/user/build/1packages/glibc/makepkg_pacman/glibc/src/lib32-glibc-build/elf/dl-load.o] Error 1
+    #fixed by -O1 or -O2  but -O0 won't work due to: "./../include/libc-symbols.h:75:3: error: #error "glibc cannot be compiled without optimization""
+    #fix idea from src: https://lists.infradead.org/pipermail/lede-dev/2016-August/002475.html
+
+    #let's not 'export' because the below modify this and I'm unsure how that works if exported!
+    #The following two are possibly not needed (because they are set by DEBUG_CXXFLAGS and DEBUG_CFLAGS from /etc/makepkg.conf, but DEBUG_CPPFLAGS didn't exist, hence why I had to do the above line!)
+    CXXFLAGS="${CXXFLAGS} -fno-omit-frame-pointer -ftrack-macro-expansion=2 -ggdb -fvar-tracking-assignments" #not here: -O2" #-O2 required (see below error)
+    CFLAGS="${CFLAGS} -fno-omit-frame-pointer -ftrack-macro-expansion=2 -ggdb -fvar-tracking-assignments"
+
+    #_configure_flags+=( "--enable-debug" )
+    #configure: WARNING: unrecognized options: --enable-add-ons, --enable-lock-elision, --without-cvs, --enable-debug
+    msg2 "!! debug build"
+  else
+    #_configure_flags+=( "--disable-debug" )
+    msg2 "!! normal (non-debug) build"
+  fi
+
+  #okFIXME: yeah this has no effect: (they're still relative!) because: of that 1pacman-git/makepkg_pacman/pacman/src/pacman/scripts/libmakepkg/buildenv/debugflags.sh.in override! (see below)
+#  #don't use relative paths in symbols eg. within gdb they show up as ../sysdeps/unix/sysv/linux/write.c:27  instead of full path! so the following attempts to use absolute paths instead:
+#  #src: https://stackoverflow.com/questions/9607155/make-gcc-put-relative-filenames-in-debug-information/19290636#19290636
+  #XXX: ok, so these are not needed: (but it makes it harder for copy/pasting without them!)
+  CXXFLAGS="$CXXFLAGS -fdebug-prefix-map=..=\"`realpath ../glibc/`\""
+  CPPFLAGS="$CPPFLAGS -fdebug-prefix-map=..=\"`realpath ../glibc/`\""
+  CFLAGS="$CFLAGS -fdebug-prefix-map=..=\"`realpath ../glibc/`\""
+  #FIXME: ^ Problem:
+  #this seems ok: #0  0x000070e40a5237eb in kill () at /home/user/build/1packages/4used/glibc/makepkg_pacman/glibc/src/glibc/sysdeps/unix/syscall-template.S:78
+  #this doesn't: #0  futex_wait_cancelable (private=<optimized out>, expected=0, futex_word=0x599a78941118) at /home/user/build/1packages/4used/glibc/makepkg_pacman/glibc/src/sysdeps/unix/sysv/linux/futex-internal.h:88
+  #or this: #41 0x0000599a76a5c04e in _start () at /home/user/build/1packages/4used/glibc/makepkg_pacman/glibc/src/sysdeps/x86_64/start.S:120
+  #FIXME: ok, without the above -fdebug-prefix-map=  it still works the same(aka bad in one case, at least):
+  #works: #0  futex_wait_cancelable (private=<optimized out>, expected=0, futex_word=0x59c5a4e33118) at ../sysdeps/unix/sysv/linux/futex-internal.h:88
+  #doesn't work: #41 0x000059c5a431004e in _start () at /home/user/build/1packages/4used/glibc/makepkg_pacman/glibc/src/sysdeps/x86_64/start.S:120
+
+  #doneFIXME: see if this worked: NOTE: there's a previous `-fdebug-prefix-map=/home/user/build/1packages/4used/glibc/makepkg_pacman/glibc/src=/usr/src/debug`(generated by 1pacman-git/makepkg_pacman/pacman/src/pacman/scripts/libmakepkg/buildenv/debugflags.sh.in) which could be overriding stuff! So I'll pretend that one worked and also add it! Didn't work! this ./makepkg_pacman/glibc/src/glibc/stdio-common/printf_size.c became just printf_size.c
+  #CXXFLAGS="$CXXFLAGS -fdebug-prefix-map=..=`realpath ../` -fdebug-prefix-map=/usr/src/debug=`realpath ../`" #FIXME: what if absolute path has spaces or '=' ?
+  #CPPFLAGS="$CPPFLAGS -fdebug-prefix-map=..=`realpath ../` -fdebug-prefix-map=/usr/src/debug=`realpath ../`"
+  #CFLAGS="$CFLAGS -fdebug-prefix-map=..=`realpath ../` -fdebug-prefix-map=/usr/src/debug=`realpath ../`"
+  #^ already using no ccache hash dir in ~/.second.bashrc ie.   unset CCACHE_HASHDIR ;  export CCACHE_NOHASHDIR=1
+
+  export CXXFLAGS
+  export CPPFLAGS
+  export CFLAGS
+
+  "$srcdir/glibc/configure" \
+      --libdir=/usr/lib \
+      --libexecdir=/usr/lib \
+      ${_configure_flags[@]}
+
+  # build libraries with fortify disabled
+  echo "build-programs=no" >> configparms
+  msg2 "CFLAGS == $CFLAGS"
+  msg2 "CC == $CC"
+  msg2 "CPPFLAGS == $CPPFLAGS"
+  msg2 "CPP== $CPP"
+  msg2 "CXXFLAGS == $CXXFLAGS"
+  msg2 "CXX == $CXX"
+  make
+
+  # re-enable fortify for programs
+  sed -i "/build-programs=/s#no#yes#" configparms
+
+  echo "CC += -D_FORTIFY_SOURCE=2" >> configparms
+  echo "CXX += -D_FORTIFY_SOURCE=2" >> configparms
+  msg2 "CFLAGS == $CFLAGS"
+  msg2 "CC == $CC"
+  msg2 "CPPFLAGS == $CPPFLAGS"
+  msg2 "CPP== $CPP"
+  msg2 "CXXFLAGS == $CXXFLAGS"
+  msg2 "CXX == $CXX"
+  make
+
+  if test "$build32" == "1"; then
+    cd "$srcdir/lib32-glibc-build"
+    export CC="/usr/bin/ccache gcc -m32 -mstackrealign" # -fno-PIC"
+    export CXX="/usr/bin/ccache g++ -m32 -mstackrealign" # -fno-PIC"
+
+    #start with empty file:
+    echo -n "" > configparms
+
+    echo "slibdir=/usr/lib32" >> configparms
+    echo "rtlddir=/usr/lib32" >> configparms
+    echo "sbindir=/usr/bin" >> configparms
+    echo "rootsbindir=/usr/bin" >> configparms
+
+    # remove fortify for building libraries - why?
+    CPPFLAGS=${CPPFLAGS/-D_FORTIFY_SOURCE=2/}
+
+    #
+    CFLAGS=${CFLAGS/-fno-plt/}
+    CXXFLAGS=${CXXFLAGS/-fno-plt/}
+    LDFLAGS=${LDFLAGS/,-z,now/}
+    #^ https://git.archlinux.org/svntogit/packages.git/commit/trunk?h=packages/glibc&id=133252a0277953923bc4adca588cfca880515d26
+
+    "$srcdir/glibc/configure" \
+        --host=i686-pc-linux-gnu \
+        --libdir=/usr/lib32 \
+        --libexecdir=/usr/lib32 \
+        ${_configure_flags[@]}
+  fi
+
+  # build libraries with fortify disabled
+  echo "build-programs=no" >> configparms
+  msg2 "CFLAGS == $CFLAGS"
+  msg2 "CC == $CC"
+  msg2 "CPPFLAGS == $CPPFLAGS"
+  msg2 "CPP== $CPP"
+  msg2 "CXXFLAGS == $CXXFLAGS"
+  msg2 "CXX == $CXX"
+  make
+
+  # re-enable fortify for programs
+  sed -i "/build-programs=/s#no#yes#" configparms
+
+  echo "CC += -D_FORTIFY_SOURCE=2" >> configparms
+  echo "CXX += -D_FORTIFY_SOURCE=2" >> configparms
+  msg2 "CFLAGS == $CFLAGS"
+  msg2 "CC == $CC"
+  msg2 "CPPFLAGS == $CPPFLAGS"
+  msg2 "CPP== $CPP"
+  msg2 "CXXFLAGS == $CXXFLAGS"
+  msg2 "CXX == $CXX"
+  make
+
+}
+
+check() {
+  cd glibc-build
+
+  # remove fortify in preparation to run test-suite
+  sed -i '/FORTIFY/d' configparms
+
+  warning "Skipping 'make check'" #FIXME: uncomment the below: Note: takes 25mins 11seconds total glibc compilation with this(and nproc=6 and mitigation=2 and ccache! so don't enable! takes 16mins 24seconds total glibc compilation with nproc=12 and mitigations=0 in /etc/default/grub and ccache (both with retpoline is still in kernel, and intel-ucode is local/intel-ucode 20190514.a-1)  hmm is it possible that ccache wasn't trained the first time? hmm
+  # some failures are "expected"
+  #make check || true
+}
+
+package_glibc() {
+  pkgdesc='GNU C Library'
+  depends=('linux-api-headers>=4.10' tzdata filesystem)
+  optdepends=('gd: for memusagestat')
+  install=glibc.install
+  backup=(etc/gai.conf
+          etc/locale.gen
+          etc/nscd.conf)
+  groups+=(base)
+
+  install -dm755 "$pkgdir/etc"
+  touch "$pkgdir/etc/ld.so.conf"
+
+  make -C glibc-build install_root="$pkgdir" install
+  rm -f "$pkgdir"/etc/ld.so.{cache,conf}
+
+  # Shipped in tzdata
+  rm -f "$pkgdir"/usr/bin/{tzselect,zdump,zic}
+
+  cd glibc
+
+  install -dm755 "$pkgdir"/usr/lib/{locale,systemd/system,tmpfiles.d}
+  install -m644 nscd/nscd.conf "$pkgdir/etc/nscd.conf"
+  install -m644 nscd/nscd.service "$pkgdir/usr/lib/systemd/system"
+  install -m644 nscd/nscd.tmpfiles "$pkgdir/usr/lib/tmpfiles.d/nscd.conf"
+  install -dm755 "$pkgdir/var/db/nscd"
+
+  install -m644 posix/gai.conf "$pkgdir"/etc/gai.conf
+
+  install -m755 "$srcdir/locale-gen" "$pkgdir/usr/bin"
+
+  # Create /etc/locale.gen
+  install -m644 "$srcdir/locale.gen.txt" "$pkgdir/etc/locale.gen"
+  #and uncomment: en_US.UTF-8 UTF-8
+  sed -e '1,3d' -e 's|/| |g' -e 's|\\| |g' -e 's|^|#|g' \
+    "$srcdir/glibc/localedata/SUPPORTED" | sed -re 's|^#(en_US.UTF-8 UTF-8)|\1|g' >> "$pkgdir/etc/locale.gen"
+
+  if check_option 'debug' n; then
+    warning "Stripping binaries..."
+    find "$pkgdir"/usr/bin -type f -executable -exec strip $STRIP_BINARIES {} + 2> /dev/null || true
+    find "$pkgdir"/usr/lib -name '*.a' -type f -exec strip $STRIP_STATIC {} + 2> /dev/null || true
+
+    # Do not strip these for gdb and valgrind functionality, but strip the rest
+    find "$pkgdir"/usr/lib \
+      -not -name 'ld-*.so' \
+      -not -name 'libc-*.so' \
+      -not -name 'libpthread-*.so' \
+      -not -name 'libthread_db-*.so' \
+      -name '*-*.so' -type f -exec strip $STRIP_SHARED {} + 2> /dev/null || true
+  fi
+}
+
+package_lib32-glibc() {
+  pkgdesc='GNU C Library (32-bit)'
+  depends=("glibc=$pkgver")
+
+  if test "$build32" != "1"; then
+     error "not building 32 bit version"
+     exit 1
+  fi
+  cd lib32-glibc-build
+
+  make install_root="$pkgdir" install
+  rm -rf "$pkgdir"/{etc,sbin,usr/{bin,sbin,share},var}
+
+  # We need to keep 32 bit specific header files
+  find "$pkgdir/usr/include" -type f -not -name '*-32.h' -delete
+
+  # Dynamic linker
+  install -d "$pkgdir/usr/lib"
+  ln -s ../lib32/ld-linux.so.2 "$pkgdir/usr/lib/"
+
+  # Add lib32 paths to the default library search path
+  install -Dm644 "$srcdir/lib32-glibc.conf" "$pkgdir/etc/ld.so.conf.d/lib32-glibc.conf"
+
+  # Symlink /usr/lib32/locale to /usr/lib/locale
+  ln -s ../lib/locale "$pkgdir/usr/lib32/locale"
+
+  if check_option 'debug' n; then
+    warning "Stripping binaries..."
+    find "$pkgdir"/usr/lib32 -name '*.a' -type f -exec strip $STRIP_STATIC {} + 2> /dev/null || true
+    find "$pkgdir"/usr/lib32 \
+      -not -name 'ld-*.so' \
+      -not -name 'libc-*.so' \
+      -not -name 'libpthread-*.so' \
+      -not -name 'libthread_db-*.so' \
+      -name '*-*.so' -type f -exec strip $STRIP_SHARED {} + 2> /dev/null || true
+  fi
+}

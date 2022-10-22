@@ -1,0 +1,61 @@
+diff --git a/src/duplicacy_config.go b/src/duplicacy_config.go
+index cf0536b..907f89e 100644
+--- a/src/duplicacy_config.go
++++ b/src/duplicacy_config.go
+@@ -401,12 +401,13 @@ func UploadConfig(storage Storage, config *Config, password string, iterations i
+ 	var masterKey []byte
+ 	salt := make([]byte, CONFIG_SALT_LENGTH)
+ 
++  LOG_INFO("CONFIG_INFO", "Password length: %d", len(password))
+ 	if len(password) > 0 {
+ 
+-		if len(password) < 8 {
+-			LOG_ERROR("CONFIG_PASSWORD", "The password must be at least 8 characters")
+-			return false
+-		}
++//		if len(password) < 8 {
++//			LOG_ERROR("CONFIG_PASSWORD", "The password must be at least 8 characters")
++//			return false
++//		}
+ 
+ 		_, err := rand.Read(salt)
+ 		if err != nil {
+@@ -429,6 +430,7 @@ func UploadConfig(storage Storage, config *Config, password string, iterations i
+ 	chunk.Write(description)
+ 
+ 	if len(password) > 0 {
++    LOG_INFO("CONFIG_INFO", "Encrypting with the supplied password.")
+ 		// Encrypt the config file with masterKey.  If masterKey is nil then no encryption is performed.
+ 		err = chunk.Encrypt(masterKey, "")
+ 		if err != nil {
+@@ -451,7 +453,9 @@ func UploadConfig(storage Storage, config *Config, password string, iterations i
+ 		if len(chunk.GetBytes()) != encryptedLength {
+ 			LOG_ERROR("CONFIG_CREATE", "Encrypted config has %d bytes instead of expected %d bytes", len(chunk.GetBytes()), encryptedLength)
+ 		}
+-	}
++	} else {
++    LOG_WARN("CONFIG_INFO", "Not encrypting, because no password supplied!")
++  }
+ 
+ 	err = storage.UploadFile(0, "config", chunk.GetBytes())
+ 	if err != nil {
+diff --git a/duplicacy/duplicacy_main.go b/duplicacy/duplicacy_main.go
+index c0f6897..746791c 100644
+--- a/duplicacy/duplicacy_main.go
++++ b/duplicacy/duplicacy_main.go
+@@ -319,7 +319,14 @@ func configRepository(context *cli.Context, init bool) {
+ 	storagePassword := ""
+ 	if preference.Encrypted {
+ 		prompt := fmt.Sprintf("Enter storage password for %s:", preference.StorageURL)
+-		storagePassword = duplicacy.GetPassword(preference, "password", prompt, false, true)
++    for {
++      storagePassword = duplicacy.GetPassword(preference, "password", prompt, false, true)
++      if len(storagePassword)>0 {
++        break;
++      }else {
++        duplicacy.LOG_WARN("STORAGE_CONFIG", "Password must be at least 1 character long when -encrypt is specified!")
++      }
++    }
+ 	}
+ 
+ 	existingConfig, _, err := duplicacy.DownloadConfig(storage, storagePassword)

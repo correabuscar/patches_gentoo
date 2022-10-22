@@ -1,0 +1,13 @@
+diff --git a/duplicacy/duplicacy_main.go b/duplicacy/duplicacy_main.go
+index c0f6897..b019787 100644
+--- a/duplicacy/duplicacy_main.go
++++ b/duplicacy/duplicacy_main.go
+@@ -1309,7 +1309,7 @@ func main() {
+ 				},
+ 				cli.StringFlag{
+ 					Name:     "repository",
+-					Usage:    "initialize a new repository at the specified path rather than the current working directory",
++					Usage:    "initialize a new repository at the specified path (rather than the current working directory where the .duplicacy/preferences file will be stored anyway! unless you specify -pref-dir path)",
+ 					Argument: "<path>",
+ 				},
+ 			},

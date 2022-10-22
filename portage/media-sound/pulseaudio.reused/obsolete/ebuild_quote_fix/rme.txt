@@ -1,0 +1,3 @@
+this patch is in the wrong place, since it's an ebuild patch!
+i guess i can only use the localrepo instead of gentoo repo to apply it
+

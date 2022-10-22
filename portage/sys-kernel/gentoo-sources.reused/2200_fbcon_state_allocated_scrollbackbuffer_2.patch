@@ -1,0 +1,43 @@
+scrollback got removed in 5.8.10 https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?h=linux-5.8.y&id=245a228891e3627e47921db1ec1b6612f118158b  AND https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?h=linux-5.8.y&id=ffa74c8e58b8f42b2d95b29443befba2e28fb260
+also in 5.9 upstream commit 50145474f6ef4a9c19205b173da6264a644c7489
+so this patch can't be used anymore!
+///////////////
+updated for 5.1-rc3
+filename changed from
+drivers/video/console/fbcon.c
+to
+drivers/video/fbdev/core/fbcon.c
+
+fbcon scrollback buffer can use vmalloc instead of kmalloc but it's not needed
+4096KiB is plenty, the problem is that this needs to be built in kernel, not as a module, to allow for fbcon=scrollback:4096k kernel cmdline parameter to be in effect (and any other params as well, like font: )
+
+TODO: test to see if can use more than 4096k now that kvmalloc instead of kmalloc is used!
+
+diff --git a/drivers/video/fbdev/core/fbcon.c b/drivers/video/fbdev/core/fbcon.c
+index cd059a801662..ab3889d890e8 100644
+--- a/drivers/video/fbdev/core/fbcon.c
++++ b/drivers/video/fbdev/core/fbcon.c
+@@ -1002,15 +1002,21 @@ static const char *fbcon_startup(void)
+ 			if (!softback_buf) {
+ 				softback_buf =
+ 				    (unsigned long)
+-				    kvmalloc(fbcon_softback_size,
++            //           vmalloc(fbcon_softback_size);
++            //           kmalloc(fbcon_softback_size, //limited to kernel PAGE_SIZE*1024 ( sudo getconf PAGE_SIZE ) that is 4096KiB(aka 4MiB) for me, if above this value then it will fail!
++				    kvmalloc(fbcon_softback_size, //new func. kvmalloc TODO: check to see if still limited to kernel page size?
+ 					    GFP_KERNEL);
+ 				if (!softback_buf) {
++          printk(KERN_WARNING "fbcon: failed to allocate %d bytes of memory for scrollback (maybe value was too high, must not be higher than kernel PAGE_SIZE*1024, see: sudo getconf PAGE_SIZE ) TODO: this was true when using kmalloc but now using kvmalloc so unsure. Using NO scrollback. Equivalent kernel parameter: fbcon=scrollback:%d\n", fbcon_softback_size, fbcon_softback_size);
+ 					fbcon_softback_size = 0;
+ 					softback_top = 0;
+-				}
++				} else {
++          printk(KERN_WARNING "fbcon: allocated %d bytes of memory for scrollback. Equivalent kernel parameter: fbcon=scrollback:%d\n", fbcon_softback_size, fbcon_softback_size);
++        }
+ 			}
+ 		} else {
+ 			if (softback_buf) {
++        //       vfree((void *) softback_buf);
+ 				kvfree((void *) softback_buf);
+ 				softback_buf = 0;
+ 				softback_top = 0;

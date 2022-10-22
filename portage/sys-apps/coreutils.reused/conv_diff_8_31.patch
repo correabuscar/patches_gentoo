@@ -1,0 +1,379 @@
+--- a/src/dd.c.orig	2020-03-16 15:41:01.912994791 +0100
++++ b/src/dd.c	2020-03-18 09:33:33.249499322 +0100
+@@ -37,6 +37,12 @@
+ #include "xstrtol.h"
+ #include "xtime.h"
+ 
++//force assert`s to work:
++#undef NDEBUG
++#define DEBUG
++#include <assert.h> // for assert()
++//#include <sys/stat.h> // for S_ISBLK
++
+ /* The official name of this program (e.g., no 'g' prefix).  */
+ #define PROGRAM_NAME "dd"
+ 
+@@ -129,7 +135,8 @@ enum
+     C_FDATASYNC = 040000,
+     C_FSYNC = 0100000,
+ 
+-    C_SPARSE = 0200000
++    C_SPARSE = 0200000,
++    C_DIFF = 0400000
+   };
+ 
+ /* Status levels.  */
+@@ -138,7 +145,9 @@ enum
+     STATUS_NONE = 1,
+     STATUS_NOXFER = 2,
+     STATUS_DEFAULT = 3,
+-    STATUS_PROGRESS = 4
++    STATUS_PROGRESS = 4,
++    STATUS_PROGRESS2 = 5 // dd ... status=progress2
++    //STATUS_DISKWRITTEN = 6
+   };
+ 
+ /* The name of the input file, or NULL for the standard input. */
+@@ -210,6 +219,8 @@ static uintmax_t r_full = 0;
+ /* Number of bytes written.  */
+ static uintmax_t w_bytes = 0;
+ 
++static uintmax_t actuallywritten2disk = 0; //eg. due to conv=diff ; printf uintmax_t as %ju (c99)
++
+ /* Time that dd started.  */
+ static xtime_t start_time;
+ 
+@@ -247,6 +258,7 @@ static char *ibuf;
+ 
+ /* Output buffer. */
+ static char *obuf;
++static char *destbuf; // for conv=diff
+ 
+ /* Current index into 'obuf'. */
+ static size_t oc = 0;
+@@ -293,6 +305,7 @@ static struct symbol_value const convers
+   {"lcase", C_LCASE | C_TWOBUFS},	/* Translate upper to lower case. */
+   {"ucase", C_UCASE | C_TWOBUFS},	/* Translate lower to upper case. */
+   {"sparse", C_SPARSE},		/* Try to sparsely write output. */
++  {"diff", C_DIFF},		/* write only if not already same contents in dest block. */
+   {"swab", C_SWAB | C_TWOBUFS},	/* Swap bytes of input. */
+   {"noerror", C_NOERROR},	/* Ignore i/o errors. */
+   {"nocreat", C_NOCREAT},	/* Do not create output file.  */
+@@ -387,6 +400,8 @@ static struct symbol_value const statuse
+   {"none",	STATUS_NONE},
+   {"noxfer",	STATUS_NOXFER},
+   {"progress",	STATUS_PROGRESS},
++  {"progress2",	STATUS_PROGRESS2}, // dd ... status=progress2
++  //{"diskwritten",	STATUS_DISKWRITTEN},
+   {"",		0}
+ };
+ 
+@@ -581,7 +596,8 @@ Copy a file, converting and formatting a
+   status=LEVEL    The LEVEL of information to print to stderr;\n\
+                   'none' suppresses everything but error messages,\n\
+                   'noxfer' suppresses the final transfer statistics,\n\
+-                  'progress' shows periodic transfer statistics\n\
++                  'progress' shows periodic transfer statistics,\n\
++                  'progress2' show actual bytes written also\n\
+ "), stdout);
+       fputs (_("\
+ \n\
+@@ -602,6 +618,7 @@ Each CONV symbol may be:\n\
+   lcase     change upper case to lower case\n\
+   ucase     change lower case to upper case\n\
+   sparse    try to seek rather than write the output for NUL input blocks\n\
++  diff      write block only if it differs on destination(should be used with notrunc)\n\
+   swab      swap every pair of input bytes\n\
+   sync      pad every input block with NULs to ibs-size; when used\n\
+             with block or unblock, pad with spaces rather than NULs\n\
+@@ -609,7 +626,7 @@ Each CONV symbol may be:\n\
+       fputs (_("\
+   excl      fail if the output file already exists\n\
+   nocreat   do not create the output file\n\
+-  notrunc   do not truncate the output file\n\
++  notrunc   do not truncate the output file(unspecified/no effect on block devices)\n\
+   noerror   continue after read errors\n\
+   fdatasync  physically write output file data before finishing\n\
+   fsync     likewise, but also write metadata\n\
+@@ -838,8 +855,49 @@ print_xfer_stats (xtime_t progress_time)
+         fprintf (stderr, "%*s", progress_len - stats_len, "");
+       progress_len = stats_len;
+     }
+-  else
++  //XXX: this extra \n (from the removal of 'else') makes the status=progress show each update on a new line (which is what I wanted)
++  //else
+     fputc ('\n', stderr);
++
++}
++
++static void
++print_xfer_diskwritten ()
++{
++  double percent_written=actuallywritten2disk * 100.0f / w_bytes;
++//  if (actuallywritten2disk != w_bytes)
++//    {
++//      assert(actuallywritten2disk != w_bytes);
++//      // can't have 0.00% and 100.00% when these differ!
++//      if (percent_written >= 99.99f)
++//        percent_written = 99.99f;
++//      else if ((percent_written <= 0.01f) && (actuallywritten2disk > 0))
++//        percent_written=0.01f;
++//      //FIXME: this % is inaccurate eg. if you wrote 512 bytes of 1073741824 bytes then the skipped is 100.00% but should be 99.99%  and percent_written is 0.00%
++//      // the above workaround is worse
++//    }
++  fprintf(stderr, "Actually written to disk: '%ju' bytes (%.2f%). ", actuallywritten2disk, percent_written);
++  //TODO: ^ maybe use human_readable() ?
++  //TODO: use a status= value for enabling the printing of this?
++  //TODO: find out how to modify dd.1 to add conv=diff info!
++  char *wut=NULL;
++  if (conversions_mask & C_SPARSE) // currently, conv=sparse has prio over conv=diff !! FIXME: if this changes! Actually it shouldn't change!
++    {
++      wut="Skipped";
++    }
++  else if (conversions_mask & C_DIFF)
++    {
++      wut="Identical";
++    }
++  else
++    {
++      wut="Lost(?)"; //TODO: when's this reached? and are the written and w_bytes values different when?
++    }
++  if (actuallywritten2disk != w_bytes)
++    {
++      fprintf(stderr, "%s: '%ju' bytes (%.2f%%).", wut, w_bytes - actuallywritten2disk, 100.0f - percent_written);
++    }
++  fputc ('\n', stderr);
+ }
+ 
+ static void
+@@ -870,6 +928,7 @@ print_stats (void)
+     return;
+ 
+   print_xfer_stats (0);
++  print_xfer_diskwritten (); //FIXME: this modified the normal (stderr)output of 'dd' and there may be programs/scripts which rely on the last line being the usual eg. `1073741824 bytes (1.1 GB, 1.0 GiB) copied, 4.44888 s, 241 MB/s` but now you got this and a new empty line too!
+ }
+ 
+ /* An ordinary signal was received; arrange for the program to exit.  */
+@@ -945,15 +1004,26 @@ install_signal_handlers (void)
+ static void
+ cleanup (void)
+ {
++  bool failin=false;
++  bool failout=false;
+   if (close (STDIN_FILENO) < 0)
+-    die (EXIT_FAILURE, errno, _("closing input file %s"), quoteaf (input_file));
++    failin=true;
+ 
+   /* Don't remove this call to close, even though close_stdout
+      closes standard output.  This close is necessary when cleanup
+      is called as part of a signal handler.  */
+   if (close (STDOUT_FILENO) < 0)
++    failout=true;
++
++  if (failin)
++    die (EXIT_FAILURE, errno, _("closing input file %s"), quoteaf (input_file));
++  if (failout)
+     die (EXIT_FAILURE, errno,
+          _("closing output file %s"), quoteaf (output_file));
++  if (destbuf) {
++    free(destbuf);
++    destbuf=NULL;
++  }
+ }
+ 
+ /* Process any pending signals.  If signals are caught, this function
+@@ -1179,7 +1249,7 @@ iread_fullblock (int fd, char *buf, size
+ static size_t
+ iwrite (int fd, char const *buf, size_t size)
+ {
+-  size_t total_written = 0;
++  size_t total_written = 0; // size_t printf is %zu
+ 
+   if ((output_flags & O_DIRECT) && size < output_blocksize)
+     {
+@@ -1211,6 +1281,10 @@ iwrite (int fd, char const *buf, size_t
+       process_signals ();
+ 
+       /* Perform a seek for a NUL block if sparse output is enabled.  */
++      /* Careful: this keeps the dest blocks intact if the output is a device! */
++      /* otherwise, if a file, and conv=notrunc is NOT also used! then the dest blocks will be the same: NULs because of how lseek/write works! */
++      //TODO: add a warning on 'dd' start when using conv=sparse that warns that dest blocks will remain as they are (ie. non-NULs) when using conv=sparse and inputfile has NUL blocks! Maybe even print something if the outfile is a file to tell that dest blocks will be NULs even though skipped, because that's how lseek/write works! (also file seems to be truncated, maybe unless conv=notrunc ? yep! doneTODO: test if conv=notruc,sparse still has the NULs in outfile! nope it doesn't! acts like the file would be a device!  so conv=sparse,notrunc for a file of= is just as bad as conv=sparse for a device of=  in that, it keeps wtw data blocks is at dest!)
++      //FIXME: conv=sparse and conv=diff shouldn't be allowed at the same time!
+       final_op_was_seek = false;
+       if ((conversions_mask & C_SPARSE) && is_nul (buf, size))
+         {
+@@ -1218,16 +1292,94 @@ iwrite (int fd, char const *buf, size_t
+             {
+               conversions_mask &= ~C_SPARSE;
+               /* Don't warn about the advisory sparse request.  */
++              fprintf (stderr, "Couldn't seek '%zu' bytes in outfile. Disabling conv=sparse.\n", size);
+             }
+           else
+             {
+               final_op_was_seek = true;
+               nwritten = size;
++              //fprintf (stderr, "Seeked '%zu' bytes to '%zd' via conv=sparse totalwritten=%zu\n", size, nwritten, total_written); // this will obviously slow down operations if allowed to printf this!
+             }
+         }
+-
+-      if (!nwritten)
+-        nwritten = write (fd, buf + total_written, size - total_written);
++      if ((!final_op_was_seek) && (conversions_mask & C_DIFF) && (size > 0)) // don't do stuff if size == 0 (size is size_t aka unsigned)
++        {
++          assert(size>0);
++          // read from outfile without seeking!
++          ssize_t bytesread = 0; /* ssize_t printf is %zd */
++          off_t ltell = lseek (fd, 0, SEEK_CUR); //get current outfile offset, for pread! /* off_t printf is %jd or PRIdMAX but has to be cast to (intmax_t) Looks like it's 'long int' #if __WORDSIZE == 64 and/or 'signed long long int' #if __WORDSIZE == 32 as per bits/types.h # define __SQUAD_TYPE ... */
++          //doneTODO: handle unable to seek aka <0 ret value! should disable conv=diff for the rest of the session!
++          if (ltell < 0)
++            {
++              conversions_mask &= ~C_DIFF;
++              fprintf (stderr, "Couldn't get current offset in output, via lseek. Disabling conv=diff.\n");
++            }
++          else
++            {
++            //TODO: need a 'while' loop here until 'size' bytes have been read! because 'pread' just like 'read' can read less than requested! hence, just like 'write' even, which can be seen in this very func.!
++              if (NULL == destbuf) {
++                destbuf = malloc (size);
++              }
++              assert(NULL != destbuf); //FIXME: allocate destbuf somewhere outside of this!
++            bytesread = pread (fd, destbuf, size, ltell); int errnosaved_pread = errno;
++            if ((bytesread > 0) && bytesread == size)
++              {
++                assert(size>0);
++                //TODO: make a memcmp that returns the offset of first mismatch(or size-1 if all matched), see glibc's ./string/memcmp.c (and header ./include/string.h) if you want to copy and make a memcmp2 inside glibc! This way we can compare and advance outfile pointer(lseek) for an amount of bytes possibly less than 'size'. So if a block of 'size' if last byte is a mismatch, we don't have to write the whole block, only the last byte...
++                //TODO: have a memcmp variant which can return two numbers, one for at what offset of the first diff starts, and one of the offset at which the last diff ends (eg. after which the two buffs are equal!) thus, we would only have to write from that 'first' offset until that 'last' offset(so last-first bytes), instead of from that 'first' offset until the end of the block (eg. size-first  bytes, which is more!)
++                if (memcmp(buf, destbuf, size) == 0)
++                  {
++                    //they are equal, skip writing the 'size' block to outfile ie. seek instead!
++                    //two prev. 'if's ensured 'size' is > 0 at this point!
++                    off_t newlyseekd=lseek (fd, size, SEEK_CUR); int errnosaved = errno;
++                    if (newlyseekd < 0)
++                      { // −1 shall be returned, errno shall be set to indicate the  error,  and  the  file offset shall remain unchanged.
++
++                        conversions_mask &= ~C_DIFF;
++                        fprintf (stderr, "Couldn't seek ahead '%zu' bytes in output from file offset '%jd'. errno=%d(%s). Disabling conv=diff for now on.\n", size, (intmax_t)ltell, errnosaved, strerror(errnosaved));
++                        //TODO: should we really disable it here? hmm... I know they already do it for C_SPARSE ... I guess this means if you can't seek once, assume you can't ever seek? eg. pipe?  yeah leaving as is, for now.
++                      }
++                    else
++                      { // lseek'd >= 0 // Upon successful completion, the resulting offset, as measured in  bytes from  the beginning of the file, shall be returned.
++                        final_op_was_seek = true;
++                        if (newlyseekd < ltell)
++                          {
++                            fprintf (stderr, "Improper seek: from '%jd' to '%jd' (should've increased in number!)\n", (intmax_t)ltell, (intmax_t)newlyseekd);
++                            errno=ESPIPE; // ESPIPE 29 Illegal seek
++                            goto someexit;
++                          }
++                        assert(newlyseekd > ltell); // because 'size' at that point was > 0 so it should've seek'd at least 1 byte!
++                        size_t seekdthismuch = newlyseekd - ltell; // stored unsigned!
++                        if (seekdthismuch != size)
++                          {
++                            fprintf (stderr, "Couldn't seek exactly '%zu' bytes in output. Seeked exactly '%zu' bytes to offset '%jd' instead! errno=%d(%s). Aborting to avoid outfile corruption...\n", size, seekdthismuch, (intmax_t)newlyseekd, errnosaved, strerror(errnosaved));
++                            //errno = ENOSPC;
++                            errno=errnosaved; //keep wtw errno lseek returned! tho I can't see this ever failing tbh.
++                            goto someexit;
++                            //doneFIXME: make sure this aborts and doesn't try to continue writing! Yeah seems to be true! the returned totalwritten won't have the +size added to it, thus will be different than the amount it wanted to iwrite, thus subsequent 'if' checks will make it fail&exit!
++                          }
++                        else
++                          {
++                            nwritten = size;
++                          } // was 'else' ie. seeked exactly 'size' bytes int outfile
++                      } // else lseek'd was >= 0
++                  } // if memcmp
++              } // if bytesread == size
++            else
++              { //well, if you read <=0 bytes, either read failed or I don't care.
++                //TODO: add some verbose flag and don't print this for each block? see status=LEVEL in man 1 dd
++                fprintf (stderr, "Couldn't read '%zu' bytes from output(starting at offset '%jd'), errno='%d'(%s). (bytesread='%zd') This block(of '%zu' size) won't be `conv=diff`-ed\n", size, (intmax_t)ltell, errnosaved_pread, strerror(errnosaved_pread), bytesread, size);
++                // TODO: handle 0 and <0 here?
++                // TODO: this currently acts like conv=noerror (which is meant for if= )
++              } // else ie. bytesread was <= 0
++            } // else ie. ltell was >= 0
++        } // C_DIFF
++
++      if (!nwritten) // nwritten is 0?  then
++        {
++          nwritten = write (fd, buf + total_written, size - total_written);
++          if (nwritten > 0)
++            actuallywritten2disk+=nwritten;
++        }
+ 
+       if (nwritten < 0)
+         {
+@@ -1249,6 +1401,7 @@ iwrite (int fd, char const *buf, size_t
+   if (o_nocache && total_written)
+     invalidate_cache (fd, total_written);
+ 
++someexit:
+   return total_written;
+ }
+ 
+@@ -1584,6 +1737,9 @@ scanargs (int argc, char *const *argv)
+   if (multiple_bits_set (input_flags & (O_DIRECT | O_NOCACHE))
+       || multiple_bits_set (output_flags & (O_DIRECT | O_NOCACHE)))
+     die (EXIT_FAILURE, 0, _("cannot combine direct and nocache"));
++  if ((conversions_mask & C_DIFF) && ( (conversions_mask & C_NOTRUNC) == 0))
++    die (EXIT_FAILURE, 0, _("conv=diff requires conv=notrunc even when of= is a device and trunc would have no effect! Otherwise the output file will start with 0 bytes size due to trunc, thus conv=diff has nothing to compare with!"));
++  //TODO: maybe this should be just a warning, to allow resetting the outfile size on first run? but then second run would have to add notrunc or it will get truncated again hmmm... maybe it's better to just exit here!
+ 
+   if (input_flags & O_NOCACHE)
+     {
+@@ -2151,12 +2307,16 @@ dd_copy (void)
+ 
+   while (1)
+     {
+-      if (status_level == STATUS_PROGRESS)
++      if ((status_level == STATUS_PROGRESS) || (status_level == STATUS_PROGRESS2) )
+         {
+           xtime_t progress_time = gethrxtime ();
+           if (next_time <= progress_time)
+             {
+               print_xfer_stats (progress_time);
++              if (STATUS_PROGRESS2 == status_level) //doneFIXME: status= is not setting bits! can't choose both =progress and =diskwritten  so choosing status=progress2 to have both!
++                {
++                  print_xfer_diskwritten ();
++                }
+               next_time += XTIME_PRECISION;
+             }
+         }
+@@ -2435,9 +2595,9 @@ main (int argc, char **argv)
+            | (seek_records || (conversions_mask & C_NOTRUNC) ? 0 : O_TRUNC));
+ 
+       /* Open the output file with *read* access only if we might
+-         need to read to satisfy a 'seek=' request.  If we can't read
++         need to read to satisfy a 'seek=' request, or conv=diff is used!.  If we can't read
+          the file, go ahead with write-only access; it might work.  */
+-      if ((! seek_records
++      if ((! ((seek_records) || (conversions_mask & C_DIFF))
+            || ifd_reopen (STDOUT_FILENO, output_file, O_RDWR | opts, perms) < 0)
+           && (ifd_reopen (STDOUT_FILENO, output_file, O_WRONLY | opts, perms)
+               < 0))
+@@ -2477,6 +2637,28 @@ main (int argc, char **argv)
+                      size, quoteaf (output_file));
+             }
+         }
++      else if (conversions_mask & C_SPARSE)
++        {
++          struct stat stdout_stat;
++          if (fstat (STDOUT_FILENO, &stdout_stat) != 0)
++            {
++              die (EXIT_FAILURE, errno, _("cannot fstat %s"),
++                  quoteaf (output_file));
++            }
++          else
++            {
++              bool isblockdevice=S_ISBLK(stdout_stat.st_mode); // see /usr/include/linux/stat.h and docs at https://en.wikibooks.org/wiki/C_Programming/POSIX_Reference/sys/stat.h
++              if (isblockdevice || ((conversions_mask & C_NOTRUNC) 
++                    // && !isblockdevice  //commented out just in case other cases(than just file types) should be handled here!
++                    ) )
++                {
++                  //block device (with or without conv=notrunc) will keep dest blocks are they are when conv=sparse so they won't be set to NULs
++                  fprintf(stderr, "WARNING: The of= is either a <block device> or <a file(or something else, just to cover all cases) with conv=notrunc> while you have conv=sparse, which means the destination blocks in of= that in if= are NULs will remain as they are ie. non-NULs/untouched in of= ! Make sure this is what you wanted! ie. if= and of= won't have the same contents when 'dd' is done!\n");
++                  //TODO: see if all fprintf`s have the end \n !
++                  //TODO: use 'error (...)' instead of fprintf`s everywhere when I modified things!
++                }
++            }
++        } // C_SPARSE
+     }
+ 
+   start_time = gethrxtime ();

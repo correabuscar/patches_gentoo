@@ -1,0 +1,69 @@
+use this patch with bash patch always_append_on_redirection.patch
+this will fix 'dd' trying to seek past EOF into the file used for redirection while that file is open in O_APPEND mode
+
+now(with this patch and bash patch!) it's this:
+$ rm /tmp/out;echo abcdefghijklm | dd bs=5 seek=8 oflag=seek_bytes > /tmp/out ; stat --format=%s /tmp/out
+dd: 'standard output': cannot seek: Illegal seek
+0+0 records in
+0+0 records out
+0 bytes copied, 0.000102177 s, 0.0 kB/s
+Actually written to disk: '0' bytes (-nan%).
+0
+
+before patch:
+$ rm /tmp/out;echo abcdefghijklm | dd bs=5 seek=8 oflag=seek_bytes > /tmp/out ; stat --format=%s /tmp/out
+2+1 records in
+2+1 records out
+14 bytes copied, 0.0001584 s, 88.4 kB/s
+Actually written to disk: '14' bytes (100.00%). 
+14
+
+should be(if no bash patch was used):
+$ rm /tmp/out;echo abcdefghijklm | dd bs=5 seek=8 oflag=seek_bytes > /tmp/out ; stat --format=%s /tmp/out
+2+1 records in
+2+1 records out
+14 bytes copied, 0.000112444 s, 125 kB/s
+Actually written to disk: '14' bytes (100.00%). 
+22
+
+
+diff --git a/fs/read_write.c b/fs/read_write.c
+index 7458fccc59e1..e46c2997a158 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -88,6 +88,10 @@ generic_file_llseek_size(struct file *file, loff_t offset, int whence,
+ {
+ 	switch (whence) {
+ 	case SEEK_END:
++		if ((file->f_flags & O_APPEND) && (offset > 0)) {
++			//tried to seek past EOF in O_APPEND mode will have no effect! so, this 'dd' will fail: echo abcdefghijklm | dd bs=5 seek=8 oflag=seek_bytes > /tmp/out ; stat --format=%s /tmp/out   ie. 14 written 14 bytes file size, instead of 22 bytes file size, if applied O_APPEND patch to bash's redirect operator, thus /tmp/out is O_APPEND mode! ok but actually it's not SEEK_END that's in effect here but SEEK_CUR instead!
++			return -ESPIPE; // ESPIPE 29 Illegal seek
++		}
+ 		offset += eof;
+ 		break;
+ 	case SEEK_CUR:
+@@ -105,6 +109,13 @@ generic_file_llseek_size(struct file *file, loff_t offset, int whence,
+ 		 * like SEEK_SET.
+ 		 */
+ 		spin_lock(&file->f_lock);
++
++		if ((file->f_flags & O_APPEND) && (offset + file->f_pos > eof)) {
++			//tried to seek past EOF in O_APPEND mode will have no effect! so, this 'dd' will fail: echo abcdefghijklm | dd bs=5 seek=8 oflag=seek_bytes > /tmp/out ; stat --format=%s /tmp/out   ie. 14 written 14 bytes file size, instead of 22 bytes file size, if applied O_APPEND patch to bash's redirect operator, thus /tmp/out is O_APPEND mode! ok but actually it's not SEEK_END that's in effect here but SEEK_CUR instead!
++			spin_unlock(&file->f_lock);
++			return -ESPIPE; // ESPIPE 29 Illegal seek
++		}
++
+ 		offset = vfs_setpos(file, file->f_pos + offset, maxsize);
+ 		spin_unlock(&file->f_lock);
+ 		return offset;
+@@ -127,6 +138,10 @@ generic_file_llseek_size(struct file *file, loff_t offset, int whence,
+ 		break;
+ 	}
+ 
++	if ((file->f_flags & O_APPEND) && (offset > eof)) {
++	  //tried to seek past EOF in O_APPEND mode will have no effect! so, this 'dd' will fail: echo abcdefghijklm | dd bs=5 seek=8 oflag=seek_bytes > /tmp/out ; stat --format=%s /tmp/out   ie. 14 written 14 bytes file size, instead of 22 bytes file size, if applied O_APPEND patch to bash's redirect operator, thus /tmp/out is O_APPEND mode! ok but actually it's not SEEK_END that's in effect here but SEEK_CUR instead!
++	  return -ESPIPE; // ESPIPE 29 Illegal seek
++	}
+ 	return vfs_setpos(file, offset, maxsize);
+ }
+ EXPORT_SYMBOL(generic_file_llseek_size);

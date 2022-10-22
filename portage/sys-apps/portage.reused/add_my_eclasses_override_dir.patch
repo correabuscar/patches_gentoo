@@ -1,0 +1,11 @@
+Index: /usr/lib64/python3.6/site-packages/portage/eclass_cache.py
+===================================================================
+--- orig/lib/portage/eclass_cache.py
++++ mod/lib/portage/eclass_cache.py
+@@ -183,5 +183,5 @@ class cache(object):
+ 	def eclass_locations_string(self):
+ 		if self._eclass_locations_str is None:
+ 			self._eclass_locations_str = " ".join(_shell_quote(x)
+-				for x in reversed(self.porttrees))
++				for x in reversed(self.porttrees + ("/eclasses_override",)))  #/eclasses_override dir will be the first that 'inherit' will look into for .eclass-es! (see /usr/lib/portage/python3.6/ebuild.sh "for repo_location")
+ 		return self._eclass_locations_str

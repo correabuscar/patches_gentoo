@@ -1,0 +1,14 @@
+diff --git a/drivers/pci/pci.c b/drivers/pci/pci.c
+index 766f5779db92..bf11a063a16e 100644
+--- a/drivers/pci/pci.c
++++ b/drivers/pci/pci.c
+@@ -1386,7 +1386,8 @@ static void pci_restore_config_space(struct pci_dev *pdev)
+ 		 * issues on Intel PCI bridges that occur when these
+ 		 * registers are not explicitly written.
+ 		 */
+-		pci_restore_config_space_range(pdev, 9, 11, 0, true);
++		//pci_restore_config_space_range(pdev, 9, 11, 0, true);
++		pci_restore_config_space_range(pdev, 9, 11, 0, false);//added
+ 		pci_restore_config_space_range(pdev, 0, 8, 0, false);
+ 	} else {
+ 		pci_restore_config_space_range(pdev, 0, 15, 0, false);

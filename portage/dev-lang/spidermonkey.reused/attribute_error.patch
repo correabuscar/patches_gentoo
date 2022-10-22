@@ -1,0 +1,68 @@
+https://bugs.gentoo.org/793683
+fix for python 3.10 with dev-lang/spidermonkey-78.11.0
+so, either apply this patch, or allow upstream ebuild to select max python 3.9 and not need this patch!
+
+AttributeError: module 'collections' has no attribute 'Sequence'
+
+Index: /var/tmp/portage/dev-lang/spidermonkey-78.11.0/work/firefox-78.11.0/python/mozbuild/mozbuild/backend/configenvironment.py
+===================================================================
+--- firefox-78.11.0/python/mozbuild/mozbuild/backend/configenvironment.py
++++ spidermonkey-78.11.0_work_firefox-78.11.0/python/mozbuild/mozbuild/backend/configenvironment.py
+@@ -9,7 +9,8 @@ import six
+ import sys
+ import json
+ 
+-from collections import Iterable, OrderedDict
++from collections import OrderedDict
++from collections.abc import Iterable
+ from types import ModuleType
+ 
+ import mozpack.path as mozpath
+Index: /var/tmp/portage/dev-lang/spidermonkey-78.11.0/work/firefox-78.11.0/python/mozbuild/mozbuild/util.py
+===================================================================
+--- firefox-78.11.0/python/mozbuild/mozbuild/util.py
++++ firefox-78.11.0/python/mozbuild/mozbuild/util.py
+@@ -22,6 +22,7 @@ import re
+ import stat
+ import sys
+ import time
++from collections.abc import Sequence
+ from collections import (
+     OrderedDict,
+ )
+@@ -782,7 +783,7 @@ class HierarchicalStringList(object):
+         self._strings = StrictOrderingOnAppendList()
+         self._children = {}
+ 
+-    class StringListAdaptor(collections.Sequence):
++    class StringListAdaptor(collections.abc.Sequence):
+         def __init__(self, hsl):
+             self._hsl = hsl
+ 
+Index: /var/tmp/portage/dev-lang/spidermonkey-78.11.0/work/firefox-78.11.0/python/mozbuild/mozbuild/makeutil.py
+===================================================================
+--- firefox-78.11.0/python/mozbuild/mozbuild/makeutil.py
++++ firefox-78.11.0/python/mozbuild/mozbuild/makeutil.py
+@@ -7,7 +7,7 @@ from __future__ import absolute_import,
+ import os
+ import re
+ import six
+-from collections import Iterable
++from collections.abc import Iterable
+ 
+ 
+ class Makefile(object):
+Index: /var/tmp/portage/dev-lang/spidermonkey-78.11.0/work/firefox-78.11.0/testing/mozbase/manifestparser/manifestparser/filters.py
+===================================================================
+--- firefox-78.11.0/testing/mozbase/manifestparser/manifestparser/filters.py
++++ firefox-78.11.0/testing/mozbase/manifestparser/manifestparser/filters.py
+@@ -12,7 +12,8 @@ from __future__ import absolute_import
+ 
+ import itertools
+ import os
+-from collections import defaultdict, MutableSequence
++from collections import defaultdict
++from collections.abc import MutableSequence
+ 
+ import six
+ from six import string_types

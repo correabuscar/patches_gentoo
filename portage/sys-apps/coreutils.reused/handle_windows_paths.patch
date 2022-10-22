@@ -1,0 +1,56 @@
+filenames with paths like a\b\c will be tried as a/b/c if the first fails
+
+Index: coreutils-8.32/src/md5sum.c
+===================================================================
+--- coreutils-8.32.orig/src/md5sum.c
++++ coreutils-8.32/src/md5sum.c
+@@ -616,7 +616,28 @@ digest_file (const char *filename, int *
+     }
+   else
+     {
++      //fprintf(stderr, "!! '%s'\n", filename);
+       fp = fopen (filename, (O_BINARY && *binary ? "rb" : "r"));
++      if (fp == NULL) {
++        if (!ignore_missing && errno == ENOENT) {
++          //error (0, errno, "%s", quotef (filename));
++          fprintf(stderr, "(%d) '%s': %s. Will next retry with '\\' as '/' just in case this was a path from Windows and we're now in Linux.\n", errno, strerror(errno), quotef (filename));
++          fflush(stdout);
++          fflush(stderr);
++        }
++        //strncpy(new, filename,
++        char *c=filename; // bye bye const
++        int count=0;
++        while (('\0' != *c) && (count <= 4096)) {
++          if (*c == '\\') {
++            *c = '/';
++          }
++          c++;
++          count++;
++        }
++        //fprintf(stderr," !! count=%d\n", count);
++        fp = fopen (filename, (O_BINARY && *binary ? "rb" : "r"));
++      }
+       if (fp == NULL)
+         {
+           if (ignore_missing && errno == ENOENT)
+@@ -679,6 +700,7 @@ digest_check (const char *checkfile_name
+     }
+   else
+     {
++      //fprintf(stderr, "!!! %s\n", checkfile_name);
+       checkfile_stream = fopen (checkfile_name, "r");
+       if (checkfile_stream == NULL)
+         {
+Index: coreutils-8.32/src/md5sum.c
+===================================================================
+--- coreutils-8.32.orig/src/md5sum.c
++++ coreutils-8.32/src/md5sum.c
+@@ -618,7 +618,7 @@ digest_file (const char *filename, int *
+     {
+       //fprintf(stderr, "!! '%s'\n", filename);
+       fp = fopen (filename, (O_BINARY && *binary ? "rb" : "r"));
+-      if (fp == NULL) {
++      if ((fp == NULL) && (NULL != index(filename,'\\'))) { //ie. there is a \ in filename(which contains the path too), only then try to convert \ into /
+         if (!ignore_missing && errno == ENOENT) {
+           //error (0, errno, "%s", quotef (filename));
+           fprintf(stderr, "(%d) '%s': %s. Will next retry with '\\' as '/' just in case this was a path from Windows and we're now in Linux.\n", errno, strerror(errno), quotef (filename));

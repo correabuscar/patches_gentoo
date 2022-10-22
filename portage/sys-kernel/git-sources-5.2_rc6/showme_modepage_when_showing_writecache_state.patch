@@ -1,0 +1,43 @@
+diff --git a/drivers/scsi/sd.c b/drivers/scsi/sd.c
+index 2b2bc4b49d78..3e539cedbe2b 100644
+--- a/drivers/scsi/sd.c
++++ b/drivers/scsi/sd.c
+@@ -2794,15 +2794,34 @@ sd_read_cache_type(struct scsi_disk *sdkp, unsigned char *buffer)
+ 		if (sdkp->WCE && sdkp->write_prot)
+ 			sdkp->WCE = 0;
+ 
++//src: https://stackoverflow.com/a/3208376/11509478
++#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
++#define BYTE_TO_BINARY(byte)  \
++  (byte & 0x80 ? '1' : '0'), \
++  (byte & 0x40 ? '1' : '0'), \
++  (byte & 0x20 ? '1' : '0'), \
++  (byte & 0x10 ? '1' : '0'), \
++  (byte & 0x08 ? '1' : '0'), \
++  (byte & 0x04 ? '1' : '0'), \
++  (byte & 0x02 ? '1' : '0'), \
++  (byte & 0x01 ? '1' : '0')
++
+ 		if (sdkp->first_scan || old_wce != sdkp->WCE ||
+-		    old_rcd != sdkp->RCD || old_dpofua != sdkp->DPOFUA)
++		    old_rcd != sdkp->RCD || old_dpofua != sdkp->DPOFUA) {
++      //output line can't be bigger than 128 bytes aka SCSI_LOG_BUFSIZE from include/scsi/scsi_dbg.h else gets truncated! weird, why?!
+ 			sd_printk(KERN_NOTICE, sdkp,
+-				  "Write cache: %s, read cache: %s, %s\n",
++				  "Write cache: %s, read cache: %s, %s; mp='%d' o='%d' d.h_l='%u' d.b_l='%u' b[o+2]='%c%c%c%c%c%c%c%c'\n",
+ 				  sdkp->WCE ? "enabled" : "disabled",
+ 				  sdkp->RCD ? "disabled" : "enabled",
+ 				  sdkp->DPOFUA ? "supports DPO and FUA"
+-				  : "doesn't support DPO or FUA");
+-
++				  : "doesn't support DPO or FUA"
++          , modepage //int
++          , offset //int
++          , data.header_length // __u8
++          , data.block_descriptor_length // __u16 in include/scsi/scsi_device.h
++          , BYTE_TO_BINARY(buffer[offset + 2]) // & 0xff //unsigned char, but are they promoted to int and thus %02x is ok?
++          );
++    }
+ 		return;
+ 	}
+ 

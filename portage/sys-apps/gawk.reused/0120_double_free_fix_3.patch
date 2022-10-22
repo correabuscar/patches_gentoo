@@ -1,0 +1,33 @@
+this is from https://git.savannah.gnu.org/cgit/gawk.git/commit/?id=3d7178e78e523574649578593192bab2e0d08a2a
+fixes bad kernel compilation, like:
+ CALL    /usr/src/linux-5.18.19-gentoo-r1/scripts/atomic/check-atomics.sh
+  CALL    /usr/src/linux-5.18.19-gentoo-r1/scripts/checksyscalls.sh
+  CC      /tmp/genkernel.outdir/tools/objtool/arch/x86/decode.o
+In file included from arch/x86/../../../arch/x86/lib/inat.c:10,
+                 from arch/x86/decode.c:11:
+/tmp/genkernel.outdir/tools/objtool/arch/x86/lib/inat-tables.c:6:19: error: expected expression before '|' token
+    6 |         [0x00] =  | INAT_MODRM,
+      |                   ^
+/tmp/genkernel.outdir/tools/objtool/arch/x86/lib/inat-tables.c:206:19: error: expected expression before '|' token
+  206 |         [0x00] =  | INAT_MAKE_GROUP(10),
+      |                   ^
+/tmp/genkernel.outdir/tools/objtool/arch/x86/lib/inat-tables.c:423:19: error: expected expression before '|' token
+  423 |         [0x10] =  | INAT_MODRM | INAT_VEXOK,
+      |                   ^
+/tmp/genkernel.outdir/tools/objtool/arch/x86/lib/inat-tables.c:551:19: error: expected expression before '|' token
+  551 |         [0x10] =  | INAT_MODRM | INAT_VEXOK,
+      |                   ^
+
+diff --git a/interpret.h b/interpret.h
+index 955d918..fde02d2 100644
+--- a/interpret.h
++++ b/interpret.h
+@@ -242,7 +242,7 @@ uninitialized_scalar:
+ 								save_symbol->vname);
+ 				// set up local param by value
+ 				if (op != Op_push_arg_untyped) {
+-					m = elem_new_to_scalar(m);
++					m = dupnode(Nnull_string);
+ 				}
+ 
+ 				PUSH(m);

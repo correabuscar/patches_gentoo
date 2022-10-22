@@ -1,0 +1,12 @@
+diff --git a/src/modules/bank.c b/src/modules/bank.c
+index bc54192c48..65222009aa 100644
+--- a/src/modules/bank.c
++++ b/src/modules/bank.c
+@@ -358,6 +358,7 @@ static void AllocatePluginDir (module_bank_t *bank, unsigned maxdepth,
+         }
+ 
+         struct stat st;
++        //fprintf(stderr, "!! abspath='%s'",abspath);//added by je ; /usr/lib/vlc/plugins/plugins.dat
+         if (vlc_stat (abspath, &st) == -1)
+             goto skip;
+ 

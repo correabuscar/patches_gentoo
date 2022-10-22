@@ -1,0 +1,108 @@
+I'll just assume here that on Gentoo this isn't required, because patch actually_use_specified_version_in_libname.patch is also not required(which is based on this patch, ie. requires it) and since I'm always patching check with the other patches(actually only one, the 'append' one), then it won't see any new function definitions anyway; plus the soname version changes(which do happen now, apparently since sometime between 0.14 and 0.15, thanks to <grawity> on #gentoo irc) should cover that case when it happens!
+ie. this patch not needed anymore
+
+=========
+patch updated for 0.15.1 // i dno if other versions need to be incremented, or only libcheck! now at v.3 (was v2.0.0)
+patch updated for 0.15.0
+patch updated for 0.14.0
+patch updated for 0.13.0
+ ---
+this is required so that when upgrading from archlinux's upstream `check` package v. 0.12.0-1 
+to this new git version v 0.12.0.r36.gd6c1ffe-1 all created tests in whatever projects 
+will require rebuilding because lib name became 1.0.0 (previously 0.0.0), 
+otherwise they'd use this new lib that has a function sig. change and thus not run any Checks(=0)!
+details: https://github.com/libcheck/check/issues/187#issuecomment-493522053
+
+#diff --git a/configure.ac b/configure.ac
+#index bd3e561..2904bb8 100644
+#--- a/configure.ac
+#+++ b/configure.ac
+#@@ -4,11 +4,12 @@
+# # Prelude.
+# AC_PREREQ([2.59])
+# 
+#-AC_INIT([Check], [0.12.0], [check-devel at lists dot sourceforge dot net])
+#+AC_INIT([Check], [0.12.1], [check-devel at lists dot sourceforge dot net])
+# CHECK_MAJOR_VERSION=0
+# CHECK_MINOR_VERSION=12
+#-CHECK_MICRO_VERSION=0
+#+CHECK_MICRO_VERSION=1
+# CHECK_VERSION=$CHECK_MAJOR_VERSION.$CHECK_MINOR_VERSION.$CHECK_MICRO_VERSION
+#+LIBCHECK_VERSION=1:0:0
+# 
+# # unique source file --- primitive safety check 
+# AC_CONFIG_SRCDIR([src/check.c])
+#@@ -32,6 +33,7 @@ AC_SUBST(CHECK_MAJOR_VERSION)
+# AC_SUBST(CHECK_MINOR_VERSION)
+# AC_SUBST(CHECK_MICRO_VERSION)
+# AC_SUBST(CHECK_VERSION)
+#+AC_SUBST(LIBCHECK_VERSION)
+# 
+# # Configure options.
+# # allow `./configure --enable-silent-rules' and `make V=0'
+#diff --git a/configure.ac b/configure.ac
+#index 47c3675..5bb9575 100644
+#--- a/configure.ac
+#+++ b/configure.ac
+#@@ -4,11 +4,12 @@
+# # Prelude.
+# AC_PREREQ([2.59])
+# 
+#-AC_INIT([Check], [0.14.0], [check-devel at lists dot sourceforge dot net])
+#+AC_INIT([Check], [0.14.1], [check-devel at lists dot sourceforge dot net])
+# CHECK_MAJOR_VERSION=0
+# CHECK_MINOR_VERSION=14
+#-CHECK_MICRO_VERSION=0
+#+CHECK_MICRO_VERSION=1
+# CHECK_VERSION=$CHECK_MAJOR_VERSION.$CHECK_MINOR_VERSION.$CHECK_MICRO_VERSION
+#+LIBCHECK_VERSION=2:0:0
+# 
+# # unique source file --- primitive safety check 
+# AC_CONFIG_SRCDIR([src/check.c])
+#@@ -32,6 +33,7 @@ AC_SUBST(CHECK_MAJOR_VERSION)
+# AC_SUBST(CHECK_MINOR_VERSION)
+# AC_SUBST(CHECK_MICRO_VERSION)
+# AC_SUBST(CHECK_VERSION)
+#+AC_SUBST(LIBCHECK_VERSION)
+# 
+# # Configure options.
+# # allow `./configure --enable-silent-rules' and `make V=0'
+#diff --git a/configure.ac b/configure.ac
+#index 47c3675..5bb9575 100644
+#--- a/configure.ac
+#+++ b/configure.ac
+#@@ -4,11 +4,12 @@
+# # Prelude.
+# AC_PREREQ([2.59])
+# 
+#-AC_INIT([Check], [0.15.0], [check-devel at lists dot sourceforge dot net])
+#+AC_INIT([Check], [0.15.1], [check-devel at lists dot sourceforge dot net])
+# CHECK_MAJOR_VERSION=0
+# CHECK_MINOR_VERSION=15
+#-CHECK_MICRO_VERSION=0
+#+CHECK_MICRO_VERSION=1
+# CHECK_VERSION=$CHECK_MAJOR_VERSION.$CHECK_MINOR_VERSION.$CHECK_MICRO_VERSION
+#+LIBCHECK_VERSION=2:0:0
+# 
+# # unique source file --- primitive safety check 
+# AC_CONFIG_SRCDIR([src/check.c])
+Index: /var/tmp/portage/dev-libs/check-0.15.1/work/check-0.15.1/configure.ac
+===================================================================
+--- check-0.15.1/configure.ac
++++ mod/configure.ac
+@@ -9,6 +9,7 @@ CHECK_MAJOR_VERSION=0
+ CHECK_MINOR_VERSION=15
+ CHECK_MICRO_VERSION=1
+ CHECK_VERSION=$CHECK_MAJOR_VERSION.$CHECK_MINOR_VERSION.$CHECK_MICRO_VERSION
++LIBCHECK_VERSION=3:0:0
+ 
+ # unique source file --- primitive safety check 
+ AC_CONFIG_SRCDIR([src/check.c])
+@@ -32,6 +33,7 @@ AC_SUBST(CHECK_MAJOR_VERSION)
+ AC_SUBST(CHECK_MINOR_VERSION)
+ AC_SUBST(CHECK_MICRO_VERSION)
+ AC_SUBST(CHECK_VERSION)
++AC_SUBST(LIBCHECK_VERSION)
+ 
+ # Configure options.
+ # allow `./configure --enable-silent-rules' and `make V=0'

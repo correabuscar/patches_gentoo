@@ -1,0 +1,14 @@
+make the test not fail: 22/32 Test #22: testpassphrasegenerator ..........***Failed    0.10 sec
+
+diff --git a/tests/TestPassphraseGenerator.cpp b/tests/TestPassphraseGenerator.cpp
+index 9b1ed8ad..3dd59de6 100644
+--- a/tests/TestPassphraseGenerator.cpp
++++ b/tests/TestPassphraseGenerator.cpp
+@@ -32,6 +32,7 @@ void TestPassphraseGenerator::initTestCase()
+ void TestPassphraseGenerator::testWordCase()
+ {
+     PassphraseGenerator generator;
++    generator.setWordList("../../keepassxc/share/wordlists/eff_large.wordlist");
+     generator.setWordSeparator(" ");
+     QVERIFY(generator.isValid());
+ 

@@ -1,0 +1,27 @@
+#diff --git a/lib/libalpm/dload.c b/lib/libalpm/dload.c
+#index f06caad8..e5467944 100644
+#--- a/lib/libalpm/dload.c
+#+++ b/lib/libalpm/dload.c
+#@@ -454,7 +454,7 @@ static int curl_download_internal(struct dload_payload *payload,
+# 				if(!payload->errors_ok) {
+# 					/* non-translated message is same as libcurl */
+# 					snprintf(error_buffer, sizeof(error_buffer),
+#-							"The requested URL returned error: %ld", payload->respcode);
+#+							"The requested URL('%s') returned error: %ld", payload->fileurl, payload->respcode);//modified by je
+# 					_alpm_log(handle, ALPM_LOG_ERROR,
+# 							_("failed retrieving file '%s' from %s : %s\n"),
+# 							payload->remote_name, hostname, error_buffer);
+diff --git a/lib/libalpm/dload.c b/lib/libalpm/dload.c
+index e5696bb0..8ae79e96 100644
+--- a/lib/libalpm/dload.c
++++ b/lib/libalpm/dload.c
+@@ -457,7 +457,8 @@ static int curl_download_internal(struct dload_payload *payload,
+ 					handle->pm_errno = ALPM_ERR_RETRIEVE;
+ 					/* non-translated message is same as libcurl */
+ 					snprintf(error_buffer, sizeof(error_buffer),
+-							"The requested URL returned error: %ld", payload->respcode);
++							//"The requested URL returned error: %ld", payload->respcode);
++							"The requested URL('%s') returned error: %ld", payload->fileurl, payload->respcode);//modified by je
+ 					_alpm_log(handle, ALPM_LOG_ERROR,
+ 							_("failed retrieving file '%s' from %s : %s\n"),
+ 							payload->remote_name, hostname, error_buffer);

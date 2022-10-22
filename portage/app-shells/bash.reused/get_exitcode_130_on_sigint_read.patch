@@ -1,0 +1,64 @@
+note: this was now fixed differently upstream in 'devel' branch commit commit 3235014e5b3d227ccd617b0be72d897eb476d23d, see $ git show 3235014e5b3d227ccd617b0be72d897eb476d23d -- builtins/read.def
+
+patch made thanks to Chet Ramey for info: https://lists.gnu.org/archive/html/bug-bash/2020-04/msg00117.html and https://lists.gnu.org/archive/html/bug-bash/2020-04/msg00116.html
+
+Requires patch: make_read_be_always_posix.patch
+
+This patch sets exit code eg. 130 when 'read -p' gets interrupted via SIGINT, ie:
+$ ./sigintread.bash
+Press C-c here...^Cinterrupted sees exit code '130'
+
+instead of:
+$ ./sigintread.bash
+Press C-c here...^Cinterrupted sees exit code '0'
+
+or when using `kill bashpidnumberhere`:
+$ ./sigintread.bash
+Press C-c here...interrupted sees exit code '143'
+
+instead of:
+$ ./sigintread.bash
+Press C-c here...interrupted sees exit code '0'
+
+
+where ./sigintread.bash is:
+#!/bin/bash
+
+interrupted() {
+	local ec="$?"
+	trap - SIGINT  #this restores prev. behaviour, so now another C-c will stop 'read -rp'  XXX: with patch make_read_be_always_posix.patch, this line isn't needed!
+  echo "interrupted sees exit code '$ec'"
+  exit "$ec"  #this is needed ONLY for when 'sleep' or 'ping' is used and interrupted, or else it will continue running and hit 'Normal exit', if used with 'read' then it will exit without breaking 'read' thus exit code is 0 instead of 130 (128+2 aka SIGINT==2)
+}
+
+trap interrupted SIGINT SIGTERM
+#builtin read -e  #damn, that bash_event_hook() in bashline.c really is reached only on 'read -e' not 'read -p'
+builtin read -rp "Press C-c here..."  #can use 'sleep 100' instead of this 'read...' here, for testing how the behaviour is different with an external command instead of a builtin one.
+#sleep 100
+#ping 127.0.0.1  #ping will ec=0 on C-c, thanks to: Greg Wooledge https://lists.gnu.org/archive/html/bug-bash/2020-04/msg00096.html
+ec="$?"
+echo
+echo "Normal exit sees ec=$ec"
+exit "$ec"
+
+diff --git a/builtins/read.def b/builtins/read.def
+index 47715512..e37151eb 100644
+--- a/builtins/read.def
++++ b/builtins/read.def
+@@ -112,6 +112,8 @@ $END
+ extern int errno;
+ #endif
+ 
++#include "execute_cmd.h"
++
+ struct ttsave
+ {
+   int fd;
+@@ -624,6 +634,7 @@ read_builtin (list)
+ 	      lastsig = LASTSIG();
+ 	      if (lastsig == 0)
+ 		lastsig = trapped_signal_received;
++	      last_command_exit_value = 128|lastsig;
+ 	      run_pending_traps ();	/* because interrupt_immediately is not set */
+ 	    }
+ 	  else

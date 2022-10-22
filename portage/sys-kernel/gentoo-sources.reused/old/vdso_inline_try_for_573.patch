@@ -1,0 +1,15 @@
+from https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=b91c8c42ffdd5c983923edb38b3c3e112bfe6263
+
+diff --git a/lib/vdso/gettimeofday.c b/lib/vdso/gettimeofday.c
+index a2909af4b924..7938d3c4901d 100644
+--- a/lib/vdso/gettimeofday.c
++++ b/lib/vdso/gettimeofday.c
+@@ -210,7 +210,7 @@ static __always_inline int do_coarse(const struct vdso_data *vd, clockid_t clk,
+ 	return 0;
+ }
+ 
+-static __maybe_unused int
++static __always_inline int
+ __cvdso_clock_gettime_common(const struct vdso_data *vd, clockid_t clock,
+ 			     struct __kernel_timespec *ts)
+ {

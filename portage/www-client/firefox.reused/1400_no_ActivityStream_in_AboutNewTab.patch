@@ -1,0 +1,135 @@
+#diff -r 70fcbe1d49a5 browser/modules/AboutNewTab.jsm
+#--- a/browser/modules/AboutNewTab.jsm	Mon Mar 04 22:06:45 2019 +0200
+#+++ b/browser/modules/AboutNewTab.jsm	Tue Mar 05 04:27:48 2019 +0100
+#@@ -10,7 +10,7 @@
+# const {Services} = ChromeUtils.import("resource://gre/modules/Services.jsm");
+# 
+# XPCOMUtils.defineLazyModuleGetters(this, {
+#-  ActivityStream: "resource://activity-stream/lib/ActivityStream.jsm",
+#+  //ActivityStream: "resource://activity-stream/lib/ActivityStream.jsm",
+#   RemotePages: "resource://gre/modules/remotepagemanager/RemotePageManagerParent.jsm",
+# });
+# 
+#@@ -25,7 +25,7 @@
+# 
+#   isOverridden: false,
+# 
+#-  activityStream: null,
+#+  //activityStream: null,
+# 
+#   /**
+#    * init - Initializes an instance of Activity Stream if one doesn't exist already
+#@@ -55,16 +55,16 @@
+#    * onBrowserReady - Continues the initialization of Activity Stream after browser is ready.
+#    */
+#   onBrowserReady() {
+#-    if (this.activityStream && this.activityStream.initialized) {
+#-       return;
+#-    }
+#-
+#-    this.activityStream = new ActivityStream();
+#-    try {
+#-      this.activityStream.init();
+#-    } catch (e) {
+#-      Cu.reportError(e);
+#-    }
+#+//    if (this.activityStream && this.activityStream.initialized) {
+#+//       return;
+#+//    }
+#+//
+#+//    this.activityStream = new ActivityStream();
+#+//    try {
+#+//      this.activityStream.init();
+#+//    } catch (e) {
+#+//      Cu.reportError(e);
+#+//    }
+#   },
+# 
+#   /**
+#@@ -72,10 +72,10 @@
+#    *        if it exists.
+#    */
+#   uninit() {
+#-    if (this.activityStream) {
+#-      this.activityStream.uninit();
+#-      this.activityStream = null;
+#-    }
+#+//    if (this.activityStream) {
+#+//      this.activityStream.uninit();
+#+//      this.activityStream = null;
+#+//    }
+# 
+#     if (this.pageListener) {
+#       this.pageListener.destroy();
+diff -r e704e3565db9 browser/modules/AboutNewTab.jsm
+--- a/browser/modules/AboutNewTab.jsm	Thu Jul 11 00:49:58 2019 +0300
++++ b/browser/modules/AboutNewTab.jsm	Thu Jul 11 03:42:03 2019 +0200
+@@ -12,7 +12,7 @@
+ const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+ 
+ XPCOMUtils.defineLazyModuleGetters(this, {
+-  ActivityStream: "resource://activity-stream/lib/ActivityStream.jsm",
++  //ActivityStream: "resource://activity-stream/lib/ActivityStream.jsm",
+   RemotePages:
+     "resource://gre/modules/remotepagemanager/RemotePageManagerParent.jsm",
+ });
+#@@ -31,7 +31,7 @@
+# 
+#   isOverridden: false,
+# 
+#-  activityStream: null,
+#+  //activityStream: null,
+# 
+#   /**
+#    * init - Initializes an instance of Activity Stream if one doesn't exist already
+@@ -38,7 +38,7 @@
+   willNotifyUser: false,
+ 
+   _activityStreamEnabled: false,
+-  activityStream: null,
++  //activityStream: null,
+   activityStreamDebug: false,
+ 
+   _newTabURL: ABOUT_URL,
+@@ -63,16 +63,16 @@
+    * onBrowserReady - Continues the initialization of Activity Stream after browser is ready.
+    */
+   onBrowserReady() {
+-    if (this.activityStream && this.activityStream.initialized) {
+-      return;
+-    }
+-
+-    this.activityStream = new ActivityStream();
+-    try {
+-      this.activityStream.init();
+-    } catch (e) {
+-      Cu.reportError(e);
+-    }
++//    if (this.activityStream && this.activityStream.initialized) {
++//      return;
++//    }
++//
++//    this.activityStream = new ActivityStream();
++//    try {
++//      this.activityStream.init();
++//    } catch (e) {
++//      Cu.reportError(e);
++//    }
+   },
+ 
+   /**
+@@ -80,10 +80,10 @@
+    *        if it exists.
+    */
+   uninit() {
+-    if (this.activityStream) {
+-      this.activityStream.uninit();
+-      this.activityStream = null;
+-    }
++//    if (this.activityStream) {
++//      this.activityStream.uninit();
++//      this.activityStream = null;
++//    }
+ 
+     if (this.pageListener) {
+       this.pageListener.destroy();

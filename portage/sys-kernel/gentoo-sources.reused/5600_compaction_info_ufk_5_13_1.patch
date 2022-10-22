@@ -1,0 +1,13 @@
+Index: /var/tmp/portage/sys-kernel/gentoo-sources-5.13.1/work/linux-5.13.1-gentoo/mm/compaction.c
+===================================================================
+--- linux-5.13.1-gentoo/mm/compaction.c
++++ linux-5.13.1-gentoo/mm/compaction.c
+@@ -878,7 +878,7 @@ isolate_migratepages_block(struct compac
+ 			if (fatal_signal_pending(current)) {
+ 				cc->contended = true;
+ 				ret = -EINTR;
+-
++				pr_debug("!! goto fatal_pending");
+ 				goto fatal_pending;
+ 			}
+ 

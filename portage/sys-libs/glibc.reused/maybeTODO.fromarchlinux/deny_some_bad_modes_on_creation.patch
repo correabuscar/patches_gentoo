@@ -1,0 +1,48 @@
+WRONG(below) since I used 'mode' arg in tests, it wouldn't even enter the IF!!!
+//actually had no effect, either because none of these functions were actually called, OR because somewhere there is a truncation happening that's limiting mode to 07777 (yes four 7) and test shows truncation is defo happening! another test shows none of the below are actually hit!
+
+open64.c's __libc_open64 is reached when -D_FORTIFY_SOURCE=0 and
+/usr/include/bits/fcntl2.h 's __fortify_function `open` is reached when -D_FORTIFY_SOURCE=2
+
+diff --git a/sysdeps/unix/sysv/linux/open.c b/sysdeps/unix/sysv/linux/open.c
+index 3782ae8620..1a0d32a2b6 100644
+--- a/sysdeps/unix/sysv/linux/open.c
++++ b/sysdeps/unix/sysv/linux/open.c
+@@ -39,6 +39,16 @@ __libc_open (const char *file, int oflag, ...)
+       va_start (arg, oflag);
+       mode = va_arg (arg, int);
+       va_end (arg);
++      //The following only applies to O_CREAT and O_TMPFILE
++      //because for everything else `mode` is ignored! via `man 2 open`
++      if (mode < 0 || mode > 07777 /*=511*//*4095*/) { //test used 01777 here
++        //__set_errno (EACCES); /* Permission denied */
++        __set_errno (EDOM); //    33  /* Math argument out of domain of func */
++      } else if (mode & S_ISUID == S_ISUID) {
++        //trying to create suid file(or dir?) - denied, but you can use chmod afterwards!
++        __set_errno (EACCES); /* Permission denied */
++      }
++      // see: `man 7 inode` for why S_ISGID and S_ISVTX is allowed.
+     }
+ 
+   return SYSCALL_CANCEL (openat, AT_FDCWD, file, oflag, mode);
+diff --git a/sysdeps/unix/sysv/linux/open64.c b/sysdeps/unix/sysv/linux/open64.c
+index 2c4e82950f..4b0c051b14 100644
+--- a/sysdeps/unix/sysv/linux/open64.c
++++ b/sysdeps/unix/sysv/linux/open64.c
+@@ -43,6 +43,16 @@ __libc_open64 (const char *file, int oflag, ...)
+       va_start (arg, oflag);
+       mode = va_arg (arg, int);
+       va_end (arg);
++      //The following only applies to O_CREAT and O_TMPFILE
++      //because for everything else `mode` is ignored! via `man 2 open`
++      if (mode < 0 || mode > 07777 /*=511*//*4095*/) { //test used 02777 here 
++        //__set_errno (EACCES); /* Permission denied */
++        __set_errno (EDOM); //    33  /* Math argument out of domain of func */
++      } else if (mode & S_ISUID == S_ISUID) {
++        //trying to create suid file(or dir?) - denied, but you can use chmod afterwards!
++        __set_errno (EACCES); /* Permission denied */
++      }
++      // see: `man 7 inode` for why S_ISGID and S_ISVTX is allowed.
+     }
+ 
+   return SYSCALL_CANCEL (openat, AT_FDCWD, file, oflag | EXTRA_OPEN_FLAGS,

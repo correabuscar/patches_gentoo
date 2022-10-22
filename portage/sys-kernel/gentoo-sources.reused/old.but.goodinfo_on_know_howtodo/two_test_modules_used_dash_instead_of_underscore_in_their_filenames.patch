@@ -1,0 +1,30 @@
+actually '-' and '_' doesn't matter to modprobe! so ignore this patch!
+TODO: filenames must also be renamed:
+./lib/test-string_helpers.c
+./lib/test-kstrtox.c
+
+to their '_' versions!
+else make will fail!
+
+diff --git a/lib/Makefile b/lib/Makefile
+index 685aee60de1d..c796e427ead3 100644
+--- a/lib/Makefile
++++ b/lib/Makefile
+@@ -49,7 +49,7 @@ obj-y += bcd.o sort.o parser.o debug_locks.o random32.o \
+ 	 generic-radix-tree.o
+ obj-$(CONFIG_STRING_SELFTEST) += test_string.o
+ obj-y += string_helpers.o
+-obj-$(CONFIG_TEST_STRING_HELPERS) += test-string_helpers.o
++obj-$(CONFIG_TEST_STRING_HELPERS) += test_string_helpers.o
+ obj-y += hexdump.o
+ obj-$(CONFIG_TEST_HEXDUMP) += test_hexdump.o
+ obj-y += kstrtox.o
+@@ -65,7 +65,7 @@ CFLAGS_test_kasan.o += $(call cc-disable-warning, vla)
+ obj-$(CONFIG_TEST_UBSAN) += test_ubsan.o
+ CFLAGS_test_ubsan.o += $(call cc-disable-warning, vla)
+ UBSAN_SANITIZE_test_ubsan.o := y
+-obj-$(CONFIG_TEST_KSTRTOX) += test-kstrtox.o
++obj-$(CONFIG_TEST_KSTRTOX) += test_kstrtox.o
+ obj-$(CONFIG_TEST_LIST_SORT) += test_list_sort.o
+ obj-$(CONFIG_TEST_MIN_HEAP) += test_min_heap.o
+ obj-$(CONFIG_TEST_LKM) += test_module.o

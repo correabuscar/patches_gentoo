@@ -1,0 +1,71 @@
+Index: /usr/share/genkernel/worker_modules/gkbuild.sh
+===================================================================
+--- a/worker_modules/gkbuild.sh
++++ b/worker_modules/gkbuild.sh
+@@ -300,8 +300,66 @@ _initialize() {
+ 	declare -gr DESTDIR="${WORKDIR}/image"
+ 	mkdir "${DESTDIR}" || die "Failed to create '${DESTDIR}'!"
+ 
++  #oldhome="$HOME"
++  if test -z "$WORKDIR"; then
++    echo "!! \$WORKDIR is empty, aborting ... " >&2
++    exit 1
++  fi
++  if test -z "$HOME"; then
++    echo "!! \$HOME is empty, aborting ... " >&2
++    exit 1
++  fi
+ 	declare -gr HOME="${WORKDIR}/home"
+ 	mkdir "${HOME}" || die "Failed to create '${HOME}'!"
++  id #the id is good: uid=1002(_kernelbuilder) gid=1005(_kernelbuilder) groups=1005(_kernelbuilder)
++  #echo "!! oldhome='$oldhome'" #this is crap: !! oldhome='/var/tmp/genkernel/gk_WPY1A9IH'
++#  currentuser="`id -un`"
++#  buildasuser="$currentuser"
++#  if test -z "$buildasuser"; then
++#    echo "!! can't get current user, got empty, aborting..." >&2
++#    exit 1
++#  fi
++#  homedir_of_buildasuser="$(getent passwd "$buildasuser" |cut -d: -f6)"
++#  if test -z "$homedir_of_buildasuser"; then
++#    echo "!! Can't get the \$HOME of user '$buildasuser' via 'getent' (got empty), trying 'grep'..." >&2
++#    homedir_of_buildasuser="$(grep -- "^${buildasuser}" /etc/passwd | cut -d: -f6)"
++#    if test -z "$homedir_of_buildasuser"; then
++#      echo "!! Can't get the \$HOME of user '$buildasuser' via 'grep' (got empty), aborting..." >&2
++#      exit 1
++#    fi
++#    if ! test -d "$homedir_of_buildasuser"; then
++#      echo "!! The \$HOME of user '$buildasuser' aka '$homedir_of_buildasuser' is not a dir, aborting..." >&2
++#      exit 1
++#    fi
++#    if ! test -w "$homedir_of_buildasuser"; then
++#      echo "!! The \$HOME of user '$buildasuser' aka '$homedir_of_buildasuser' is not writable by current user aka '`id`', aborting..." >&2
++#      exit 1
++#    fi
++#  fi
++#  echo "!! homedir_of_buildasuser='$homedir_of_buildasuser'" #ok good: !! homedir_of_buildasuser='/home/_kernelbuilder'
++  if test -z "$CCACHE_DIR_FOR_GENKERNEL_UTILS"; then
++    echo "!! \$CCACHE_DIR_FOR_GENKERNEL_UTILS is empty (should be set by /home/user/bin/regenkernel !), aborting..." >&2
++    exit 1
++  fi
++  if test \! -d "$CCACHE_DIR_FOR_GENKERNEL_UTILS"; then
++    echo "!! \$CCACHE_DIR_FOR_GENKERNEL_UTILS aka '$CCACHE_DIR_FOR_GENKERNEL_UTILS' is not a (symlink)dir, aborting..." >&2
++    exit 1
++  fi
++  if test \! -w "$CCACHE_DIR_FOR_GENKERNEL_UTILS"; then
++    echo "!! \$CCACHE_DIR_FOR_GENKERNEL_UTILS aka '$CCACHE_DIR_FOR_GENKERNEL_UTILS' is not writable by (current)user aka '`id -nu`' (this means you're running genkernel with --sandbox arg and you haven't told the sandbox to allow access to that dir in /etc/sandbox.conf NOT in /etc/sandbox.d/* files because those get ignored if env var SANDBOX_WRITE is already set in env. as it is when genkernel is running this stuff, at least true for sandbox-2.18, thanks to Whissi on #gentoo-dev-help freenode irc for finding out this), aborting...." >&2
++    set|grep -i sandbox
++    exit 1
++  fi
++  ln --symbolic --verbose --no-target-directory -- "$CCACHE_DIR_FOR_GENKERNEL_UTILS" "${HOME}/.ccache" #this .ccache symlink is gonna be used by --utils-cc="/usr/bin/ccache gcc" --utils-cxx="/usr/bin/ccache g++"  args passed to 'genkernel' cmd! see: /home/user/bin/regenkernel if you want to change the dir's name, you've to do it in both places! actually nvm, I opted to use env. var $CCACHE_DIR_FOR_GENKERNEL_UTILS
++  #exit 1
++  if test \! -w "${HOME}/.ccache"; then
++    echo "!! \${HOME}/.ccache aka '${HOME}/.ccache' is not writable by (current)user '`id -nu`', aborting...." >&2
++    exit 1
++  fi
++  if test \! -w "${HOME}/.ccache/"; then
++    echo "!! \${HOME}/.ccache/ aka '${HOME}/.ccache/' is not writable by (current)user '`id -nu`', aborting...." >&2
++    exit 1
++  fi
+ 
+ 	# Set up some known variables used in ebuilds for smooth gkbuild
+ 	# transition

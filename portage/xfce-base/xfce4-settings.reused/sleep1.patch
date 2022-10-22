@@ -1,0 +1,27 @@
+#diff --git a/xfsettingsd/xfsettingsd.desktop.in b/xfsettingsd/xfsettingsd.desktop.in
+#index 6b1d446..ea2128c 100644
+#--- a/xfsettingsd/xfsettingsd.desktop.in
+#+++ b/xfsettingsd/xfsettingsd.desktop.in
+#@@ -2,7 +2,8 @@
+# Version=1.0
+# Name=Xfsettingsd
+# _Comment=The Xfce Settings Daemon
+#-Exec=xfsettingsd
+#+Exec=sh -c 'sleep 1;xfsettingsd'
+#+#^ https://bugzilla.xfce.org/show_bug.cgi?id=7415#c12
+# Icon=applications-system
+# Terminal=false
+# Type=Application
+diff --git a/xfsettingsd/xfsettingsd.desktop.in b/xfsettingsd/xfsettingsd.desktop.in
+index 8b1067c6..e09eca60 100644
+--- a/xfsettingsd/xfsettingsd.desktop.in
++++ b/xfsettingsd/xfsettingsd.desktop.in
+@@ -2,7 +2,7 @@
+ Version=1.0
+ _Name=Xfce Settings Daemon
+ _Comment=The Xfce Settings Daemon
+-Exec=xfsettingsd
++Exec=sh -c 'sleep 1;xfsettingsd'
+ Icon=applications-system
+ Terminal=false
+ Type=Application

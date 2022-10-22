@@ -1,0 +1,28 @@
+https://gitlab.com/lv2/lv2/issues/31
+
+diff --git a/ext/lv2/gstlv2utils.c b/ext/lv2/gstlv2utils.c
+index 56794631c..74fe0a7b8 100644
+--- a/ext/lv2/gstlv2utils.c
++++ b/ext/lv2/gstlv2utils.c
+@@ -34,6 +34,8 @@
+ #include <lv2/lv2plug.in/ns/ext/state/state.h>
+ #include <lv2/lv2plug.in/ns/ext/urid/urid.h>
+ 
++#include <glib/gprintf.h> /* g_fprintf */
++
+ GST_DEBUG_CATEGORY_EXTERN (lv2_debug);
+ #define GST_CAT_DEFAULT lv2_debug
+ 
+@@ -104,6 +104,12 @@ static const LV2_Feature *lv2_features[] = {
+ gboolean
+ gst_lv2_check_required_features (const LilvPlugin * lv2plugin)
+ {
++  g_fprintf(stderr, "!! Checking required features for lv2 plugin '%s'\n",
++            lilv_node_as_uri (lilv_plugin_get_uri (lv2plugin))
++      );
++  // !! Checking required features for lv2 plugin 'http://lv2plug.in/plugins/eg-sampler'
++  // error: failed to expand CURIE `xsd:float'
++  // an easy catch now, via: $ rm ~/.cache/gstreamer-1.0/registry*; gst-inspect-1.0 ladspa > /tmp/dbg.log 2>&1 && less /tmp/dbg.log
+   LilvNodes *required_features = lilv_plugin_get_required_features (lv2plugin);
+   if (required_features) {
+     LilvIter *i;

@@ -1,0 +1,15 @@
+diff --git a/ext/ladspa/gstladspautils.c b/ext/ladspa/gstladspautils.c
+index d55db6f85..e10d13f2c 100644
+--- a/ext/ladspa/gstladspautils.c
++++ b/ext/ladspa/gstladspautils.c
+@@ -437,8 +437,8 @@ gst_ladspa_object_class_get_param_spec (GstLADSPAClass * ladspa_class,
+ 
+   if (LADSPA_IS_HINT_INTEGER (hintdesc)) {
+     ret =
+-        g_param_spec_int (name, name, desc->PortNames[portnum], lower, upper,
+-        def, perms);
++        g_param_spec_int (name, name, desc->PortNames[portnum], (gint)lower, (gint)upper,
++        (gint)def, perms);
+   } else {
+     ret =
+         g_param_spec_float (name, name, desc->PortNames[portnum], lower, upper,

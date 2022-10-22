@@ -1,0 +1,81 @@
+this fixes 'source PKGBUILD' so that it fails when it has syntactically invalid commands (outside of functions), eg. this PKGBUILD will fail sourcing(because of 'false'):
+
+afunction() {
+  wtw  #won't fail because of this not existing at 'source'-ing time
+}
+false  #will fail because this returnes exit code 1, at 'source'-ing time!
+true
+
+
+diff --git a/scripts/libmakepkg/util/util.sh.in b/scripts/libmakepkg/util/util.sh.in
+index 8f6d6d3a..b4b86e64 100644
+--- a/scripts/libmakepkg/util/util.sh.in
++++ b/scripts/libmakepkg/util/util.sh.in
+@@ -102,13 +102,47 @@ ensure_writable_dir() {
+ 
+ # source a file and fail if it does not succeed
+ source_safe() {
+-	local shellopts=$(shopt -p extglob)
+-	shopt -u extglob
+-
+-	if ! source "$@"; then
+-		error "$(gettext "Failed to source %s")" "$1"
++#	local shellopts=$(shopt -p extglob)
++#	shopt -u extglob
++#
++#	if ! source "$@"; then
++#		error "$(gettext "Failed to source %s")" "$1"
++#		exit $E_MISSING_FILE
++#	fi
++#
++#	eval "$shellopts"
++	all="$@"
++	somefail_s7oQyrMrzfZavsa() { # need to use random function name that won't be overridden inside the PKGBUILD
++		error "$(gettext "Failed(exit code '%d') to source '%s' (seen as %d args)")" "$ec" "${all[@]}" "${#all[@]}"
+ 		exit $E_MISSING_FILE
++	}
++	somefunc_qJYEjC2PEMFQ26G() { # need to use random function name that won't be overridden inside the PKGBUILD
++		local ec="$?"
++		error "$(gettext "The sourced file had(executed) commands that failed with exit code '%d'")" "$ec"
++		somefail_s7oQyrMrzfZavsa
++	}
++	local shellopts=( $(shopt -p extglob) ";" $(shopt -o -p errtrace errexit | tr '\n' ';') )
++	#echo "Saved '${shellopts[*]}'"
++	shopt -u extglob
++	shopt -o -u errtrace #it's already unset, unsure if I'd need to unset it anyway, even if it was set - but just in case. This is: "'set -E'  If set, the ERR trap is inherited by shell functions."
++	#shopt -o -p errtrace errexit  #show them
++
++	shopt -o -u errexit #disable 'set -e'  ie. make it 'set +e', needed to catch exit codes from 'source' command failing, such as file doesn't exist or is unreadable, otherwise somefunc_qJYEjC2PEMFQ26G() won't get executed ie. the ERR 'trap' won't get executed! with GNU bash, version 5.0.16(1)-maint (x86_64-pc-linux-gnu) aka 5.0.r683.ge2e18b72-1
++	local ec
++	( source "${all[@]}" ) ; ec="$?"
++	if test "$ec" != "0"; then
++		error "$(gettext "The 'source' command itself failed with exit code '%d'")" "$ec"
++		somefail_s7oQyrMrzfZavsa
+ 	fi
+ 
+-	eval "$shellopts"
++	#^  so the above 'source' command can succeed if the last command in the sourced file returns exit code 0, even though any prev. commands, in the sourced file, returned non-zero exit code; thus we test below if there were any such commands:  ie. PKGBUILD can contain these(two lines): echo -e "false\ntrue" >> PKGBUILD
++
++	#enable 'set -e' aka do: set +e  via shopt
++	shopt -o -s errexit #errtrace
++	trap somefunc_qJYEjC2PEMFQ26G ERR
++	source "${all[@]}" #exit code is caught by somefunc_qJYEjC2PEMFQ26G here!
++	# ^ the real sourcing happens here
++
++	#restore the stuff
++	eval "${shellopts[@]}"
+ }
+diff --git a/scripts/makepkg.sh.in b/scripts/makepkg.sh.in
+index d1416d15..51be6090 100644
+--- a/scripts/makepkg.sh.in
++++ b/scripts/makepkg.sh.in
+@@ -1196,6 +1218,9 @@ BUILDFILE=${BUILDFILE:-$BUILDSCRIPT}
+ if [[ ! -f $BUILDFILE ]]; then
+ 	error "$(gettext "%s does not exist.")" "$BUILDFILE"
+ 	exit $E_PKGBUILD_ERROR
++elif [[ ! -r $BUILDFILE ]]; then
++	error "$(gettext "%s exists but it's not readable by you(user: '`id -nu`').")" "$BUILDFILE"
++	exit $E_PKGBUILD_ERROR
+ 
+ else
+ 	if [[ $(<"$BUILDFILE") = *$'\r'* ]]; then

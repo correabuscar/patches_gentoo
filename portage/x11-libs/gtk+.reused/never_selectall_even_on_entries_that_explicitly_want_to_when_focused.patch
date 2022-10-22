@@ -1,0 +1,49 @@
+still this will NOT make Ctrl+F in mousepad not lose selection of whatever text you've previously selected in the edit area
+and thus not overwrite your PRIMARY selection clipboard(the MMB to paste, or shift+insert to paste, one)
+
+probably because mousepad explicitly does a select all, I can't explain it otherwise
+
+overrides patch dont_autoselect_entries_by_default.patch
+
+diff --git a/gtk/gtkentry.c b/gtk/gtkentry.c
+index db93ee1baa..4829e03192 100644
+--- a/gtk/gtkentry.c
++++ b/gtk/gtkentry.c
+@@ -5055,22 +5055,22 @@ static void
+ gtk_entry_grab_focus (GtkWidget *widget)
+ {
+   GtkEntry *entry = GTK_ENTRY (widget);
+-  GtkEntryPrivate *priv = entry->priv;
+-  gboolean select_on_focus;
+-
+-  if (priv->editable && !priv->in_click)
+-    {
+-      g_object_get (gtk_widget_get_settings (widget),
+-                    "gtk-entry-select-on-focus",
+-                    &select_on_focus,
+-                    NULL);
+-
+-      _gtk_entry_grab_focus (entry, select_on_focus);
+-    }
+-  else
+-    {
++//  GtkEntryPrivate *priv = entry->priv;
++//  gboolean select_on_focus;
++//
++//  if (priv->editable && !priv->in_click)
++//    {
++//      g_object_get (gtk_widget_get_settings (widget),
++//                    "gtk-entry-select-on-focus",
++//                    &select_on_focus,
++//                    NULL);
++//
++//      _gtk_entry_grab_focus (entry, select_on_focus);
++//    }
++//  else
++//    {
+       _gtk_entry_grab_focus (entry, FALSE);
+-    }
++//    }
+ }
+ 
+ /**

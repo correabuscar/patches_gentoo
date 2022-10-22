@@ -1,0 +1,76 @@
+diff --git a/src/core/show-status.c b/src/core/show-status.c
+index 02601e52db..8594b56ec5 100644
+--- a/src/core/show-status.c
++++ b/src/core/show-status.c
+@@ -14,6 +14,11 @@
+ #include "terminal-util.h"
+ #include "util.h"
+ 
++
++#include <unistd.h> // for close()
++#include <syslog.h> //for syslog, below
++
++
+ static const char* const show_status_table[_SHOW_STATUS_MAX] = {
+         [SHOW_STATUS_NO]        = "no",
+         [SHOW_STATUS_ERROR]     = "error",
+#@@ -14,6 +14,9 @@
+# #include "terminal-util.h"
+# #include "util.h"
+# 
+#+#include <unistd.h> // for close()
+#+#include <syslog.h> //for syslog, below
+#+
+# static const char* const show_status_table[_SHOW_STATUS_MAX] = {
+#         [SHOW_STATUS_NO]        = "no",
+#         [SHOW_STATUS_AUTO]      = "auto",
+#@@ -14,6 +14,10 @@
+# #include "terminal-util.h"
+# #include "util.h"
+# 
+#+#include <unistd.h> // for close()
+#+#include <syslog.h> //for syslog, below
+#+
+#+
+# static const char* const show_status_table[_SHOW_STATUS_MAX] = {
+#         [SHOW_STATUS_NO] = "no",
+#         [SHOW_STATUS_AUTO] = "auto",
+@@ -52,6 +56,10 @@ int status_vprintf(const char *status, ShowStatusFlags flags, const char *format
+         if (vasprintf(&s, format, ap) < 0)
+                 return log_oom();
+ 
++        openlog(NULL, LOG_CONS | LOG_NDELAY, LOG_LOCAL7);
++        syslog(LOG_INFO, "!! [%s] %s", status, s);//status already contains the spaces, so result is: "[  %s  ]" ; XXX: this only logs 13 messages after the boot.log file! and it's after `systemd[1]: Started Journal Service.`, anyway just dmesg|grep -F 'systemd[1]' to find all, apparently it's enough to have just some settings in *.conf files to have these logged (you just won't see the `status` that way)
++        closelog();
++
+         /* Before you ask: yes, on purpose we open/close the console for each status line we write individually. This
+          * is a good strategy to avoid PID 1 getting killed by the kernel's SAK concept (it doesn't fix this entirely,
+          * but minimizes the time window the kernel might end up killing PID 1 due to SAK). It also makes things easier
+@@ -60,6 +68,8 @@ int status_vprintf(const char *status, ShowStatusFlags flags, const char *format
+         fd = open_terminal("/dev/console", O_WRONLY|O_NOCTTY|O_CLOEXEC);
+         if (fd < 0)
+                 return fd;
++        int filefd = open("/run/initramfs/boot.log", O_CREAT|O_APPEND|O_WRONLY, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
++          //don't care if can't open, should be >=0 tho, according to man 2 open, if it's good!
+ 
+         if (FLAGS_SET(flags, SHOW_STATUS_ELLIPSIZE)) {
+                 char *e;
+@@ -100,8 +110,17 @@ int status_vprintf(const char *status, ShowStatusFlags flags, const char *format
+                 iovec[n++] = IOVEC_MAKE_STRING(ANSI_ERASE_TO_END_OF_LINE);
+         prev_ephemeral = FLAGS_SET(flags, SHOW_STATUS_EPHEMERAL) ;
+ 
+-        if (writev(fd, iovec, n) < 0)
++          bool bad=false;
++        if (writev(fd, iovec, n) < 0) {
++          bad=true;
++        }
++        if (filefd >= 0) {
++          writev(filefd, iovec, n); //don't care if it worked; but this iovec seems limited to 50 chars? see ellipsize above! well, only when SHOW_STATUS_ELLIPSIZE
++          close(filefd); //don't care if it worked!
++        }
++        if (bad) {
+                 return -errno;
++        }
+ 
+         return 0;
+ }

@@ -1,0 +1,6 @@
+this package is for T400 laptop ONLY! (to be able to set the battery charge thresholds! so as to not keep the battery fully charged all the time because this decreases battery lifetime)
+It is used in conjunction with 'tlp'
+
+this needs to be recompiled after each kernel upgrade!
+and the kernel version in PKGBUILD must be changed to match! (apparently)
+

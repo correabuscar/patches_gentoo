@@ -1,0 +1,17 @@
+diff --git a/src/common/text.c b/src/common/text.c
+index 4a274f98..141ad762 100644
+--- a/src/common/text.c
++++ b/src/common/text.c
+@@ -2256,6 +2256,12 @@ sound_play (const char *file, gboolean quiet)
+ 				g_free (buf);
+ 				g_free (cmd);
+ 			}
++			else
++			{
++				buf = g_strdup_printf (_("Cannot find 'play' command to play this '%s' file.\n"), wavfile);
++				fe_message (buf, FE_MSG_ERROR);
++				g_free (buf);
++			}
+ 		}
+ #endif
+ 	}

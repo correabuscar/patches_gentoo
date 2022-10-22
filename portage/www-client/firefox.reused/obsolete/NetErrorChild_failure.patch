@@ -1,0 +1,14 @@
+https://bugzilla.mozilla.org/show_bug.cgi?id=1541315
+diff -r 48ae682107da browser/actors/NetErrorChild.jsm
+--- a/browser/actors/NetErrorChild.jsm	Mon Apr 01 23:27:28 2019 +0000
++++ b/browser/actors/NetErrorChild.jsm	Wed Apr 03 03:56:47 2019 +0200
+@@ -695,7 +695,8 @@
+     if (id_str) {
+       msg2 = gPipNSSBundle.GetStringFromName(id_str) + "\n";
+     } else if (nss_error_id_str) {
+-      msg2 = gNSSErrorsBundle.GetStringFromName(nss_error_id_str) + "\n";
++      console.log("nss_error_id_str=",nss_error_id_str);
++      msg2 = gNSSErrorsBundle.GetStringFromName(nss_error_id_str) + "\n"; //FIXME: JavaScript error: resource:///actors/NetErrorChild.jsm, line 698: NS_ERROR_FAILURE: Component returned failure code: 0x80004005 (NS_ERROR_FAILURE) [nsIStringBundle.GetStringFromName]
+     }
+ 
+     if (!msg2) {

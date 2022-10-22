@@ -1,0 +1,75 @@
+Test by doing the following(this is after patch):
+
+ $ touch /home/user/bin/g
+(where /home/user/bin is in PATH)
+ $ type g
+ -bash: type: g: not found
+ $ g
+ -bash: g: command not found
+ $ hash
+both should fail and not be in 'hash'
+but this will work:
+$ source g
+(g is non-executable found in PATH, will be sourced)
+
+Before patch:
+ $ type g
+ g is /home/user/bin/g
+ $ g
+ -bash: /home/user/bin/g: Permission denied
+ $ hash
+    1  /home/user/bin/g
+
+
+ok this is bad because mkinitcpio needs 'type -P nonexecutablescript' or else it won't find the hooks!
+but 'help type' for 'type -P' says:
+      -P	force a PATH search for each NAME, even if it is an alias,
+    		builtin, or function, and returns the name of the disk file
+    		that would be executed
+      -p	returns either the name of the disk file that would be executed,
+    		or nothing if `type -t NAME' would not return `file'
+      -t	output a single word which is one of `alias', `keyword',
+    		`function', `builtin', `file' or `', if NAME is an alias,
+    		shell reserved word, shell function, shell builtin, disk file,
+    		or not found, respectively
+
+I guess the help needs updating, like for '-t' there, that's good "disk file" not implying executablility
+
+commented out the 'type' fix so that mkinitcpio can work.
+
+#diff --git a/findcmd.c b/findcmd.c
+#index e5944240..e1faef9e 100644
+#--- a/findcmd.c
+#+++ b/findcmd.c
+##@@ -241,7 +241,7 @@ char *
+## find_user_command (name)
+##      const char *name;
+## {
+##-  return (find_user_command_internal (name, FS_EXEC_PREFERRED|FS_NODIRS));
+##+  return (find_user_command_internal (name, FS_EXEC_ONLY|FS_NODIRS)); // used by 'type' (at least!)
+## }
+## 
+## /* Locate the file referenced by NAME, searching along the contents
+#@@ -384,7 +384,7 @@ search_for_command (pathname, flags)
+#       else
+# 	path_list = 0;
+# 
+#-      command = find_user_command_in_path (pathname, path_list, FS_EXEC_PREFERRED|FS_NODIRS);
+#+      command = find_user_command_in_path (pathname, path_list, FS_EXEC_ONLY|FS_NODIRS); // used by command typed at prompt!
+# 
+#       if (command && hashing_enabled && temp_path == 0 && (flags & CMDSRCH_HASH))
+# 	{
+
+Index: /var/tmp/portage/app-shells/bash-9999/work/bash-9999/findcmd.c
+===================================================================
+--- bash-9999/findcmd.c
++++ bash-9999/findcmd.c
+@@ -384,7 +384,7 @@ search_for_command (pathname, flags)
+       else
+ 	path_list = 0;
+ 
+-      command = find_user_command_in_path (pathname, path_list, FS_EXEC_PREFERRED|FS_NODIRS, &st);
++      command = find_user_command_in_path (pathname, path_list, FS_EXEC_ONLY|FS_NODIRS, &st); // used by any command typed/written at command prompt!
+ 
+       if (command && hashing_enabled && temp_path == 0 && (flags & CMDSRCH_HASH))
+ 	{

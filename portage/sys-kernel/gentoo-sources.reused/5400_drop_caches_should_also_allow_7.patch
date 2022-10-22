@@ -1,0 +1,47 @@
+so apparently this was to allow "echo 4 >" but in 5.16.14, this works with &four
+so either I don't remember this correctly, or I've added 7 so that I can do echo 5 or 6 or 7, but if so, the code that makes it silent is after the output, so it wouldn't have gone silent and drop at the same time!
+
+this patch was bugged in 5.16.14 and earlier because second hunk was ignored due to new line(s) between the hunks! comments (#) are ok though
+
+#diff --git a/kernel/sysctl.c b/kernel/sysctl.c
+#index 1beca96fb625..52b29011c1a4 100644
+#--- a/kernel/sysctl.c
+#+++ b/kernel/sysctl.c
+#@@ -130,6 +130,7 @@ static int zero;
+# static int __maybe_unused one = 1;
+# static int __maybe_unused two = 2;
+# static int __maybe_unused four = 4;
+#+static int __maybe_unused seven = 7;
+# static unsigned long zero_ul;
+# static unsigned long one_ul = 1;
+# static unsigned long long_max = LONG_MAX;
+#@@ -1455,7 +1456,7 @@ static struct ctl_table vm_table[] = {
+# 		.mode		= 0644,
+# 		.proc_handler	= drop_caches_sysctl_handler,
+# 		.extra1		= &one,
+#-		.extra2		= &four,
+#+		.extra2		= &seven, // aka &4
+# 	},
+# #ifdef CONFIG_COMPACTION
+# 	{
+diff --git a/kernel/sysctl.c b/kernel/sysctl.c
+index 078950d9605b..7abfe4c5dd6f 100644
+--- a/kernel/sysctl.c
++++ b/kernel/sysctl.c
+@@ -127,6 +128,7 @@ static int sixty = 60;
+ static int __maybe_unused neg_one = -1;
+ static int __maybe_unused two = 2;
+ static int __maybe_unused four = 4;
++static int __maybe_unused seven = 7;
+ static unsigned long zero_ul;
+ static unsigned long one_ul = 1;
+ static unsigned long long_max = LONG_MAX;
+@@ -1469,7 +1479,7 @@ static struct ctl_table vm_table[] = {
+ 		.mode		= 0200,
+ 		.proc_handler	= drop_caches_sysctl_handler,
+ 		.extra1		= SYSCTL_ONE,
+-		.extra2		= &four,
++		.extra2		= &seven, // aka "echo 4", see Documentation/admin-guide/sysctl/vm.rst
+ 	},
+ #ifdef CONFIG_COMPACTION
+ 	{

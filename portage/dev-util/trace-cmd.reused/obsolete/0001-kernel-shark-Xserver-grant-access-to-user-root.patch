@@ -1,0 +1,38 @@
+From 7e49705857c80e98075b39432a64043fce857308 Mon Sep 17 00:00:00 2001
+From: "Tzvetomir Stoyanov (VMware)" <tz.stoyanov@gmail.com>
+Date: Thu, 25 Jul 2019 11:51:01 +0300
+Subject: [PATCH] kernel-shark: Xserver, grant access to user root
+
+From: Tzvetomir Stoyanov <tstoyanov@vmware.com>
+
+In order to make connections to the X server, users must be in
+the X server allow list. As kernelshark may run with root privileges,
+the user "root" must be in this list. There is such logic in
+kshark-su-record, but it works only for Wayland X server. Some Linux
+distributions use other X servers, so the logic must be executed always.
+It grants access to user "root" to initiate connections to the X server from
+the local machine.
+
+Signed-off-by: Tzvetomir Stoyanov <tstoyanov@vmware.com>
+---
+ kernel-shark/bin/kshark-su-record | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/kernel-shark/bin/kshark-su-record b/kernel-shark/bin/kshark-su-record
+index 8c9fbd0..c14f03d 100755
+--- a/kernel-shark/bin/kshark-su-record
++++ b/kernel-shark/bin/kshark-su-record
+@@ -1,9 +1,6 @@
+ #!/bin/bash
+ 
+-if [ "$XDG_SESSION_TYPE" = "wayland" ]
+-then
+-    xhost +si:localuser:root &>/dev/null
+-fi
++xhost +si:localuser:root &>/dev/null
+ 
+ THIS_DIR=`dirname $0`
+ pkexec env DISPLAY=${DISPLAY} ${THIS_DIR}/kshark-record -o ${PWD}/trace.dat
+-- 
+2.21.0
+

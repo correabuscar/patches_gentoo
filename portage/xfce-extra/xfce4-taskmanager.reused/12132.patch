@@ -1,0 +1,27 @@
+--- xfce4-taskmanager-a/src/process-tree-model.c	2017-02-25 11:25:41.605366374 +0100
++++ xfce4-taskmanager-b/src/process-tree-model.c	2017-02-25 11:43:30.009506576 +0100
+@@ -871,6 +871,24 @@
+ 	if (G_UNLIKELY (size == 0))
+ 		return;
+ 
++        /* Quick fix of bug 12132:
++         *
++         * https://bugzilla.xfce.org/show_bug.cgi?id=12132
++         *  
++         * This callback function receives bad new_order[] array
++         * value. This occurs when filtering is used, filtered model
++         * has no rows and matching row appears. Then, the value of
++         * new_order[0] is 1 and because size of the model indexed
++         * from 0 is 1, getting iter at position 1 returns no/bad
++         * value and segmentation fault occurs in the next function.
++         *  
++         * Here, we are checking for these specific conditions and
++         * correcting the value of new_order[0].
++         */
++        if ((size == 1) && (new_order[0] == 1)) {
++            new_order[0] = 0;
++        }
++
+ 	not_persist = ! (gtk_tree_model_get_flags (model) & GTK_TREE_MODEL_ITERS_PERSIST);
+ 
+ 	/* New list to hold the new order */

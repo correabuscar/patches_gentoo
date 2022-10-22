@@ -1,0 +1,101 @@
+add this to next version/update
+https://git.archlinux.org/svntogit/packages.git/commit/trunk?h=packages/glibc&id=5c152c603b0d3f889b68dab061992ec1bb2b6d9e
+
+-------
+dump stacktrace on getaddrinfo ?
+see:
+
+https://stackoverflow.com/questions/3151779/best-way-to-invoke-gdb-from-inside-program-to-print-its-stacktrace/4611112#4611112
+
+https://stackoverflow.com/questions/77005/how-to-automatically-generate-a-stacktrace-when-my-gcc-c-program-crashes/77336#77336
+
+man 3 backtrace
+
+problem is, program might need to be compiled with -rdynamic
+and that doesn't mean 'glibc'! but the program eg. 'ping'
+
+--------
+
+do I need more macros ?
+https://gcc.gnu.org/onlinedocs/cpp/Common-Predefined-Macros.html
+-------
+
+properly name the stringify macros, see:
+
+https://stackoverflow.com/questions/216875/what-are-the-applications-of-the-preprocessor-operator-and-gotchas-to-conside/217181#217181
+-----
+Note:
+this is where glibc arch package source is:
+https://git.archlinux.org/svntogit/packages.git/tree/trunk?h=packages/glibc
+------
+
+don't show effective user/euid if it's the same as user/uid when printing:
+glibc64:../sysdeps/posix/getaddrinfo.c:2243/getaddrinfo[11061]: pacman[11061](full:'pacman') for user root(0(eff:root(0))) 2of2 successfully resolved hostname(s):
+----
+
+$ ping 𝙵𝟢𝟢
+'𝙵𝟢𝟢' gets transformed internally into 'f00' in glibc-2.27/sysdeps/posix/getaddrinfo.c via __idna_to_ascii_lz inside func. gaih_inet 
+and probably the only way to see it is if AI_CANONNAME flag is set when calling getaddrinfo ! and then get it from that specific field ( res->ai_canonname that is)
+
+so even if 𝙵𝟢𝟢 exists in /etc/hosts  it won't be seen, but rather it searches for 'f00' and only this one gets resolved!
+
+TODO: it'd be nice if we could (also?) display 'f00' when reporting successful hostname revoled in dmesg!
+
+ok so that only happens, apparently, with /etc/hosts ! because:
+(unicode F here:)
+$ drill 𝙵acebook.com @1.1.1.1
+;; ->>HEADER<<- opcode: QUERY, rcode: NXDOMAIN, id: 43238
+;; flags: qr rd ra ; QUERY: 1, ANSWER: 0, AUTHORITY: 1, ADDITIONAL: 0
+;; QUESTION SECTION:
+;; \240\157\153\181acebook.com.	IN	A
+
+;; ANSWER SECTION:
+
+;; AUTHORITY SECTION:
+com.	900	IN	SOA	a.gtld-servers.net. nstld.verisign-grs.com. 1524528914 1800 900 604800 86400
+
+;; ADDITIONAL SECTION:
+
+;; Query time: 128 msec
+;; SERVER: 1.1.1.1
+;; WHEN: Tue Apr 24 02:15:26 2018
+;; MSG SIZE  rcvd: 109
+
+$ drill Facebook.com @1.1.1.1
+;; ->>HEADER<<- opcode: QUERY, rcode: NOERROR, id: 7639
+;; flags: qr rd ra ; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
+;; QUESTION SECTION:
+;; Facebook.com.	IN	A
+
+;; ANSWER SECTION:
+Facebook.com.	286	IN	A	31.13.64.35
+
+;; AUTHORITY SECTION:
+
+;; ADDITIONAL SECTION:
+
+;; Query time: 7 msec
+;; SERVER: 1.1.1.1
+;; WHEN: Tue Apr 24 02:15:41 2018
+;; MSG SIZE  rcvd: 46
+
+$ drill facebook.com @1.1.1.1
+;; ->>HEADER<<- opcode: QUERY, rcode: NOERROR, id: 60630
+;; flags: qr rd ra ; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
+;; QUESTION SECTION:
+;; facebook.com.	IN	A
+
+;; ANSWER SECTION:
+facebook.com.	283	IN	A	31.13.64.35
+
+;; AUTHORITY SECTION:
+
+;; ADDITIONAL SECTION:
+
+;; Query time: 7 msec
+;; SERVER: 1.1.1.1
+;; WHEN: Tue Apr 24 02:15:44 2018
+;; MSG SIZE  rcvd: 46
+
+that would've been really bad if this worked with normal dns!
+---------

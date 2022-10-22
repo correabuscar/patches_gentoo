@@ -1,0 +1,52 @@
+From 24bd9aecd5a5cde55a33ccb3a9ff01f44eb66347 Mon Sep 17 00:00:00 2001
+From: "Yordan Karadzhov (VMware)" <y.karadz@gmail.com>
+Date: Thu, 25 Jul 2019 15:13:37 +0300
+Subject: [PATCH] debug patch
+
+Signed-off-by: Yordan Karadzhov (VMware) <y.karadz@gmail.com>
+---
+ kernel-shark/bin/kshark-su-record | 7 ++-----
+ kernel-shark/src/KsMainWindow.cpp | 1 +
+ 2 files changed, 3 insertions(+), 5 deletions(-)
+
+#diff --git a/kernel-shark/bin/kshark-su-record b/kernel-shark/bin/kshark-su-record
+#index 8c9fbd0..441f299 100755
+#--- a/kernel-shark/bin/kshark-su-record
+#+++ b/kernel-shark/bin/kshark-su-record
+#@@ -1,9 +1,6 @@
+# #!/bin/bash
+# 
+#-if [ "$XDG_SESSION_TYPE" = "wayland" ]
+#-then
+#-    xhost +si:localuser:root &>/dev/null
+#-fi
+#+xhost +si:localuser:root &>/dev/null
+# 
+# THIS_DIR=`dirname $0`
+#-pkexec env DISPLAY=${DISPLAY} ${THIS_DIR}/kshark-record -o ${PWD}/trace.dat
+#+pkexec env DISPLAY=${DISPLAY} XAUTHORITY=$XAUTHORITY ${THIS_DIR}/kshark-record -o ${PWD}/trace.dat
+diff --git a/kernel-shark/bin/kshark-su-record b/kernel-shark/bin/kshark-su-record
+index c14f03d..441f299 100755
+--- a/kernel-shark/bin/kshark-su-record
++++ b/kernel-shark/bin/kshark-su-record
+@@ -3,4 +3,4 @@
+ xhost +si:localuser:root &>/dev/null
+ 
+ THIS_DIR=`dirname $0`
+-pkexec env DISPLAY=${DISPLAY} ${THIS_DIR}/kshark-record -o ${PWD}/trace.dat
++pkexec env DISPLAY=${DISPLAY} XAUTHORITY=$XAUTHORITY ${THIS_DIR}/kshark-record -o ${PWD}/trace.dat
+#diff --git a/kernel-shark/src/KsMainWindow.cpp b/kernel-shark/src/KsMainWindow.cpp
+#index 6f86b91..f5843b5 100644
+#--- a/kernel-shark/src/KsMainWindow.cpp
+#+++ b/kernel-shark/src/KsMainWindow.cpp
+#@@ -1184,6 +1184,7 @@ void KsMainWindow::_captureFinished(int ret, QProcess::ExitStatus st)
+# 		QString message = "Capture process failed:<br>";
+# 
+# 		message += capture->errorString();
+#+		message += "<br>";
+# 		message += capture->readAllStandardError();
+# 		_error(message, "captureFinishedErr", false, false);
+# 	}
+-- 
+2.20.1
+

@@ -1,0 +1,14 @@
+#'nopromptwhen-w.patch' #already a better one upstream https://github.com/dosfstools/dosfstools/issues/45
+
+diff -upr '--exclude=*.Po' dosfstools-4.1/src/fsck.fat.c dosfstools-4.1.mod/src/fsck.fat.c
+--- dosfstools-4.1/src/fsck.fat.c	2016-05-10 11:58:39.000000000 +0200
++++ dosfstools-4.1.mod/src/fsck.fat.c	2017-05-05 14:42:02.572230002 +0200
+@@ -207,7 +207,7 @@ int main(int argc, char **argv)
+ exit:
+     if (fs_changed()) {
+ 	if (rw) {
+-	    if (interactive)
++	    if (interactive && !write_immed)
+ 		rw = get_key("yn", "Perform changes ? (y/n)") == 'y';
+ 	    else
+ 		printf("Performing changes.\n");

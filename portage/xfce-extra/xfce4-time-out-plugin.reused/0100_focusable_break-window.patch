@@ -1,0 +1,86 @@
+allow Alt+P or Enter to postpone by making the break-window a normal window and hiding the fadeout (whiteish) screen so it doesn't show under it!
+TODO: don't hide the fadeout screen by finding a way to show normal window on top of it (possibly a child of it?) - no idea, I haven't used gtk3 or window stuff yet.
+
+diff --git a/panel-plugin/time-out-lock-screen.c b/panel-plugin/time-out-lock-screen.c
+index 6b3e111..29fb454 100644
+--- a/panel-plugin/time-out-lock-screen.c
++++ b/panel-plugin/time-out-lock-screen.c
+@@ -174,9 +174,15 @@ time_out_lock_screen_init (TimeOutLockScreen *lock_screen)
+   lock_screen->fadeout = NULL;
+ 
+   /* Create information window */
+-  lock_screen->window = g_object_new (GTK_TYPE_WINDOW, "type", GTK_WINDOW_POPUP, NULL);
++  //lock_screen->window = g_object_new (GTK_TYPE_WINDOW, "type", GTK_WINDOW_POPUP, NULL); // On X11, popup windows are not controlled by the window manager. src: https://developer.gnome.org/gtk3/stable/GtkWindow.html
++  lock_screen->window = g_object_new (GTK_TYPE_WINDOW, "type", GTK_WINDOW_TOPLEVEL, NULL);//works but it's invisible/under the white screen(aka lock_screen->fadeout)
+   gtk_widget_realize (lock_screen->window);
+ 
++  //possibly unnecessary now:
++  gtk_widget_set_can_focus (lock_screen->window, TRUE);
++  gtk_widget_grab_focus (lock_screen->window);
++
++
+   /* Draw border around the window */
+   border = gtk_event_box_new ();
+   gtk_widget_modify_bg (border, GTK_STATE_NORMAL, &(GTK_WIDGET (lock_screen->window)->style->bg[GTK_STATE_SELECTED]));
+@@ -221,6 +227,13 @@ time_out_lock_screen_init (TimeOutLockScreen *lock_screen)
+   g_signal_connect (G_OBJECT (lock_screen->postpone_button), "clicked", G_CALLBACK (time_out_lock_screen_postpone), lock_screen);
+   gtk_widget_show (lock_screen->postpone_button);
+ 
++  //possibly unnecessary now:
++  gtk_widget_realize (lock_screen->postpone_button);
++  gtk_widget_set_can_default (lock_screen->postpone_button, TRUE);
++  gtk_widget_grab_default (lock_screen->postpone_button);
++  gtk_widget_set_can_focus (lock_screen->postpone_button, TRUE);
++  gtk_widget_grab_focus (lock_screen->postpone_button);
++
+   /* Create resume button */
+   lock_screen->resume_button = gtk_button_new_with_mnemonic (_("_Resume"));
+   gtk_box_pack_start (GTK_BOX (vbox), lock_screen->resume_button, FALSE, FALSE, 0);
+@@ -235,8 +248,8 @@ time_out_lock_screen_finalize (GObject *object)
+   TimeOutLockScreen *lock_screen = TIME_OUT_LOCK_SCREEN (object);
+ 
+   /* Destroy fadeout if necessary */
+-  if (G_UNLIKELY (lock_screen->fadeout != NULL))
+-    time_out_fadeout_destroy (lock_screen->fadeout);
++//  if (G_UNLIKELY (lock_screen->fadeout != NULL))
++//    time_out_fadeout_destroy (lock_screen->fadeout);
+ 
+   /* Destroy information window */
+   gtk_widget_destroy (lock_screen->window);
+@@ -265,13 +278,15 @@ time_out_lock_screen_show (TimeOutLockScreen *lock_screen, gint max_sec)
+   gdk_flush ();
+ 
+   /* Create fadeout */
+-  lock_screen->fadeout = time_out_fadeout_new (gdk_display_get_default ());
++  //lock_screen->fadeout = time_out_fadeout_new (gdk_display_get_default ());
++  lock_screen->fadeout = NULL;
+ 
+   /* Push out changes */
+-  gdk_flush ();
++  //gdk_flush ();
+ 
+   /* Center window on target monitor */
+-  xfce_gtk_window_center_on_active_screen (GTK_WINDOW (lock_screen->window));
++  //xfce_gtk_window_center_on_active_screen (GTK_WINDOW (lock_screen->window));
++  //^ don't center because it's underneath due to focus-stealing prevention and I don't ever see it!
+ 
+   lock_screen->max_seconds = max_sec;
+ 
+@@ -279,7 +294,7 @@ time_out_lock_screen_show (TimeOutLockScreen *lock_screen, gint max_sec)
+ 
+   /* Display information window */
+   gtk_widget_show_now (lock_screen->window);
+-  gtk_widget_grab_focus (lock_screen->window);
++  //gtk_widget_grab_focus (lock_screen->window);//looks like this prevents Enter from working when focus stealing prevention is on! so commenting this out works - as it allows the Postpone button to remain selected!
+ }
+ 
+ 
+@@ -290,7 +305,7 @@ time_out_lock_screen_hide (TimeOutLockScreen *lock_screen)
+   g_return_if_fail (IS_TIME_OUT_LOCK_SCREEN (lock_screen));
+ 
+   /* Destroy fadeout */
+-  time_out_fadeout_destroy (lock_screen->fadeout);
++  //time_out_fadeout_destroy (lock_screen->fadeout);
+   lock_screen->fadeout = NULL;
+ 
+   /* Push out changes */

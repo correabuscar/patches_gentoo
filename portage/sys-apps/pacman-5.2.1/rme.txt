@@ -1,0 +1,3 @@
+patches were last applied on commit 969e1ab996e79f3e121d0fb3bfd4e91ac7d6f488 of pacman 5.2.1
+ie.  Pacman v5.2.1-61-g969e-dirty - libalpm v12.0.1
+on archlinux! never tried on gentoo, but carried over the patches just to keep them

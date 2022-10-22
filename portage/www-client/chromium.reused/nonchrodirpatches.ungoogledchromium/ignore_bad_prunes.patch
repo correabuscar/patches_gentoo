@@ -1,0 +1,13 @@
+diff --git a/utils/prune_binaries.py b/utils/prune_binaries.py
+index dc088c0..617d60b 100755
+--- a/utils/prune_binaries.py
++++ b/utils/prune_binaries.py
+@@ -39,7 +39,7 @@ def _callback(args):
+     unremovable_files = prune_dir(args.directory, prune_files)
+     if unremovable_files:
+         get_logger().error('Files could not be pruned: %s', unremovable_files)
+-        exit(1)
++        #exit(1)
+ 
+ 
+ def main():

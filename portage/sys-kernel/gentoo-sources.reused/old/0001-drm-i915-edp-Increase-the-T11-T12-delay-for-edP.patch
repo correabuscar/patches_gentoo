@@ -1,0 +1,36 @@
+src: https://bugs.freedesktop.org/show_bug.cgi?id=109522#c32
+
+From b8ac3f44179886c5e7f9c2790e23119a6b903185 Mon Sep 17 00:00:00 2001
+From: Manasi Navare <manasi.d.navare@intel.com>
+Date: Wed, 22 May 2019 15:54:36 -0700
+Subject: [PATCH] drm/i915/edp: Increase the T11-T12 delay for edP
+
+see if this fixes the bug:
+https://bugs.freedesktop.org/show_bug.cgi?id=107033
+
+Signed-off-by: Manasi Navare <manasi.d.navare@intel.com>
+---
+ drivers/gpu/drm/i915/intel_dp.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/gpu/drm/i915/intel_dp.c b/drivers/gpu/drm/i915/intel_dp.c
+index 77ba4da6b981..011e591b93bc 100644
+--- a/drivers/gpu/drm/i915/intel_dp.c
++++ b/drivers/gpu/drm/i915/intel_dp.c
+@@ -6491,11 +6491,11 @@ intel_dp_init_panel_power_sequencer(struct intel_dp *intel_dp)
+ 	 * just fails to power back on. Increasing the delay to 800ms
+ 	 * seems sufficient to avoid this problem.
+ 	 */
+-	if (dev_priv->quirks & QUIRK_INCREASE_T12_DELAY) {
++	//if (dev_priv->quirks & QUIRK_INCREASE_T12_DELAY) {
+ 		vbt.t11_t12 = max_t(u16, vbt.t11_t12, 1300 * 10);
+ 		DRM_DEBUG_KMS("Increasing T12 panel delay as per the quirk to %d\n",
+ 			      vbt.t11_t12);
+-	}
++		//}
+ 	/* T11_T12 delay is special and actually in units of 100ms, but zero
+ 	 * based in the hw (so we need to add 100 ms). But the sw vbt
+ 	 * table multiplies it with 1000 to make it in units of 100usec,
+-- 
+2.19.1
+

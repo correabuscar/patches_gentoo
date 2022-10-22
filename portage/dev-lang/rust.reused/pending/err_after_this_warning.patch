@@ -1,0 +1,56 @@
+what you get with this patch:
+
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   /home/user/build/2nonpkgs/rust.stuff/rustlearnage/recompile_self/Cargo.toml
+workspace: /home/user/build/2nonpkgs/rust.stuff/rustlearnage/Cargo.toml
+error: Treating the above warning(s) as an error!
+
+this happens when package's Cargo.toml aka /home/user/build/2nonpkgs/rust.stuff/rustlearnage/recompile_self/Cargo.toml has:
+[profile.dev]
+debug-assertions = false
+
+[profile.release]
+debug-assertions = true
+
+instead of having those ONLY in:
+workspace's Cargo.toml aka /home/user/build/2nonpkgs/rust.stuff/rustlearnage/Cargo.toml
+
+diff --git a/src/cargo/core/workspace.rs b/src/cargo/core/workspace.rs
+index 647eed02..6e0b3858 100644
+--- a/src/cargo/core/workspace.rs
++++ b/src/cargo/core/workspace.rs
+@@ -659,12 +659,13 @@ impl<'cfg> Workspace<'cfg> {
+         }
+ 
+         if let Some(ref root_manifest) = self.root_manifest {
++            let mut did_warn=false;
+             for pkg in self
+                 .members()
+                 .filter(|p| p.manifest_path() != root_manifest)
+             {
+                 let manifest = pkg.manifest();
+-                let emit_warning = |what| -> CargoResult<()> {
++                let mut emit_warning = |what| -> CargoResult<()> { // closure needs to be mut because it's mutating its environment(ie. did_warn gets set inside it) 
+                     let msg = format!(
+                         "{} for the non root package will be ignored, \
+                          specify {} at the workspace root:\n\
+@@ -675,6 +676,9 @@ impl<'cfg> Workspace<'cfg> {
+                         pkg.manifest_path().display(),
+                         root_manifest.display(),
+                     );
++                    if !did_warn {
++                        did_warn=true;
++                    }
+                     self.config.shell().warn(&msg)
+                 };
+                 if manifest.original().has_profiles() {
+@@ -687,6 +691,9 @@ impl<'cfg> Workspace<'cfg> {
+                     emit_warning("patch")?;
+                 }
+             }
++            if did_warn {
++                failure::bail!("Treating the above warning(s) as an error!");
++            }
+         }
+ 
+         Ok(())

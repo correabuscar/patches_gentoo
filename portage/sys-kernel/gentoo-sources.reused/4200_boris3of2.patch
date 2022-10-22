@@ -1,0 +1,14 @@
+diff --git a/arch/x86/kernel/cpu/microcode/Makefile b/arch/x86/kernel/cpu/microcode/Makefile
+index ba12e8aa4a45..3cface3f6c7b 100644
+--- a/arch/x86/kernel/cpu/microcode/Makefile
++++ b/arch/x86/kernel/cpu/microcode/Makefile
+@@ -2,3 +2,8 @@ microcode-y				:= core.o
+ obj-$(CONFIG_MICROCODE)			+= microcode.o
+ microcode-$(CONFIG_MICROCODE_INTEL)	+= intel.o
+ microcode-$(CONFIG_MICROCODE_AMD)	+= amd.o
++
++CFLAGS_amd.o := -DDEBUG
++CFLAGS_intel.o := -DDEBUG
++CFLAGS_microcode.o := -DDEBUG
++CFLAGS_core.o := -DDEBUG
+

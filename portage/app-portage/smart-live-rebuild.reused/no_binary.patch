@@ -1,0 +1,18 @@
+nvm this patch, got fixed more nicely in 1.3.7 eg. ->  emerge --oneshot --getbinpkg=n --usepkg-exclude app-editors/vim-core:0 app-editors/vim:0 app-editors/vim-core:0 app-editors/vim:0
+
+//
+https://bugs.gentoo.org/759244
+
+Index: /var/tmp/portage/app-portage/smart-live-rebuild-1.3.6/work/smart-live-rebuild-1.3.6/smartliverebuild/cli.py
+===================================================================
+--- .orig/smartliverebuild/cli.py
++++ mod/smartliverebuild/cli.py
+@@ -151,7 +151,7 @@ def main(argv):
+ 			print(p)
+ 		return 0
+ 	else:
+-		cmd = ['emerge', '--oneshot', '--usepkg=n']
++		cmd = ['emerge', '--oneshot', '--usepkg=n', '--getbinpkg=n']
+ 		cmd.extend(args)
+ 		cmd.extend(packages)
+ 		out.s2(' '.join(cmd))

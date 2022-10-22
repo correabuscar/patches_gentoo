@@ -1,0 +1,260 @@
+
+# This file is safe to edit, ie. it's not the generated version.
+
+# arg 1:  the new package version
+# arg 2:  the old package version
+
+source "/swcode/swcode.bash"
+
+KERNEL_NAME=
+KERNEL_VERSION=
+
+initramfsfname="initramfs-linux${KERNEL_NAME}.img"
+initramfs="/boot/${initramfsfname}"
+vmlinuz="/boot/vmlinuz-linux${KERNEL_NAME}"
+
+EARLY_MICROCODE_LOADING=1 #if 1 yes, if not 1 (so eg. 0) then no
+
+prepend_microcode () {
+  if test "0$EARLY_MICROCODE_LOADING" -ne 1; then
+    echo "!! not using early microcode loading, so expect to see late loading only"
+    return 0
+  fi
+  # for early microcode loading
+  echo "!! Early microcode loading! Prepending CPU microcode to ${initramfs} but first compressing initramfs..."
+  local destfirst="/tmp/initrd/"
+  local destmc="${destfirst}/kernel/x86/microcode/"
+#  mkdir -p "${destmc}"
+	install -dm644 "${destmc}"
+  #note due to the 'xz' compression, which should give you 4.84 compression ratio, you need kernel .config option CONFIG_RD_XZ
+  #this works only if /etc/mkinitcpio.conf has 'cat' compression, else it would be double xz-ed I suppose.
+  #doneFIXME: currently won't boot unless I append root=/dev/sda2 (it has an UUID already and it's correct!) - xz compression arg --check=crc32 was missing!
+  #cat "${initramfs}" | xz --extreme --threads=0 --compress --to-stdout --format=xz -- - > "/tmp/${initramfsfname}"
+  #^ Apr 30 19:57:50 Z575 kernel: Initramfs unpacking failed: Input was encoded with settings that are not supported by this XZ decoder
+  #^ same for -9 or --threads=1 (for -9 or --extreme)
+  #cat "${initramfs}" | xz --threads=0 --compress --to-stdout --format=xz -- - > "/tmp/${initramfsfname}"
+  #^ same for that
+  #cat "${initramfs}" | xz --threads=1 --compress --to-stdout --format=xz -- - > "/tmp/${initramfsfname}"
+  #XXX all because mkinitcpio was adding --check=crc32 and I wasn't! without this kernel won't be able to mount it and you have to pass root=/dev/sda2 as a workaround/mitigation, but this means it doesn't use any initramfs!
+  cat "${initramfs}" | xz -6 "--threads=$(nproc)" --compress --to-stdout --format=xz --check=crc32 -- - > "/tmp/${initramfsfname}"
+  #XXX: compressing initramfs is needed to avoid some long delay(several seconds) during startup (probably due to uncached disk reads, even though it's SSD! it's 40+ MiB as opposed to just 10)
+  #XXX: xz -9 uses 1 threads(even if you specify =0 or =4) but --extreme doesn't! thus -9 is better compression! even with --extreme --threads=1 , -9 is still better compression 4.95368603620435598279 vs 5.03649924953337153140 with -9
+  #XXX: -8 allows 2 threads, at the beginning, then 1; -7 allows 3 then 1; and -6 allows all 4 with compression ratio=4.92115770544219105651 definitely worth the speedup!
+  #XXX: zstd52.patch was not needed for this ^
+  #cat "${initramfs}" > "/tmp/${initramfsfname}"
+
+  #XXX: don't late load microcode ever for Intel: https://bugs.archlinux.org/task/59841
+  #XXX: get intel-ucode package for Intel see: https://wiki.archlinux.org/index.php/Microcode#Installation and the LILO section for another way.
+  if is_Z575; then
+    local microcodefile="amd-ucode/microcode_amd.bin"
+    local destmcodefn="AuthenticAMD.bin"
+    ( cp -a -f "/lib/firmware/${microcodefile}" "${destmc}/${destmcodefn}" && cd "${destfirst}" && find . | cpio -o -H newc > "../ucode.cpio" 2>/dev/null && cd .. && cat "ucode.cpio" "/tmp/${initramfsfname}" > "${initramfs}" && chmod a-rwx "${initramfs}" ) ; local ec="$?"
+  elif is_i87k; then
+    #ensure intel-code pkg is installed then copy the compressed(xz-ed) initramfs back into /boot and remove all its attrs!
+    if is_archlinux; then
+    local ec=1
+      pacman -Qs intel-ucode || sudo pacman -S intel-ucode ; ec="$?"
+      if test "0$ec" -ne "0"; then
+        echo "$(tput setab 1)intel-ucode package failed to install!$(tput sgr0)"
+        exit 1
+      fi
+    fi
+    cat "/tmp/${initramfsfname}" > "${initramfs}" && chmod a-rwx "${initramfs}" ; ec="$?"
+  fi
+  rm -v -- "/tmp/${initramfsfname}"
+  #&& chmod a-rwx "/tmp/${initramfsfname}" && mv -f "/tmp/${initramfsfname}" "${initramfs}" )
+	#local ec=$?
+	if [[ $ec -eq 0 ]]; then
+    echo "$(tput setab 2)success.$(tput sgr0)"
+	else
+		#TODO: make errors be red so it's more obvious
+    echo "$(tput setab 1)failed!$(tput sgr0)"
+	fi
+	return $ec
+}
+
+rebuild_fglrx () {
+  #
+	#note to self, I don't need catalyst-hook.service so: sudo systemctl disable catalyst-hook
+	# this exe is installed by catalyst-hook package
+	cbmexe="$(which catalyst_build_module >/dev/null 2>&1)"
+  echo "cbmexe=$cbmexe"
+	if [ -n "$cbmexe" ] && [ -x "${cbmexe}" ]; then
+		echo "recompiling fglrx module for ${KERNEL_VERSION} :"
+		${cbmexe} ${KERNEL_VERSION}
+		local ec=$?
+		if [[ $ec -eq 0 ]]; then
+			echo "success."
+		else
+			#TODO: make errors be red so it's more obvious
+			echo "failed!"
+		fi
+		return $ec
+  else
+    echo "!! Skipping fglrx due to not installed"
+	fi
+}
+
+run_dkms() {
+	# $1 = autoinstall or uninstall  operation to be passed to dkms
+	local oper="$1"
+	if [ -z "$oper" ]; then
+		echo "call failed for function: '${FUNCNAME[0]}' you didn't specify an operation"
+    echo "stack: ${FUNCNAME[*]}"
+		return 1
+	fi
+	#TODO: check for valid $oper values
+	# for the cases when dkms isn't patched to auto rebuild when kernel compile.h changes
+	# and/or for the cases when systemd-modules-load.service loads existing modules before dkms gets the chance to rebuild them (quite possibly 'causing an oops, for the case when rebuilt kernel with debugging locks for example) which is still the case on my manjaro dist
+	dkmsexe=$(which dkms >/dev/null 2>&1)
+	if [ ! -x "$dkmsexe" ]; then
+		echo -n "!! Failed to find dkms executable, "
+		if pacman -Qq dkms; then
+			#TODO: make errors be red color
+			echo "aborting"
+			exit 33
+		else
+			echo "ignoring because you don't have the package installed"
+		fi
+	else
+    echo "running dkms: ${dkmsexe} ${oper} -k \"$KERNEL_VERSION\""
+		${dkmsexe} ${oper} -k "$KERNEL_VERSION"
+		local ec=$?
+		#too bad it doesn't return non-zero when failed to build/install
+		if [[ $ec -eq 0 ]]; then
+			echo "good."
+		else
+			#TODO: make red
+			echo "bad."
+		fi
+    return $ec #return it anyways
+	fi
+}
+
+update_grub () {
+  # update grub.cfg but first patch entries order to ensure linux-git is first:
+  if which grub-mkconfig >/dev/null 2>&1; then
+    #XXX the ~/bin/update-grub script does all this and more:
+    update-grub
+#    #in order to avoid linux-lts be first before linux-git, have to patch a grub script:
+#    (cat <<"EOF"
+#--- orig/usr/share/grub/grub-mkconfig_lib	2017-12-30 10:27:17.752596835 +0100
+#+++ patched/usr/share/grub/grub-mkconfig_lib	2017-12-30 10:25:11.002419802 +0100
+#@@ -240,6 +240,11 @@ version_test_gt ()
+# {
+#   version_test_gt_a="`echo "$1" | sed -e "s/[^-]*-//"`"
+#   version_test_gt_b="`echo "$2" | sed -e "s/[^-]*-//"`"
+#+  if test "$version_test_gt_a" == "linux-git"; then
+#+    return 0 #yes it's greater, ie. linux-git vs linux-lts
+#+  elif test "$version_test_gt_b" == "linux-git"; then
+#+    return 1 #no it's not greater, ie. linux-lts vs linux-git
+#+  fi
+#   version_test_gt_cmp=gt
+#   if [ "x$version_test_gt_b" = "x" ] ; then
+#     return 0
+#EOF
+#)    | patch --reject-file=- -Np1 -i -
+##aka discard rejects, -N means apply only when not already applied
+#      # 'update-grub' does exactly this:
+#      grub-mkconfig -o /boot/grub/grub.cfg
+#      #now ensure /boot is not btrfs compress zstd or grub will fail to boot:
+#      bootfs="`mount |grep $(df /boot|tail -n1|cut -f1 -d' ')|cut -f5 -d' '`"
+#      if test "btrfs" == "$bootfs"; then
+#        echo "!! /boot is btrfs, let's ensure compression is not zstd or grub will fail to boot, so using zlib" >&2
+#        echo "!! sync-ing first! (required, on kernel 4.17)" >&2
+#        sync #required, or else the following won't have effect, kernel 4.17 - so weird, TODO: report this maybe?
+#        echo "!! now using defrag to recompress(zlib)" >&2
+#        btrfs filesystem defragment -czlib -r -v /boot
+#        #FIXME: must temp remount /boot (or / if /boot is just a subdir of /) with compress-force=zlib  or else /boot/grub/grubenv (for example) will remain zstd  even though we specifically use -czlib for defragment! (see also ~/bin/update-grub )
+#      fi
+  else
+      echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      echo "WARNING: It seems that grub is not installed - Your system might not boot."
+      echo "Add the following initramfs files to your bootloader config:"
+      echo ">> linux	${vmlinuz}"
+      echo ">> initrd	${initramfs}"
+      echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+  fi
+}
+
+backupoldconfig() {
+  srcf="$(echo /kernel*.config)"
+  echo "!! Old kernel config: $srcf"
+  if test -e "$srcf"; then
+    newf="${srcf}.removed_on_$(date|tr ' :' '_')_due_to_pkg_$1.backup"
+    echo "!! Backup up as: $newf"
+    cp -a -- "$srcf" "${newf}"
+  fi
+}
+
+
+mkinitcpio_call() {
+  echo ">>> Generating initial ramdisk, using mkinitcpio.  Please wait..."
+  mkinitcpio -p linux${KERNEL_NAME} ; ec="$?"
+  echo "!! mkinitcpio exit code:'$ec'"
+  if test "$ec" -ne "0"; then
+    #notify-send doesn't work since we're 'root' and X is running as 'user'
+    echo "$(tput setab 1)mkinitcpio failed, check the scrollback to see if the initramfs missed the hooks, if so you won't be able to mount rootfs! Especially if you applied this patch https://paste.debian.net/1131379/ which makes 'type -P /usr/lib/initcpio/install/base' or '$ PATH=/usr/lib/initcpio/install/ type -P base' return exit code 1 because that base file is a-x ie. -rw-r--r--$(tput sgr0)"
+  fi
+}
+
+post_install () {
+  # updating module dependencies
+  echo ">>> Updating module dependencies. Please wait ..."
+  depmod ${KERNEL_VERSION}
+  mkinitcpio_call
+
+  echo ">>> WARNING: AT keyboard support is no longer built into the kernel."
+  echo ">>>          In order to use your keyboard during early init, you MUST"
+  echo ">>>          include the 'keyboard' hook in your mkinitcpio.conf."
+
+	prepend_microcode
+	update_grub  
+	rebuild_fglrx
+	run_dkms autoinstall
+}
+
+
+post_upgrade() {
+  if findmnt --fstab -uno SOURCE /boot &>/dev/null && ! mountpoint -q /boot; then
+    echo "WARNING: /boot appears to be a separate partition but is not mounted."
+  fi
+
+  # updating module dependencies
+  echo ">>> Updating module dependencies. Please wait ..."
+  depmod ${KERNEL_VERSION}
+  mkinitcpio_call
+
+  if [ "$(vercmp "$2" 3.13)" -lt 0 ]; then
+    echo ">>> WARNING: AT keyboard support is no longer built into the kernel."
+    echo ">>>          In order to use your keyboard during early init, you MUST"
+    echo ">>>          include the 'keyboard' hook in your mkinitcpio.conf."
+  fi
+
+	prepend_microcode
+	update_grub  
+	rebuild_fglrx
+	run_dkms autoinstall
+}
+
+post_remove() {
+	# avoid leaving /usr/lib/modules/kernelnamehere/*.ko modules around from dkms
+	# TODO: make autouninstall option for dkms because we need it to remove all dkms modules for this kernel and we cannot possibly know which of them are installed.
+	run_dkms autouninstall
+  # also remove the compat symlinks
+	#FIXME: not sure what's with these, they are the same files in our current case (linux-git package)
+  rm -f boot/initramfs-linux${KERNEL_NAME}.img
+  rm -f boot/initramfs-linux${KERNEL_NAME}-fallback.img
+
+	update_grub  
+	#TODO: run dkms uninstall ${KERNEL_VERSION}
+}
+
+pre_upgrade() {
+  backupoldconfig upgrade
+}
+
+pre_remove() {
+  backupoldconfig remove
+}
+

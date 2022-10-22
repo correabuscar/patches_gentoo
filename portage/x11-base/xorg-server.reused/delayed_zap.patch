@@ -1,0 +1,72 @@
+revision 2: 27 feb 2020 00:35
+* fixed initial counter increase (should never be 0, but 1)
+* fix warning: format ‘%zu’ expects argument of type ‘size_t’, but argument 5 has type ‘CARD32’ {aka ‘unsigned int’} [-Wformat=]
+
+this will not kill your xserver on first Ctrl+Alt+Backspace press, but rather only if you press it 5 times within 3 seconds.
+
+To disable it completely:
+       Option "DontZap"  "boolean"
+              This  disallows the use of the Terminate_Server XKB action (usu‐
+              ally on Ctrl+Alt+Backspace, depending on XKB options).  This ac‐
+              tion  is  normally used to terminate the Xorg server.  When this
+              option is enabled, the action has no effect.  Default: off.
+#from 'man 5 xorg.conf'
+#see: man 1 xorg  search DontZap
+
+To see which key does the zapping: $ xmodmap -pke | grep Terminate_Server
+keycode  22 = BackSpace BackSpace BackSpace BackSpace NoSymbol NoSymbol Terminate_Server
+
+/etc/X11/xorg.conf.d/91-keyboard.conf has Option "XkbOptions" "terminate:ctrl_alt_bksp,numpad:microsoft"
+
+for easy copy/paste access: /home/user/build/1packages/4used/xorg-server/makepkg_pacman/xorg-server/src/xorg-server-1.20.7/hw/xfree86/common/xf86Events.c
+
+Tested on ArchLinux's local/xorg-server 1.20.7-1
+Can also be applied on Gentoo's x11-base/xorg-server-1.20.7:0/1.20.7::gentoo (but untested yet, should still work tho)
+
+--- a/hw/xfree86/common/xf86Events.c	2020-01-13 23:57:05.000000000 +0100
++++ b/hw/xfree86/common/xf86Events.c	2020-02-25 23:52:41.340565813 +0100
+@@ -163,15 +163,39 @@ ProcessInputEvents(void)
+ void
+ xf86ProcessActionEvent(ActionEvent action, void *arg)
+ {
+-    DebugF("ProcessActionEvent(%d,%p)\n", (int) action, arg);
++#define ZAP_AFTER_X_TIMES 5
++#define WITHIN_Y_MILLISECONDS 3000 // if you failed to zap ZAP_AFTER_X_TIMES times within this many milliseconds, then the counter is reset so you need to zap it again ZAP_AFTER_X_TIMES times within that many milliseconds
++    static unsigned int times=0;
++    // for CARD32 see /usr/include/X11/Xmd.h
++    static CARD32 firstTimeZapped=0;
++    CARD32 now;//=currentTime.milliseconds;
++# ifdef LONG64
++#define CARD32_printf "%u" // unsigned int , FIXME: should I use PRIu32 ?
++#else
++#define CARD32_printf "%lu" // unsigned long, FIXME: should I use PRIu64 ?
++#endif
++
++    // DebugF("ProcessActionEvent(%d,%p)\n", (int) action, arg);
++    // DebugF("ProcessActionEvent(%d,%p)\n", (int) action, arg); //needs -DDEBUG and calls ErrorF
++    // ErrorF("ProcessActionEvent(%d,%p)\n", (int) action, arg); // doesn't need -DDEBUG
++    // xf86Msg(X_INFO, "ProcessActionEvent(%d,%p)\n", (int) action, arg);
+     switch (action) {
+     case ACTION_TERMINATE:
+-        if (!xf86Info.dontZap) {
+-            xf86Msg(X_INFO, "Server zapped. Shutting down.\n");
++        now=currentTime.milliseconds;
++        if (now - firstTimeZapped > WITHIN_Y_MILLISECONDS) {
++          times=0; //reset counter after 3 seconds
++          firstTimeZapped = now;
++        } //else { // otherwise keep counting
++          times++;
++        //}
++        if (times < ZAP_AFTER_X_TIMES) {
++          xf86Msg(X_INFO, "Server zapped %u/%u times. %d more to go. firstTimeZapped=" CARD32_printf " now=" CARD32_printf " diff=" CARD32_printf "\n", times, ZAP_AFTER_X_TIMES, ZAP_AFTER_X_TIMES - times, firstTimeZapped, now, now - firstTimeZapped);
++        } else {
++          xf86Msg(X_INFO, "Server zapped (%u/%u times in " CARD32_printf "ms). Shutting down.\n", times, ZAP_AFTER_X_TIMES, now - firstTimeZapped);
+ #ifdef XFreeXDGA
+-            DGAShutdown();
++          DGAShutdown();
+ #endif
+-            GiveUp(0);
++          GiveUp(0);
+         }
+         break;
+     case ACTION_NEXT_MODE:

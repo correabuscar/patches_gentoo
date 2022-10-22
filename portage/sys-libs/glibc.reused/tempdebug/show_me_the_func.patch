@@ -1,0 +1,54 @@
+diff -upr glibc-2.27.orig/nss/getXXbyYY.c glibc-2.27/nss/getXXbyYY.c
+--- glibc-2.27.orig/nss/getXXbyYY.c	2018-02-01 17:17:18.000000000 +0100
++++ glibc-2.27/nss/getXXbyYY.c	2018-04-25 07:16:04.110626305 +0200
+@@ -21,6 +21,8 @@
+ #include <stdlib.h>
+ #include <resolv.h>
+ 
++#include <syslog.h> //for syslog, below
++
+ #include "nsswitch.h"
+ 
+ /*******************************************************************\
+@@ -98,6 +100,13 @@ FUNCTION_NAME (ADD_PARAMS)
+ #ifdef NEED_H_ERRNO
+   int h_errno_tmp = 0;
+ #endif
++  //additions block starts:
++  openlog(NULL, LOG_CONS | LOG_NDELAY | LOG_PERROR, LOG_LOCAL1);
++  #define ASSTR_RND6603(one,two) one # two
++  #define ASSTR_RND29998(name) ASSTR_RND6603("", name)
++  syslog(LOG_NOTICE, "!! FUNCTION_NAME == '%s'", ASSTR_RND29998(FUNCTION_NAME)); //list: getgrgid getgrnam gethostbyname getprotobyname getpwnam getpwuid (via dmesg --color=always --nopager --notime|grep FUNCTION_NAME|cut -f3 -d '='|tr -d "'"|tr -d ' '|sort -u|tr '\n' ' ';echo)
++  closelog();
++  //additions block ends.
+ 
+ #ifdef HANDLE_DIGITS_DOTS
+   /* Wrap both __nss_hostname_digits_dots and the actual lookup
+diff -upr glibc-2.27.orig/nss/getXXbyYY_r.c glibc-2.27/nss/getXXbyYY_r.c
+--- glibc-2.27.orig/nss/getXXbyYY_r.c	2018-02-01 17:17:18.000000000 +0100
++++ glibc-2.27/nss/getXXbyYY_r.c	2018-04-25 12:10:09.013455300 +0200
+@@ -20,6 +20,9 @@
+ #include <atomic.h>
+ #include <errno.h>
+ #include <stdbool.h>
++
++#include <syslog.h> //for syslog, below
++
+ #include "nsswitch.h"
+ #include "sysdep.h"
+ #ifdef USE_NSCD
+@@ -211,6 +211,14 @@ INTERNAL (REENTRANT_NAME) (ADD_PARAMS, L
+   bool any_service = false;
+ #endif
+ 
++  //additions block starts:
++  openlog(NULL, LOG_CONS | LOG_NDELAY | LOG_PERROR, LOG_LOCAL1);
++  #define ASSTR_RND22985(one,two) one # two
++  #define ASSTR_RND78(name) ASSTR_RND22985("", name)
++  syslog(LOG_NOTICE, "!! REENTRANT_NAME == '%s'", ASSTR_RND78(REENTRANT_NAME)); //list: getgrgid_r getgrgid_r getgrnam_r gethostbyaddr_r gethostbyname2_r gethostbyname_r getprotobyname_r getpwnam_r getpwnam_r getpwuid_r getpwuid_r getspnam_r (via dmesg --color=always --nopager --notime|grep REENTRANT_NAME|cut -f3 -d '='|tr -d "'"|tr -d ' '|sort -u|tr '\n' ' ';echo)
++  closelog();
++  //additions block ends.
++
+ #ifdef NEED__RES
+   /* The HANDLE_DIGITS_DOTS case below already needs the resolver
+      configuration, so this has to happen early.  */

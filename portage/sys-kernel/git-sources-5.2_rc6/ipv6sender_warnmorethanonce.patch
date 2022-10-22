@@ -1,0 +1,22 @@
+https://bugzilla.kernel.org/show_bug.cgi?id=202249
+
+it's `ss -w`(raw, display RAW sockets) that's causing it
+
+diff --git a/net/ipv4/raw_diag.c b/net/ipv4/raw_diag.c
+index c200065ef9a5..eece57141fa7 100644
+--- a/net/ipv4/raw_diag.c
++++ b/net/ipv4/raw_diag.c
+@@ -23,9 +23,11 @@ raw_get_hashinfo(const struct inet_diag_req_v2 *r)
+ 		return &raw_v6_hashinfo;
+ #endif
+ 	} else {
+-		pr_warn_once("Unexpected inet family %d\n",
++		//pr_warn_once("Unexpected inet family %d\n",
++		pr_warn("Unexpected inet family %d\n",
+ 			     r->sdiag_family);
+-		WARN_ON_ONCE(1);
++		//WARN_ON_ONCE(1);
++		WARN_ON(1);
+ 		return ERR_PTR(-EINVAL);
+ 	}
+ }

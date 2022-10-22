@@ -1,0 +1,6 @@
+patches worked on archlinux git duplicacy v2.1.1.r14.22a0b22
+not tested on gentoo: no ebuild found anywhere!
+
+There once was an ebuild once, apparently, but it's 404 now:
+https://gentoo-overlays.zugaina.org/chaoslab/app-backup.html.en#duplicacy
+for v2.1.2

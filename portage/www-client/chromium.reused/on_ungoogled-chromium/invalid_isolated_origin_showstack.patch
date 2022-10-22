@@ -1,0 +1,22 @@
+diff --git a/content/browser/child_process_security_policy_impl.cc b/content/browser/child_process_security_policy_impl.cc
+index 3c18dc775e8b..20d0ab9d1552 100644
+--- a/content/browser/child_process_security_policy_impl.cc
++++ b/content/browser/child_process_security_policy_impl.cc
+@@ -46,6 +46,9 @@
+ #include "url/url_canon.h"
+ #include "url/url_constants.h"
+ 
++#include "base/debug/stack_trace.h" //for base::debug::StackTrace().Print();
++
++
+ namespace content {
+ 
+ namespace {
+@@ -1435,6 +1439,7 @@ void ChildProcessSecurityPolicyImpl::AddIsolatedOrigins(
+   for (const IsolatedOriginPattern& pattern : patterns) {
+     if (!pattern.is_valid()) {
+       LOG(ERROR) << "Invalid isolated origin: " << pattern.pattern();
++      base::debug::StackTrace().Print();
+       continue;
+     }
+ 

@@ -1,0 +1,26 @@
+#for 5.10.12 or less
+#diff --git a/mm/compaction.c b/mm/compaction.c
+#index 952dc2fb24e5..a087778ccd68 100644
+#--- a/mm/compaction.c
+#+++ b/mm/compaction.c
+#@@ -849,6 +849,7 @@ isolate_migratepages_block(struct compact_control *cc, unsigned long low_pfn,
+# 		    && compact_unlock_should_abort(&pgdat->lru_lock,
+# 					    flags, &locked, cc)) {
+# 			low_pfn = 0;
+#+      pr_debug("!! goto fatal_pending");
+# 			goto fatal_pending;
+# 		}
+# 
+#for 5.12.1 or +- (unknown)
+Index: /var/tmp/portage/sys-kernel/gentoo-sources-5.12.1/work/linux-5.12.1-gentoo/mm/compaction.c
+===================================================================
+--- linux-5.12.1-gentoo/mm/compaction.c
++++ linux-5.12.1-gentoo/mm/compaction.c
+@@ -877,6 +877,7 @@ isolate_migratepages_block(struct compac
+ 				cc->contended = true;
+ 
+ 				low_pfn = 0;
++        pr_debug("!! goto fatal_pending");
+ 				goto fatal_pending;
+ 			}
+ 

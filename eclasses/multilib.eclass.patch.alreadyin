@@ -1,0 +1,41 @@
+From e11ed51d90460b9a83495c451b10fa96fb0bee43 Mon Sep 17 00:00:00 2001
+From: Arfrever Frehtes Taifersar Arahesis <Arfrever@Apache.Org>
+Date: Mon, 23 Nov 2020 23:00:00 +0000
+Subject: [PATCH] multilib.eclass: Include /$(get_libdir) in
+ PKG_CONFIG_SYSTEM_LIBRARY_PATH.
+
+Set also PKG_CONFIG_SYSTEM_INCLUDE_PATH for consistency.
+
+Bug: https://bugs.gentoo.org/756238
+Signed-off-by: Arfrever Frehtes Taifersar Arahesis <Arfrever@Apache.Org>
+---
+ eclass/multilib.eclass | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/eclass/multilib.eclass b/eclass/multilib.eclass
+index 9c7042fcd29..33ca9726131 100644
+#--- a/eclass/multilib.eclass
+#+++ b/eclass/multilib.eclass
+--- .orig/var/db/repos/gentoo/eclass/multilib.eclass
++++ /var/db/repos/gentoo/eclass/multilib.eclass
+@@ -498,6 +498,7 @@ multilib_toolchain_setup() {
+ 		STRIP
+ 		PKG_CONFIG_LIBDIR
+ 		PKG_CONFIG_PATH
++		PKG_CONFIG_SYSTEM_INCLUDE_PATH
+ 		PKG_CONFIG_SYSTEM_LIBRARY_PATH
+ 	)
+ 
+@@ -547,7 +548,8 @@ multilib_toolchain_setup() {
+ 		export CHOST=$(get_abi_CHOST $1)
+ 		export PKG_CONFIG_LIBDIR=${EPREFIX}/usr/$(get_libdir)/pkgconfig
+ 		export PKG_CONFIG_PATH=${EPREFIX}/usr/share/pkgconfig
+-		export PKG_CONFIG_SYSTEM_LIBRARY_PATH=${EPREFIX}/usr/$(get_libdir)
++		export PKG_CONFIG_SYSTEM_INCLUDE_PATH=${EPREFIX}/usr/include
++		export PKG_CONFIG_SYSTEM_LIBRARY_PATH=${EPREFIX}/$(get_libdir):${EPREFIX}/usr/$(get_libdir)
+ 	fi
+ }
+ 
+-- 
+2.29.2
+

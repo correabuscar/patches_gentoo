@@ -1,0 +1,2 @@
+this dir (openrc-0.42.1) cannot exist while openrc-0.42.1-rc1 gets installed or it will get the patches from it and also from dir openrc-0.42.1-rc1
+but since those patches from openrc-0.42.1 dir will fail, it fails to emerge! unless the dir is removed!

@@ -1,0 +1,57 @@
+this happens because 7z prompts for password in the background, so mc is locked up.
+should fix when pressing enter on a .7z passworded file, and when F3-ing one.
+
+diff --git a/src/vfs/extfs/helpers/u7z b/src/vfs/extfs/helpers/u7z
+index 04f3f9c81..a56b3d848 100755
+--- a/src/vfs/extfs/helpers/u7z
++++ b/src/vfs/extfs/helpers/u7z
+@@ -43,7 +43,7 @@ mcu7zip_list ()
+         [ "${date_archive}"x = x ] && date_archive=`ls -lan "$1" 2>/dev/null | awk '{print $6, $7, $8}' 2>/dev/null`
+         [ "${date_archive}"x = x ] && date_archive="01-01-1970 00:00:00"
+ 
+-        $P7ZIP l "$1" | sed -n "
++        $P7ZIP l -pDUMMYPASSWORDTOAVOID_MC_LOCKUP_whenpwdneeded "$1" | sed -n "
+ 
+                   # If the uncompressed size is missing, we copy the compressed size onto it.
+                   #
+@@ -68,9 +68,9 @@ mcu7zip_list ()
+ mcu7zip_copyout ()
+ {
+         #first we check if we have old p7zip archive with prefix ./ in filename
+-        $P7ZIP l "$1" "$2" | grep -q "0 files, 0 folders" && \
++        $P7ZIP l -pDUMMYPASSWORDTOAVOID_MC_LOCKUP_whenpwdneeded "$1" "$2" | grep -q "0 files, 0 folders" && \
+         EXFNAME='*./'"$2" || EXFNAME="$2"
+-        $P7ZIP e -so "$1" "$EXFNAME" > "$3" 2>/dev/null
++        $P7ZIP e -pDUMMYPASSWORDTOAVOID_MC_LOCKUP_whenpwdneeded -so "$1" "$EXFNAME" > "$3" 2>/dev/null
+ }
+ 
+ mcu7zip_copyin ()
+@@ -90,7 +90,7 @@ mcu7zip_rm ()
+ {
+         # NOTE: Version 4.20 fails to delete files in subdirectories
+         #first we check if we have old p7zip archive with prefix ./ in filename
+-        $P7ZIP l "$1" "$2" | grep -q "0 files, 0 folders" && \
++        $P7ZIP l -pDUMMYPASSWORDTOAVOID_MC_LOCKUP_whenpwdneeded "$1" "$2" | grep -q "0 files, 0 folders" && \
+         EXFNAME='*./'"$2" || EXFNAME="$2"
+         $P7ZIP d "$1" "$EXFNAME" 2>&1 | grep -q E_NOTIMPL > /dev/null 2>&1 && \
+         { printf "Function not implemented...\n7z cannot delete from solid archive." >&2 ; exit 1 ; }
+@@ -99,7 +99,7 @@ mcu7zip_rm ()
+ mcu7zip_rmdir ()
+ {
+         #first we check if we have old p7zip archive with prefix ./ in filename
+-        $P7ZIP l "$1" "$2" | grep -q "0 files, 0 folders" && \
++        $P7ZIP l -pDUMMYPASSWORDTOAVOID_MC_LOCKUP_whenpwdneeded "$1" "$2" | grep -q "0 files, 0 folders" && \
+         EXFNAME='*./'"$2" || EXFNAME="$2"
+         $P7ZIP d "$1" "$EXFNAME"/ 2>&1 | grep -q E_NOTIMPL > /dev/null 2>&1 && \
+         { printf "Function not implemented...\n7z cannot delete from solid archive." >&2 ; exit 1 ; }
+diff --git a/misc/ext.d/archive.sh b/misc/ext.d/archive.sh
+index e6105fdc1..5f8cbe137 100755
+--- a/misc/ext.d/archive.sh
++++ b/misc/ext.d/archive.sh
+@@ -113,4 +113,4 @@ do_view_action() {
+     7z)
+-        7za l "${MC_EXT_FILENAME}" 2>/dev/null ||
+-            7z l "${MC_EXT_FILENAME}"
++        7za l -pDUMMYPASSWORDTOAVOID_MC_LOCKUP_whenpwdneeded "${MC_EXT_FILENAME}" 2>/dev/null ||
++            7z l -pDUMMYPASSWORDTOAVOID_MC_LOCKUP_whenpwdneeded "${MC_EXT_FILENAME}"
+ 

@@ -1,0 +1,51 @@
+oh my bad, the .h is actually included in two different .c files so the inline is thus defined twice! commit 33871123fa3a2dff9c3fc3f2c1a6cc3114e12964
+
+old:
+I'm baffled by how this wasn't detected before! because there are no recent git log or blame for this 5.2.3 compared to previous (5.2.2-ge9b75c60f91a) which actually did not error like this at all!
+
+  LD      vmlinux.o
+ld: drivers/input/mouse/alps.o: in function `trackpoint_detect':
+/home/user/build/1packages/4used/kernel/linux-stable/makepkg_pacman/linux-stable/src/linux-stable/drivers/input/mouse/trackpoint.h:164: multiple definition of `trackpoint_detect'; drivers/input/mouse/psmouse-base.o:/home/user/build/1packages/4used/kernel/linux-stable/makepkg_pacman/linux-stable/src/linux-stable/drivers/input/mouse/trackpoint.h:164: first defined here
+make: *** [Makefile:1052: vmlinux] Error 1
+
+#diff --git a/drivers/input/mouse/trackpoint.c b/drivers/input/mouse/trackpoint.c
+#index 3eefee2ee2a1..ce6abe002b5a 100644
+#--- a/drivers/input/mouse/trackpoint.c
+#+++ b/drivers/input/mouse/trackpoint.c
+#@@ -389,6 +389,7 @@ static int trackpoint_reconnect(struct psmouse *psmouse)
+# 	return 0;
+# }
+# 
+#+#ifdef CONFIG_MOUSE_PS2_TRACKPOINT
+# int trackpoint_detect(struct psmouse *psmouse, bool set_properties)
+# {
+# 	struct ps2dev *ps2dev = &psmouse->ps2dev;
+#@@ -468,4 +469,5 @@ int trackpoint_detect(struct psmouse *psmouse, bool set_properties)
+# 
+# 	return 0;
+# }
+#+#endif
+# 
+diff --git a/drivers/input/mouse/trackpoint.h b/drivers/input/mouse/trackpoint.h
+index 0afffe8d824f..831095a8a537 100644
+--- a/drivers/input/mouse/trackpoint.h
++++ b/drivers/input/mouse/trackpoint.h
+@@ -158,10 +158,17 @@ struct trackpoint_data {
+ #ifdef CONFIG_MOUSE_PS2_TRACKPOINT
+ int trackpoint_detect(struct psmouse *psmouse, bool set_properties);
+ #else
+-inline int trackpoint_detect(struct psmouse *psmouse, bool set_properties)
++//ok I can't do this because of drivers/input/mouse/psmouse-base.c:831:   .detect   = trackpoint_detect,
++//#define trackpoint_detect(a,b) \
++//  do { return -ENOSYS; } while (0)
++static inline int trackpoint_detect(struct psmouse *psmouse, bool set_properties) // https://lkml.org/lkml/2019/7/16/55
+ {
+ 	return -ENOSYS;
+ }
++// due to commit 33871123fa3a2dff9c3fc3f2c1a6cc3114e12964 Date:   Mon Jul 15 10:00:58 2019 -0700
++// ld: drivers/input/mouse/alps.o: in function `trackpoint_detect':
++// /home/user/build/1packages/4used/kernel/linux-stable/makepkg_pacman/linux-stable/src/linux-stable/drivers/input/mouse/trackpoint.h:164: multiple definition of `trackpoint_detect'; drivers/input/mouse/psmouse-base.o:/home/user/build/1packages/4used/kernel/linux-stable/makepkg_pacman/linux-stable/src/linux-stable/drivers/input/mouse/trackpoint.h:164: first defined here
++// make: *** [Makefile:1052: vmlinux] Error 1
+ #endif /* CONFIG_MOUSE_PS2_TRACKPOINT */
+ 
+ #endif /* _TRACKPOINT_H */

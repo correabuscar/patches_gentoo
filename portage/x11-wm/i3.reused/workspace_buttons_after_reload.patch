@@ -1,0 +1,17 @@
+https://github.com/i3/i3/issues/2740#issuecomment-294441158
+
+diff --git a/i3bar/src/ipc.c b/i3bar/src/ipc.c
+index 459684ef..042e230a 100644
+--- a/i3bar/src/ipc.c
++++ b/i3bar/src/ipc.c
+@@ -79,6 +79,10 @@ void got_output_reply(char *reply) {
+         kick_tray_clients(o_walk);
+     }
+ 
++    if (!config.disable_ws) {
++        i3_send_msg(I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, NULL);
++    }
++
+     draw_bars(false);
+ }
+ 

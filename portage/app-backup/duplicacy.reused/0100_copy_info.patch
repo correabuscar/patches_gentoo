@@ -1,0 +1,13 @@
+diff --git a/src/duplicacy_backupmanager.go b/src/duplicacy_backupmanager.go
+index d112859..7183b68 100644
+--- a/src/duplicacy_backupmanager.go
++++ b/src/duplicacy_backupmanager.go
+@@ -1486,7 +1486,7 @@ func (manager *BackupManager) CopySnapshots(otherManager *BackupManager, snapsho
+ 	revisionsToBeCopied []int, threads int) bool {
+ 
+ 	if !manager.config.IsCompatiableWith(otherManager.config) {
+-		LOG_ERROR("CONFIG_INCOMPATIABLE", "Two storages are not compatiable for the copy operation")
++		LOG_ERROR("CONFIG_INCOMPATIABLE", "The two storages are not compatible for the copy operation - You might want to init one of them via 'init' (or 'add' AND the -copy arg) ! (because otherwise the chunk seeds are likely different and will fail again)")
+ 		return false
+ 	}
+ 

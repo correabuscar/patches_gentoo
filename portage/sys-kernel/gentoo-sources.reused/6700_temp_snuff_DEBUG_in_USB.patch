@@ -1,0 +1,139 @@
+This is meant to avoid spam like the following when Android Studio is running:
+it's a hack because I can't figure out what's setting DEBUG (not CONFIG_DEBUG) in sources!
+
+[ 5484.893781] xhci_hcd 0000:00:14.0: set port remote wake mask, actual port 2-10 status  = 0xe0002a0
+[ 5484.893784] hub 2-0:1.0: hub_suspend
+[ 5484.893786] usb usb2: bus auto-suspend, wakeup 1
+[ 5484.893827] xhci_hcd 0000:00:14.0: xhci_hub_status_data: stopping usb2 port polling
+[ 5485.888839] i2c i2c-1: NAK from device addr 0x50 msg #0
+[ 5485.892621] i2c i2c-0: NAK from device addr 0x50 msg #0
+[ 5485.893708] usb usb4: usb auto-resume
+[ 5485.893721] hub 4-0:1.0: hub_resume
+[ 5485.896334] i2c i2c-2: NAK from device addr 0x50 msg #0
+[ 5485.915516] xhci_hcd 0000:06:00.0: Get port status 4-1 read: 0x2a0, return 0x2a0
+[ 5485.915544] xhci_hcd 0000:06:00.0: Get port status 4-2 read: 0x2a0, return 0x2a0
+[ 5485.915596] usb usb3: usb auto-resume
+[ 5485.915610] hub 3-0:1.0: hub_resume
+[ 5485.915614] xhci_hcd 0000:06:00.0: Get port status 3-1 read: 0x2a0, return 0x100
+[ 5485.915618] hub 4-0:1.0: state 7 ports 2 chg 0000 evt 0000
+[ 5485.915627] xhci_hcd 0000:06:00.0: set port remote wake mask, actual port 4-1 status  = 0xe0002a0
+[ 5485.915637] xhci_hcd 0000:06:00.0: set port remote wake mask, actual port 4-2 status  = 0xe0002a0
+[ 5485.915640] hub 4-0:1.0: hub_suspend
+[ 5485.915643] usb usb4: bus auto-suspend, wakeup 1
+[ 5485.915649] xhci_hcd 0000:06:00.0: Get port status 3-2 read: 0x2a0, return 0x100
+[ 5485.915655] xhci_hcd 0000:06:00.0: xhci_hub_status_data: stopping usb4 port polling
+[ 5485.915682] usb usb2: usb auto-resume
+[ 5485.915713] hub 2-0:1.0: hub_resume
+[ 5485.915715] hub 3-0:1.0: state 7 ports 2 chg 0000 evt 0000
+[ 5485.915718] hub 3-0:1.0: hub_suspend
+[ 5485.915721] usb usb3: bus auto-suspend, wakeup 1
+[ 5485.915729] xhci_hcd 0000:06:00.0: xhci_hub_status_data: stopping usb3 port polling
+[ 5485.937496] xhci_hcd 0000:00:14.0: Get port status 2-1 read: 0x2a0, return 0x2a0
+[ 5485.937536] xhci_hcd 0000:00:14.0: Get port status 2-2 read: 0x2a0, return 0x2a0
+[ 5485.937547] xhci_hcd 0000:00:14.0: Get port status 2-3 read: 0x2a0, return 0x2a0
+[ 5485.937588] xhci_hcd 0000:00:14.0: Get port status 2-4 read: 0x2a0, return 0x2a0
+[ 5485.937616] xhci_hcd 0000:00:14.0: Get port status 2-5 read: 0x2a0, return 0x2a0
+[ 5485.937625] xhci_hcd 0000:00:14.0: Get port status 2-6 read: 0x2a0, return 0x2a0
+[ 5485.937659] xhci_hcd 0000:00:14.0: Get port status 2-7 read: 0x2a0, return 0x2a0
+[ 5485.937668] xhci_hcd 0000:00:14.0: Get port status 2-8 read: 0x2a0, return 0x2a0
+[ 5485.937706] xhci_hcd 0000:00:14.0: Get port status 2-9 read: 0x2a0, return 0x2a0
+[ 5485.937714] xhci_hcd 0000:00:14.0: Get port status 2-10 read: 0x2a0, return 0x2a0
+[ 5485.937783] hub 2-0:1.0: state 7 ports 10 chg 0000 evt 0000
+[ 5485.937795] xhci_hcd 0000:00:14.0: set port remote wake mask, actual port 2-1 status  = 0xe0002a0
+[ 5485.937806] xhci_hcd 0000:00:14.0: set port remote wake mask, actual port 2-2 status  = 0xe0002a0
+[ 5485.937815] xhci_hcd 0000:00:14.0: set port remote wake mask, actual port 2-3 status  = 0xe0002a0
+[ 5485.937824] xhci_hcd 0000:00:14.0: set port remote wake mask, actual port 2-4 status  = 0xe0002a0
+[ 5485.937833] xhci_hcd 0000:00:14.0: set port remote wake mask, actual port 2-5 status  = 0xe0002a0
+[ 5485.937842] xhci_hcd 0000:00:14.0: set port remote wake mask, actual port 2-6 status  = 0xe0002a0
+[ 5485.937850] xhci_hcd 0000:00:14.0: set port remote wake mask, actual port 2-7 status  = 0xe0002a0
+[ 5485.937859] xhci_hcd 0000:00:14.0: set port remote wake mask, actual port 2-8 status  = 0xe0002a0
+[ 5485.937868] xhci_hcd 0000:00:14.0: set port remote wake mask, actual port 2-9 status  = 0xe0002a0
+[ 5485.937877] xhci_hcd 0000:00:14.0: set port remote wake mask, actual port 2-10 status  = 0xe0002a0
+[ 5485.937880] hub 2-0:1.0: hub_suspend
+[ 5485.937883] usb usb2: bus auto-suspend, wakeup 1
+[ 5485.937924] xhci_hcd 0000:00:14.0: xhci_hub_status_data: stopping usb2 port polling
+[ 5486.937902] usb usb4: usb auto-resume
+[ 5486.937929] hub 4-0:1.0: hub_resume
+[ 5486.959572] xhci_hcd 0000:06:00.0: Get port status 4-1 read: 0x2a0, return 0x2a0
+[ 5486.959666] xhci_hcd 0000:06:00.0: Get port status 4-2 read: 0x2a0, return 0x2a0
+[ 5486.959805] usb usb3: usb auto-resume
+[ 5486.959826] hub 3-0:1.0: hub_resume
+[ 5486.959840] xhci_hcd 0000:06:00.0: Get port status 3-1 read: 0x2a0, return 0x100
+[ 5486.959856] hub 4-0:1.0: state 7 ports 2 chg 0000 evt 0000
+[ 5486.959878] xhci_hcd 0000:06:00.0: set port remote wake mask, actual port 4-1 status  = 0xe0002a0
+[ 5486.959905] xhci_hcd 0000:06:00.0: set port remote wake mask, actual port 4-2 status  = 0xe0002a0
+[ 5486.959918] hub 4-0:1.0: hub_suspend
+[ 5486.959930] usb usb4: bus auto-suspend, wakeup 1
+[ 5486.959942] xhci_hcd 0000:06:00.0: xhci_hub_status_data: stopping usb4 port polling
+[ 5486.959954] xhci_hcd 0000:06:00.0: Get port status 3-2 read: 0x2a0, return 0x100
+[ 5486.960105] usb usb2: usb auto-resume
+[ 5486.960141] hub 2-0:1.0: hub_resume
+[ 5486.960155] hub 3-0:1.0: state 7 ports 2 chg 0000 evt 0000
+[ 5486.960169] hub 3-0:1.0: hub_suspend
+[ 5486.960185] usb usb3: bus auto-suspend, wakeup 1
+[ 5486.960198] xhci_hcd 0000:06:00.0: xhci_hub_status_data: stopping usb3 port polling
+[ 5486.981573] xhci_hcd 0000:00:14.0: Get port status 2-1 read: 0x2a0, return 0x2a0
+[ 5486.981661] xhci_hcd 0000:00:14.0: Get port status 2-2 read: 0x2a0, return 0x2a0
+[ 5486.981746] xhci_hcd 0000:00:14.0: Get port status 2-3 read: 0x2a0, return 0x2a0
+[ 5486.981829] xhci_hcd 0000:00:14.0: Get port status 2-4 read: 0x2a0, return 0x2a0
+[ 5486.981913] xhci_hcd 0000:00:14.0: Get port status 2-5 read: 0x2a0, return 0x2a0
+[ 5486.981997] xhci_hcd 0000:00:14.0: Get port status 2-6 read: 0x2a0, return 0x2a0
+[ 5486.982080] xhci_hcd 0000:00:14.0: Get port status 2-7 read: 0x2a0, return 0x2a0
+[ 5486.982164] xhci_hcd 0000:00:14.0: Get port status 2-8 read: 0x2a0, return 0x2a0
+[ 5486.982249] xhci_hcd 0000:00:14.0: Get port status 2-9 read: 0x2a0, return 0x2a0
+[ 5486.982315] xhci_hcd 0000:00:14.0: Get port status 2-10 read: 0x2a0, return 0x2a0
+[ 5486.982510] hub 2-0:1.0: state 7 ports 10 chg 0000 evt 0000
+[ 5486.982542] xhci_hcd 0000:00:14.0: set port remote wake mask, actual port 2-1 status  = 0xe0002a0
+[ 5486.982568] xhci_hcd 0000:00:14.0: set port remote wake mask, actual port 2-2 status  = 0xe0002a0
+[ 5486.982589] xhci_hcd 0000:00:14.0: set port remote wake mask, actual port 2-3 status  = 0xe0002a0
+[ 5486.982609] xhci_hcd 0000:00:14.0: set port remote wake mask, actual port 2-4 status  = 0xe0002a0
+[ 5486.982629] xhci_hcd 0000:00:14.0: set port remote wake mask, actual port 2-5 status  = 0xe0002a0
+[ 5486.982648] xhci_hcd 0000:00:14.0: set port remote wake mask, actual port 2-6 status  = 0xe0002a0
+[ 5486.982668] xhci_hcd 0000:00:14.0: set port remote wake mask, actual port 2-7 status  = 0xe0002a0
+[ 5486.982687] xhci_hcd 0000:00:14.0: set port remote wake mask, actual port 2-8 status  = 0xe0002a0
+[ 5486.982707] xhci_hcd 0000:00:14.0: set port remote wake mask, actual port 2-9 status  = 0xe0002a0
+[ 5486.982726] xhci_hcd 0000:00:14.0: set port remote wake mask, actual port 2-10 status  = 0xe0002a0
+
+
+Index: /var/tmp/portage/sys-kernel/gentoo-sources-5.18.16/work/linux-5.18.16-gentoo/drivers/usb/core/hcd.c
+===================================================================
+--- linux-5.18.16-gentoo/drivers/usb/core/hcd.c
++++ linux-5.18.16-gentoo/drivers/usb/core/hcd.c
+@@ -9,6 +9,8 @@
+  * (C) Copyright David Brownell 2000-2002
+  */
+ 
++#undef DEBUG
++
+ #include <linux/bcd.h>
+ #include <linux/module.h>
+ #include <linux/version.h>
+Index: /var/tmp/portage/sys-kernel/gentoo-sources-5.18.16/work/linux-5.18.16-gentoo/drivers/usb/core/hub.c
+===================================================================
+--- linux-5.18.16-gentoo/drivers/usb/core/hub.c
++++ linux-5.18.16-gentoo/drivers/usb/core/hub.c
+@@ -10,6 +10,8 @@
+  * Released under the GPLv2 only.
+  */
+ 
++#undef DEBUG
++
+ #include <linux/kernel.h>
+ #include <linux/errno.h>
+ #include <linux/module.h>
+Index: /var/tmp/portage/sys-kernel/gentoo-sources-5.18.16/work/linux-5.18.16-gentoo/include/linux/dev_printk.h
+===================================================================
+--- linux-5.18.16-gentoo/include/linux/dev_printk.h
++++ linux-5.18.16-gentoo/include/linux/dev_printk.h
+@@ -153,7 +153,10 @@ void _dev_info(const struct device *dev,
+ 	(defined(CONFIG_DYNAMIC_DEBUG_CORE) && defined(DYNAMIC_DEBUG_MODULE))
+ #define dev_dbg(dev, fmt, ...)						\
+ 	dynamic_dev_dbg(dev, dev_fmt(fmt), ##__VA_ARGS__)
+-#elif defined(DEBUG)
++#elif defined(DEBUG) && !defined(__LINUX_USB_H)
++//  #if defined(__LINUX_USB_H)
++//    #error "the fook"
++//  #endif
+ #define dev_dbg(dev, fmt, ...)						\
+ 	dev_printk(KERN_DEBUG, dev, dev_fmt(fmt), ##__VA_ARGS__)
+ #else

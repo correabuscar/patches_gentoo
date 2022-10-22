@@ -1,0 +1,18 @@
+diff --git a/scripts/libmakepkg/integrity/verify_signature.sh.in b/scripts/libmakepkg/integrity/verify_signature.sh.in
+index ea877822..7d2a6115 100644
+--- a/scripts/libmakepkg/integrity/verify_signature.sh.in
++++ b/scripts/libmakepkg/integrity/verify_signature.sh.in
+@@ -156,7 +156,12 @@ verify_file_signature() {
+ 		"")  decompress="cat" ;;
+ 	esac
+ 
+-	$decompress < "$sourcefile" | gpg --quiet --batch --status-file "$statusfile" --verify "$file" - 2> /dev/null
++  set -xv
++  $decompress < "$sourcefile" | gpg --quiet --batch --status-file "$statusfile" --verify "$file" - 2>/dev/null  #XXX: ok use '-' as second file but if it fails, it might mean it's an .asc with detached signature, so do one without the '-'; this one makes glibc verification work, the next one makes tarsnap...
++  if test "$?" -ne "0"; then
++    $decompress < "$sourcefile" | gpg --quiet --batch --status-file "$statusfile" --verify "$file" 2>/dev/null  #XXX: do not use '-' as second file or else --verify will fail due to 'gpg: not a detached signature' for tarsnap ! because tarsnap-autoconf-1.0.39.tgz.asc is not a detached signature (read man gpg the --verify section, explains the '-' and lack of )
++  fi
++  set +xv
+ 	return 0
+ }
+ 

@@ -1,0 +1,12 @@
+Index: /var/tmp/portage/sys-devel/binutils-2.36.1-r1/work/binutils-2.36.1/gold/target-reloc.h
+===================================================================
+--- .orig/gold/target-reloc.h
++++ mod/gold/target-reloc.h
+@@ -137,6 +137,7 @@ class Default_comdat_behavior
+       return CB_PRETEND;
+     if (strcmp(name, ".eh_frame") == 0
+ 	|| is_prefix_of (".gnu.build.attributes", name)
++  || strncmp(name, ".stack_sizes", 12+1) == 0 // see: https://bugzilla.redhat.com/show_bug.cgi?id=1600431#c6
+ 	|| strcmp(name, ".gcc_except_table") == 0)
+       return CB_IGNORE;
+     return CB_ERROR;

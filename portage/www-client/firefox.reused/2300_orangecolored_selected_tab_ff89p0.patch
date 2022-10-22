@@ -1,0 +1,51 @@
+updated for firefox 89.0
+
+//^ thanks for the info to Kwan on https://chat.mozilla.org/#/room/#fx-desktop-community:mozilla.org
+can't put that ^ comment inside json or else it will fail, hence why patch dontignore_invalid_manifest_json.patch was needed to show me such ignores next time!(but not to fix the fact that it will still fail)
+#diff -r 078326f48100 browser/themes/addons/light/manifest.json
+#--- a/browser/themes/addons/light/manifest.json	Tue Apr 14 06:41:42 2020 +0000
+#+++ b/browser/themes/addons/light/manifest.json	Tue Apr 14 20:47:02 2020 +0200
+#@@ -26,6 +26,8 @@
+#       "toolbar": "#f5f6f7",
+#       "toolbar_bottom_separator": "#ccc",
+#       "toolbar_field": "#fff",
+#+      "tab_selected": "orange",
+#+      //^ thanks for the info to Kwan on https://chat.mozilla.org/#/room/#fx-desktop-community:mozilla.org
+#       "toolbar_field_border": "#ccc"
+#     }
+#   },
+#diff -r 078326f48100 browser/themes/addons/light/manifest.json
+#--- a/browser/themes/addons/light/manifest.json	Tue Apr 14 06:41:42 2020 +0000
+#+++ b/browser/themes/addons/light/manifest.json	Tue Apr 14 23:32:06 2020 +0200
+#@@ -26,6 +26,7 @@
+#       "toolbar": "#f5f6f7",
+#       "toolbar_bottom_separator": "#ccc",
+#       "toolbar_field": "#fff",
+#+      "tab_selected": "orange",
+#       "toolbar_field_border": "#ccc"
+#     }
+#   },
+#diff -r 8f68705097b4 browser/themes/addons/light/manifest.json
+#--- a/browser/themes/addons/light/manifest.json	Tue May 19 13:19:39 2020 +0300
+#+++ b/browser/themes/addons/light/manifest.json	Wed May 20 04:19:52 2020 +0200
+#@@ -26,6 +26,7 @@
+#       "toolbar": "#f5f6f7",
+#       "toolbar_bottom_separator": "#ccc",
+#       "toolbar_field": "#fff",
+#+      "tab_selected": "orange",
+#       "toolbar_field_text": "rgb(24, 25, 26)",
+#       "toolbar_field_border": "#ccc"
+#     }
+Index: /var/tmp/portage/www-client/firefox-89.0/work/firefox-89.0/browser/themes/addons/light/manifest.json
+===================================================================
+--- firefox-89.0/browser/themes/addons/light/manifest.json
++++ firefox-89.0/browser/themes/addons/light/manifest.json
+@@ -17,7 +17,7 @@
+   "theme": {
+     "colors": {
+       "tab_background_text": "rgb(21,20,26)",
+-      "tab_selected": "#fff",
++      "tab_selected": "orange",
+       "tab_text": "rgb(21,20,26)",
+       "icons": "rgb(91,91,102)",
+       "frame": "#f0f0f4",

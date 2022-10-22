@@ -1,0 +1,33 @@
+#for hexchat-2.14.3 was this:
+#diff --git a/src/fe-gtk/fe-gtk.c b/src/fe-gtk/fe-gtk.c
+#index ee3e847c..c388636a 100644
+#--- a/src/fe-gtk/fe-gtk.c
+#+++ b/src/fe-gtk/fe-gtk.c
+#@@ -1071,6 +1071,7 @@ fe_open_url_inner (const char *url)
+# #elif defined(__APPLE__)
+#     osx_show_uri (url);
+# #else
+#+    fprintf (stderr, "About to open via gtk_show_uri the following uri:\n'%s'\n", url);
+# 	gtk_show_uri (NULL, url, GDK_CURRENT_TIME, NULL);
+# #endif
+# }
+Index: /var/tmp/portage/net-irc/hexchat-2.16.1/work/hexchat-2.16.1/src/fe-gtk/fe-gtk.c
+===================================================================
+--- hexchat-2.16.1/src/fe-gtk/fe-gtk.c
++++ hexchat-2.16.1/src/fe-gtk/fe-gtk.c
+@@ -1109,14 +1109,15 @@ fe_open_url_inner (const char *url)
+ 
+ 	g_free (url_utf16);
+ #elif defined(__APPLE__)
+     osx_show_uri (url);
+ #else
+ 	char *escaped_url = maybe_escape_uri (url);
+ 	g_debug ("Opening URL \"%s\" (%s)", escaped_url, url);
++	fprintf (stderr, "About to open via gtk_show_uri the following uri: \"%s\" (%s)", escaped_url, url);
+ 	gtk_show_uri (NULL, escaped_url, GDK_CURRENT_TIME, NULL);
+ 	g_free (escaped_url);
+ #endif
+ }
+ 
+ void
+ fe_open_url (const char *url)

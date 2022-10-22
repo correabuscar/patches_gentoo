@@ -1,0 +1,116 @@
+ok so with this patch, I get:
+
+$ ( dmesg|grep -e 'after [1-9][0-9]* retries' -e  'starting retry=0' ) | grep -B1 'after [1-9][0-9]* retries'
+[    5.702818] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* drm_dp_dpcd_access starting retry=0
+[   23.507901] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Ret '-110' after 2000 retries
+ --
+[  265.465363] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* drm_dp_dpcd_access starting retry=0
+[  282.312746] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Ret '-110' after 2000 retries
+[  282.315857] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* drm_dp_dpcd_access starting retry=0
+[  283.163399] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Ret '1' after 100 retries
+ --
+[  380.030381] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* drm_dp_dpcd_access starting retry=0
+[  385.900512] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Ret '1' after 697 retries
+ --
+[  400.139401] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* drm_dp_dpcd_access starting retry=0
+[  403.884731] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Ret '1' after 444 retries
+ --
+[  637.853382] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* drm_dp_dpcd_access starting retry=0
+[  652.224551] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Ret '1' after 1706 retries
+ --
+[  733.688991] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* drm_dp_dpcd_access starting retry=0
+[  750.535250] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Ret '-110' after 2000 retries
+[  750.537860] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* drm_dp_dpcd_access starting retry=0
+[  767.384755] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Ret '-110' after 2000 retries
+[  767.387869] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* drm_dp_dpcd_access starting retry=0
+[  767.871429] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Ret '1' after 57 retries
+ --
+[  825.097372] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* drm_dp_dpcd_access starting retry=0
+[  841.938616] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Ret '-110' after 2000 retries
+[  841.940864] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* drm_dp_dpcd_access starting retry=0
+[  858.783857] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Ret '-110' after 2000 retries
+[  858.786867] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* drm_dp_dpcd_access starting retry=0
+[  875.631881] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Ret '-110' after 2000 retries
+[  875.635419] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* drm_dp_dpcd_access starting retry=0
+[  892.559329] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Ret '-110' after 2000 retries
+[  892.559331] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* drm_dp_dpcd_access starting retry=0
+[  909.483382] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Ret '-110' after 2000 retries
+[  909.483386] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* drm_dp_dpcd_access starting retry=0
+[  926.651485] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Ret '-110' after 2000 retries
+[  926.651519] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* drm_dp_dpcd_access starting retry=0
+[  940.309216] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Ret '1' after 1621 retries
+ -----------
+user@i87k 2019/06/21 11:27:37 -bash5.0.7 t:0 j:0 d:3 pp:1118 p:1660 ut2942
+!31079 27 0 0  5.1.12-g5752b50477da #49 SMP Fri Jun 21 10:35:27 CEST 2019
+/home/user
+$ dmesg|grep -i drm|grep -vF '*ERROR* drm_dp_dpcd_access starting retry' |grep -vF "*ERROR* Ret '"|grep -vF '*ERROR* drm_dp_dpcd_access ended retry'|grep -vF '*ERROR* ret='
+[    4.503464] ata2.00: supports DRM functions and may not be fully accessible
+[    4.508332] ata2.00: supports DRM functions and may not be fully accessible
+[    5.506650] device class 'drm': registering
+[    5.523278] device class 'drm_dp_aux_dev': registering
+[    5.698708] [drm] Supports vblank timestamp caching Rev 2 (21.10.2013).
+[    5.698895] [drm] Driver supports precise vblank timestamp query.
+[    5.701197] [drm] Finished loading DMC firmware i915/kbl_dmc_ver1_04.bin (v1.4)
+[   23.507650] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Too many retries, giving up. First error: -110
+[   23.508153] [drm] failed to retrieve link info, disabling eDP
+[   23.523884] device: 'drm_dp_aux0': device_add
+[   23.524081] PM: Adding info for No Bus:drm_dp_aux0
+[   23.527840] [drm] Initialized i915 1.6.0 20190207 for 0000:00:02.0 on minor 0
+[   23.533840] [drm] DRM_I915_DEBUG_RUNTIME_PM enabled
+[   23.565416] fbcon: inteldrmfb (fb0) is primary device
+[   23.641302] i915 0000:00:02.0: fb0: inteldrmfb frame buffer device
+[  282.312744] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Too many retries, giving up. First error: -110
+[  750.535247] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Too many retries, giving up. First error: -110
+[  767.384753] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Too many retries, giving up. First error: -110
+[  841.938614] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Too many retries, giving up. First error: -110
+[  858.783855] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Too many retries, giving up. First error: -110
+[  875.631879] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Too many retries, giving up. First error: -110
+[  892.559325] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Too many retries, giving up. First error: -110
+[  909.483380] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Too many retries, giving up. First error: -110
+[  926.651482] [drm:drm_dp_dpcd_access [drm_kms_helper]] *ERROR* Too many retries, giving up. First error: -110
+[  926.651514] [drm:intel_dp_start_link_train [i915]] *ERROR* failed to enable link training
+[  940.559444] [drm:intel_cpu_fifo_underrun_irq_handler [i915]] *ERROR* CPU pipe A FIFO underrun
+
+
+diff --git a/drivers/gpu/drm/drm_dp_helper.c b/drivers/gpu/drm/drm_dp_helper.c
+index 54a6414c5d96..696fb0d16b0e 100644
+--- a/drivers/gpu/drm/drm_dp_helper.c
++++ b/drivers/gpu/drm/drm_dp_helper.c
+@@ -234,7 +234,8 @@ static int drm_dp_dpcd_access(struct drm_dp_aux *aux, u8 request,
+ 	 * aux i2c transactions but real world devices this wasn't
+ 	 * sufficient, bump to 32 which makes Dell 4k monitors happier.
+ 	 */
+-	for (retry = 0; retry < 32; retry++) {
++	for (retry = 0; retry < 2000; retry++) {
++    DRM_ERROR("drm_dp_dpcd_access starting retry=%u\n", retry);
+ 		if (ret != 0 && ret != -ETIMEDOUT) {
+ 			usleep_range(AUX_RETRY_INTERVAL,
+ 				     AUX_RETRY_INTERVAL + 100);
+@@ -260,12 +261,14 @@ static int drm_dp_dpcd_access(struct drm_dp_aux *aux, u8 request,
+ 		 */
+ 		if (!err)
+ 			err = ret;
++    DRM_ERROR("drm_dp_dpcd_access ended retry=%u ret=%d\n", retry, ret);
+ 	}
+ 
+-	DRM_DEBUG_KMS("Too many retries, giving up. First error: %d\n", err);
++	DRM_ERROR("Too many retries, giving up. First error: %d\n", err);
+ 	ret = err;
+ 
+ unlock:
++	DRM_ERROR("Ret '%d' after %u retries\n", ret, retry);
+ 	mutex_unlock(&aux->hw_mutex);
+ 	return ret;
+ }
+diff --git a/drivers/gpu/drm/i915/intel_dp_link_training.c b/drivers/gpu/drm/i915/intel_dp_link_training.c
+index b59c87daa4f7..e69b2198af89 100644
+--- a/drivers/gpu/drm/i915/intel_dp_link_training.c
++++ b/drivers/gpu/drm/i915/intel_dp_link_training.c
+@@ -87,6 +87,7 @@ intel_dp_set_link_train(struct intel_dp *intel_dp,
+ 	ret = drm_dp_dpcd_write(&intel_dp->aux, DP_TRAINING_PATTERN_SET,
+ 				buf, len);
+ 
++  DRM_ERROR("ret=%d len=%d\n", ret, len);
+ 	return ret == len;
+ }
+ 

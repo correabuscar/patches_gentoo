@@ -1,0 +1,5 @@
+problem is this:
+AttributeError: module 'tornado.wsgi' has no attribute 'WSGIAdapter' as seen here: https://github.com/mitmproxy/mitmproxy/issues/3618#issuecomment-525848353
+caused by tornado 6+ which replaced tornado 5+ as see here: https://github.com/tornadoweb/tornado/pulls?q=is%3Apr+wsgiadapter+is%3Aclosed
+
+

@@ -1,0 +1,29 @@
+#!/bin/bash
+
+#this is a script to run after copying in some new patches which will no doubt have wrong user:user perms instead of root:root and to also ensure all dirs are accessible by portage user(in our case, o+rx)
+
+if test "$(basename `pwd`)" != "patches"; then
+  echo "Fail-safe: current dir unexpected, aborting to avoid any damage to other areas" >&2
+  exit 1
+fi
+
+source "/swcode/swcode.bash"
+
+rerunasroot "$@"
+
+#All patches (dirs and files) must be accessible by portage:portage, even though owned by root(so portage can't modify them!)
+find . \! -uid 0 -a \! -type l -exec chown -vc root:root "{}" \;
+find . -type d -a \! -type l -exec chmod -vc u+rwx,g+rx,o+rx "{}" \;
+#seems to work in one go:
+#mode of './a' changed from 0000 (---------) to 0700 (rwx------)
+#mode of './a/b' changed from 0000 (---------) to 0700 (rwx------)
+#mode of './a/b/c' changed from 0000 (---------) to 0700 (rwx------)
+
+#find all symlinks that point to files(anywhere) and these files are not owned/group by root (eg. root:user or user:root will be found, as long as they're not root:root and symlinks point to them)
+ec=0
+for i in $(find -L . -xtype l -and \( \! -uid 0 -or \! -gid 0 \)); do
+  echo "!! Found '$i' as non-root:root owned."
+  ec=1
+done
+
+exit "$ec"

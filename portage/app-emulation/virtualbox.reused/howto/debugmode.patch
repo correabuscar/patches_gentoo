@@ -1,0 +1,345 @@
+diff -upr VirtualBox-5.1.20/src/VBox/Devices/Storage/DevAHCI.cpp /home/user/build/1packages/virtualbox/makepkg_pacman/virtualbox/src/VirtualBox-5.1.20/src/VBox/Devices/Storage/DevAHCI.cpp
+--- VirtualBox-5.1.20/src/VBox/Devices/Storage/DevAHCI.cpp	2017-04-19 09:40:30.015766128 +0200
++++ /home/user/build/1packages/virtualbox/makepkg_pacman/virtualbox/src/VirtualBox-5.1.20/src/VBox/Devices/Storage/DevAHCI.cpp	2017-04-21 16:19:14.210198459 +0200
+@@ -5664,6 +5664,7 @@ static int ahciIoBufAllocate(PAHCIPort p
+         return VERR_NO_MEMORY;
+ 
+     pAhciReq->u.Io.DataSeg.cbSeg = cbTransfer;
++    LogRel(("!!!!5! pAhciReq->u.Io.DataSeg.cbSeg = %zu", pAhciReq->u.Io.DataSeg.cbSeg));
+     if (pAhciReq->enmTxDir == AHCITXDIR_WRITE)
+     {
+         ahciCopyFromPrdtl(pAhciPort->pDevInsR3, pAhciReq,
+diff -upr VirtualBox-5.1.20/src/VBox/Devices/Storage/DevBusLogic.cpp /home/user/build/1packages/virtualbox/makepkg_pacman/virtualbox/src/VirtualBox-5.1.20/src/VBox/Devices/Storage/DevBusLogic.cpp
+--- VirtualBox-5.1.20/src/VBox/Devices/Storage/DevBusLogic.cpp	2017-04-19 09:40:31.015766128 +0200
++++ /home/user/build/1packages/virtualbox/makepkg_pacman/virtualbox/src/VirtualBox-5.1.20/src/VBox/Devices/Storage/DevBusLogic.cpp	2017-04-21 16:16:50.707002538 +0200
+@@ -1432,6 +1432,7 @@ static int buslogicR3DataBufferAlloc(PBU
+ 
+             /* Allocate buffer */
+             pTaskState->DataSeg.cbSeg = cbDataToTransfer;
++            LogRel(("!!!!2! pTaskState->DataSeg.cbSeg = %zu", pTaskState->DataSeg.cbSeg));
+             pTaskState->DataSeg.pvSeg = RTMemAlloc(pTaskState->DataSeg.cbSeg);
+             if (!pTaskState->DataSeg.pvSeg)
+                 return VERR_NO_MEMORY;
+@@ -1483,6 +1484,7 @@ static int buslogicR3DataBufferAlloc(PBU
+             AssertMsg(GCPhysAddrDataBase != 0, ("Physical address is 0\n"));
+ 
+             pTaskState->DataSeg.cbSeg = cbDataCCB;
++            LogRel(("!!!!1! pTaskState->DataSeg.cbSeg = %zu", pTaskState->DataSeg.cbSeg));
+             pTaskState->DataSeg.pvSeg = RTMemAlloc(pTaskState->DataSeg.cbSeg);
+             if (!pTaskState->DataSeg.pvSeg)
+                 return VERR_NO_MEMORY;
+diff -upr VirtualBox-5.1.20/src/VBox/Devices/Storage/DrvVD.cpp /home/user/build/1packages/virtualbox/makepkg_pacman/virtualbox/src/VirtualBox-5.1.20/src/VBox/Devices/Storage/DrvVD.cpp
+--- VirtualBox-5.1.20/src/VBox/Devices/Storage/DrvVD.cpp	2017-04-19 09:40:31.015766128 +0200
++++ /home/user/build/1packages/virtualbox/makepkg_pacman/virtualbox/src/VirtualBox-5.1.20/src/VBox/Devices/Storage/DrvVD.cpp	2017-04-21 18:06:45.959088991 +0200
+@@ -60,6 +60,9 @@ RT_C_DECLS_END
+ 
+ #include "VBoxDD.h"
+ 
++#include <sys/wait.h> //for print_trace()
++#include <unistd.h> //for print_trace()
++
+ #ifdef VBOX_WITH_INIP
+ /* Small hack to get at lwIP initialized status */
+ extern bool DevINIPConfigured(void);
+@@ -652,6 +655,31 @@ static DECLCALLBACK(int) drvvdAsyncIOClo
+     return VINF_SUCCESS;;
+ }
+ 
++void print_trace() {
++  //src: https://stackoverflow.com/questions/4636456/how-to-get-a-stack-trace-for-c-using-gcc-with-line-number-information/4732119#4732119
++    char pid_buf[30];
++    sprintf(pid_buf, "%d", getpid());
++    char name_buf[512];
++    name_buf[readlink("/proc/self/exe", name_buf, 511)]=0;
++    int child_pid = fork();
++    if (!child_pid) {
++        dup2(2,1); // redirect output to stderr
++//        freopen("/tmp/mumu.log","a",stdout);
++        freopen("/tmp/mumu.log","a",stderr);
++//				FILE *myf=fopen("/tmp/mumu.log", "a+");
++//        if (NULL != myf) {
++//          dup2(myf,2);//redir stderr to myfile
++          fprintf(stdout,"stack trace for %s pid=%s\n",name_buf,pid_buf);
++//gdb must be suid or ptrace: Operation not permitted.
++          execlp("gdb", "gdb", "--batch", "-n", "-ex", "thread", "-ex", "bt", name_buf, pid_buf, NULL);
++//          fclose(myf);
++          abort(); /* If gdb failed to start */
++//        }
++    } else {
++        waitpid(child_pid,NULL,0);
++    }
++}
++
+ static DECLCALLBACK(int) drvvdAsyncIOReadSync(void *pvUser, void *pStorage, uint64_t uOffset,
+                                               void *pvBuf, size_t cbRead, size_t *pcbRead)
+ {
+@@ -663,6 +691,10 @@ static DECLCALLBACK(int) drvvdAsyncIORea
+     bool fOld = ASMAtomicXchgBool(&pStorageBackend->fSyncIoPending, true);
+     Assert(!fOld); NOREF(fOld);
+     DataSeg.cbSeg = cbRead;
++    LogRel(("!!!!3! DataSeg.cbSeg = %zu\n", DataSeg.cbSeg));
++/*    if (16384 == cbRead) {
++      print_trace();
++    }*/
+     DataSeg.pvSeg = pvBuf;
+ 
+     int rc = PDMR3AsyncCompletionEpRead(pStorageBackend->pEndpoint, uOffset, &DataSeg, 1, cbRead, NULL, &pTask);
+@@ -695,6 +727,7 @@ static DECLCALLBACK(int) drvvdAsyncIOWri
+     bool fOld = ASMAtomicXchgBool(&pStorageBackend->fSyncIoPending, true);
+     Assert(!fOld); NOREF(fOld);
+     DataSeg.cbSeg = cbWrite;
++    LogRel(("!!!!4! DataSeg.cbSeg = %zu", DataSeg.cbSeg));
+     DataSeg.pvSeg = (void *)pvBuf;
+ 
+     int rc = PDMR3AsyncCompletionEpWrite(pStorageBackend->pEndpoint, uOffset, &DataSeg, 1, cbWrite, NULL, &pTask);
+diff -upr VirtualBox-5.1.20/src/VBox/Runtime/r3/linux/fileaio-linux.cpp /home/user/build/1packages/virtualbox/makepkg_pacman/virtualbox/src/VirtualBox-5.1.20/src/VBox/Runtime/r3/linux/fileaio-linux.cpp
+--- VirtualBox-5.1.20/src/VBox/Runtime/r3/linux/fileaio-linux.cpp	2017-04-19 09:41:45.015766128 +0200
++++ /home/user/build/1packages/virtualbox/makepkg_pacman/virtualbox/src/VirtualBox-5.1.20/src/VBox/Runtime/r3/linux/fileaio-linux.cpp	2017-04-21 14:59:32.953306998 +0200
+@@ -655,6 +655,7 @@ RTDECL(int) RTFileAioCtxSubmit(RTFILEAIO
+ RTDECL(int) RTFileAioCtxWait(RTFILEAIOCTX hAioCtx, size_t cMinReqs, RTMSINTERVAL cMillies,
+                              PRTFILEAIOREQ pahReqs, size_t cReqs, uint32_t *pcReqs)
+ {
++    //LogRel(("before RTFileAioCtxWait\n"));
+     /*
+      * Validate the parameters, making sure to always set pcReqs.
+      */
+@@ -701,12 +702,15 @@ RTDECL(int) RTFileAioCtxWait(RTFILEAIOCT
+      */
+     int rc = VINF_SUCCESS;
+     int cRequestsCompleted = 0;
++    //LogRel(("before while\n"));//it doesn't get stuck in this while! when AioMgr1-N is using CPU like mad
+     while (!pCtxInt->fWokenUp)
+     {
+         LNXKAIOIOEVENT  aPortEvents[AIO_MAXIMUM_REQUESTS_PER_CONTEXT];
+         int             cRequestsToWait = RT_MIN(cReqs, AIO_MAXIMUM_REQUESTS_PER_CONTEXT);
+         ASMAtomicXchgBool(&pCtxInt->fWaiting, true);
++        //LogRel(("before rtFileAsyncIoLinuxGetEvents "));
+         rc = rtFileAsyncIoLinuxGetEvents(pCtxInt->AioContext, cMinReqs, cRequestsToWait, &aPortEvents[0], pTimeout);
++        //LogRel(("rc=%d\n", rc));//always 1
+         ASMAtomicXchgBool(&pCtxInt->fWaiting, false);
+         if (RT_FAILURE(rc))
+             break;
+@@ -769,6 +773,7 @@ RTDECL(int) RTFileAioCtxWait(RTFILEAIOCT
+             Timeout.tv_nsec = (cMillies - (RTMSINTERVAL)cMilliesElapsed) % 1000 * 1000000;
+         }
+     }
++    //LogRel(("after while\n"));
+ 
+     /*
+      * Update the context state and set the return value.
+diff -upr VirtualBox-5.1.20/src/VBox/Storage/ISCSI.cpp /home/user/build/1packages/virtualbox/makepkg_pacman/virtualbox/src/VirtualBox-5.1.20/src/VBox/Storage/ISCSI.cpp
+--- VirtualBox-5.1.20/src/VBox/Storage/ISCSI.cpp	2017-04-19 09:41:54.015766128 +0200
++++ /home/user/build/1packages/virtualbox/makepkg_pacman/virtualbox/src/VirtualBox-5.1.20/src/VBox/Storage/ISCSI.cpp	2017-04-21 16:20:32.675212020 +0200
+@@ -4261,6 +4261,7 @@ static int iscsiOpenImage(PISCSIIMAGE pI
+ 
+     DataSeg.pvSeg = rlundata;
+     DataSeg.cbSeg = sizeof(rlundata);
++    LogRel(("!!!!6! DataSeg.cbSeg = %zu", DataSeg.cbSeg));
+ 
+     sr.enmXfer   = SCSIXFER_FROM_TARGET;
+     sr.cbCDB     = 12;
+@@ -4291,6 +4292,7 @@ static int iscsiOpenImage(PISCSIIMAGE pI
+ 
+     DataSeg.pvSeg = data8;
+     DataSeg.cbSeg = sizeof(data8);
++    LogRel(("!!!!7! DataSeg.cbSeg = %zu", DataSeg.cbSeg));
+ 
+     sr.enmXfer   = SCSIXFER_FROM_TARGET;
+     sr.cbCDB     = 6;
+@@ -4348,6 +4350,7 @@ static int iscsiOpenImage(PISCSIIMAGE pI
+ 
+     DataSeg.pvSeg = data4;
+     DataSeg.cbSeg = sizeof(data4);
++    LogRel(("!!!!8! DataSeg.cbSeg = %zu", DataSeg.cbSeg));
+ 
+     sr.enmXfer   = SCSIXFER_FROM_TARGET;
+     sr.cbCDB     = 6;
+@@ -4385,6 +4388,7 @@ static int iscsiOpenImage(PISCSIIMAGE pI
+ 
+     DataSeg.pvSeg = data12;
+     DataSeg.cbSeg = sizeof(data12);
++    LogRel(("!!!!9! DataSeg.cbSeg = %zu", DataSeg.cbSeg));
+ 
+     sr.enmXfer   = SCSIXFER_FROM_TARGET;
+     sr.cbCDB     = 16;
+@@ -4469,6 +4473,7 @@ return the status of target and will cle
+ 
+         DataSeg.pvSeg = data8;
+         DataSeg.cbSeg = sizeof(data8);
++    LogRel(("!!!!10! DataSeg.cbSeg = %zu", DataSeg.cbSeg));
+ 
+         sr.enmXfer   = SCSIXFER_FROM_TARGET;
+         sr.cbCDB     = 10;
+@@ -4563,6 +4568,7 @@ return the status of target and will cle
+ 
+     DataSeg.pvSeg = aCachingModePage;
+     DataSeg.cbSeg = sizeof(aCachingModePage);
++    LogRel(("!!!!11! DataSeg.cbSeg = %zu", DataSeg.cbSeg));
+ 
+     sr.enmXfer   = SCSIXFER_FROM_TARGET;
+     sr.cbCDB     = 6;
+@@ -4605,6 +4611,7 @@ return the status of target and will cle
+ 
+             DataSeg.pvSeg = aCachingModePage;
+             DataSeg.cbSeg = sizeof(aCachingModePage);
++    LogRel(("!!!!12! DataSeg.cbSeg = %zu", DataSeg.cbSeg));
+ 
+             sr.enmXfer   = SCSIXFER_TO_TARGET;
+             sr.cbCDB     = 6;
+diff -upr VirtualBox-5.1.20/src/VBox/VMM/VMMR3/PDMAsyncCompletionFileNormal.cpp /home/user/build/1packages/virtualbox/makepkg_pacman/virtualbox/src/VirtualBox-5.1.20/src/VBox/VMM/VMMR3/PDMAsyncCompletionFileNormal.cpp
+--- VirtualBox-5.1.20/src/VBox/VMM/VMMR3/PDMAsyncCompletionFileNormal.cpp	2017-04-19 09:42:08.015766128 +0200
++++ /home/user/build/1packages/virtualbox/makepkg_pacman/virtualbox/src/VirtualBox-5.1.20/src/VBox/VMM/VMMR3/PDMAsyncCompletionFileNormal.cpp	2017-04-21 18:21:37.117885608 +0200
+@@ -1338,6 +1338,7 @@ static void pdmacFileAioMgrNormalReqComp
+ {
+     size_t cbTransfered = 0;
+     int rcReq = RTFileAioReqGetRC(hReq, &cbTransfered);
++    LogRel(("1_1)cbTransfered=%zu rcReq=%d hReq=%p\n", cbTransfered, rcReq, hReq));
+ 
+     pdmacFileAioMgrNormalReqCompleteRc(pAioMgr, hReq, rcReq, cbTransfered);
+ }
+@@ -1350,7 +1351,7 @@ static void pdmacFileAioMgrNormalReqComp
+     PPDMACTASKFILE pTask = (PPDMACTASKFILE)RTFileAioReqGetUser(hReq);
+     PPDMACTASKFILE pTasksWaiting;
+ 
+-    LogFlowFunc(("pAioMgr=%#p hReq=%#p\n", pAioMgr, hReq));
++    LogRel(("pAioMgr=%#p hReq=%#p failure=%d pTask->DataSeg.cbSeg=%zu\n", pAioMgr, hReq, RT_FAILURE(rcReq), pTask->DataSeg.cbSeg));
+ 
+     pEndpoint = pTask->pEndpoint;
+ 
+@@ -1380,7 +1381,7 @@ static void pdmacFileAioMgrNormalReqComp
+ 
+             pEndpoint->pFlushReq = NULL;
+             /* Call completion callback */
+-            LogFlow(("Flush task=%#p completed with %Rrc\n", pTask, VINF_SUCCESS));
++            LogRel(("Flush task=%#p completed with %Rrc\n", pTask, VINF_SUCCESS));
+             pTask->pfnCompleted(pTask, pTask->pvUser, VINF_SUCCESS);
+             pdmacFileTaskFree(pEndpoint, pTask);
+         }
+@@ -1452,7 +1453,7 @@ static void pdmacFileAioMgrNormalReqComp
+             pdmacFileAioMgrNormalRequestFree(pAioMgr, hReq);
+ 
+             /* Call completion callback */
+-            LogFlow(("Flush task=%#p completed with %Rrc\n", pTask, rcReq));
++            LogRel(("Flush task=%#p completed with %Rrc\n", pTask, rcReq));
+             pTask->pfnCompleted(pTask, pTask->pvUser, rcReq);
+             pdmacFileTaskFree(pEndpoint, pTask);
+         }
+@@ -1472,12 +1473,13 @@ static void pdmacFileAioMgrNormalReqComp
+                 size_t cbToTransfer;
+                 uint8_t *pbBuf = NULL;
+ 
+-                LogFlow(("Restarting incomplete transfer %#p (%zu bytes transferred)\n",
+-                         pTask, cbTransfered));
++                LogRel(("Restarting incomplete transfer %#p (%zu bytes transferred) pTask->DataSeg.cbSeg=%zu pTask->cbBounceBuffer=%zu\n",
++                         pTask, cbTransfered, pTask->DataSeg.cbSeg, pTask->cbBounceBuffer));
+                 Assert(cbTransfered % 512 == 0);
+ 
+                 if (pTask->cbBounceBuffer)
+                 {
++                  LogRel(("Here1\n"));
+                     AssertPtr(pTask->pvBounceBuffer);
+                     offStart     = (pTask->Off & ~((RTFOFF)512-1)) + cbTransfered;
+                     cbToTransfer = pTask->cbBounceBuffer - cbTransfered;
+@@ -1485,19 +1487,23 @@ static void pdmacFileAioMgrNormalReqComp
+                 }
+                 else
+                 {
++                  LogRel(("Here2\n"));
+                     Assert(!pTask->pvBounceBuffer);
+                     offStart     = pTask->Off + cbTransfered;
+                     cbToTransfer = pTask->DataSeg.cbSeg - cbTransfered;
++                    pTask->DataSeg.cbSeg = cbToTransfer;//fix?
+                     pbBuf        = (uint8_t *)pTask->DataSeg.pvSeg + cbTransfered;
+                 }
+ 
+                 if (pTask->fPrefetch || pTask->enmTransferType == PDMACTASKFILETRANSFER_READ)
+                 {
++                  LogRel(("Here3\n"));
+                     rc = RTFileAioReqPrepareRead(hReq, pEndpoint->hFile, offStart,
+                                                  pbBuf, cbToTransfer, pTask);
+                 }
+                 else
+                 {
++                  LogRel(("Here4\n"));
+                     AssertMsg(pTask->enmTransferType == PDMACTASKFILETRANSFER_WRITE,
+                                   ("Invalid transfer type\n"));
+                     rc = RTFileAioReqPrepareWrite(hReq, pEndpoint->hFile, offStart,
+@@ -1562,7 +1568,7 @@ static void pdmacFileAioMgrNormalReqComp
+                 }
+ 
+                 /* Call completion callback */
+-                LogFlow(("Task=%#p completed with %Rrc\n", pTask, rcReq));
++                LogRel(("Task=%#p completed with %Rrc\n", pTask, rcReq));
+                 pTask->pfnCompleted(pTask, pTask->pvUser, rcReq);
+                 pdmacFileTaskFree(pEndpoint, pTask);
+ 
+@@ -1618,6 +1624,7 @@ DECLCALLBACK(int) pdmacFileAioMgrNormal(
+     uint64_t        uMillisEnd  = RTTimeMilliTS() + PDMACEPFILEMGR_LOAD_UPDATE_PERIOD;
+     NOREF(hThreadSelf);
+ 
++    LogRel(("inside pdmacFileAioMgrNormal\n"));
+     while (   pAioMgr->enmState == PDMACEPFILEMGRSTATE_RUNNING
+            || pAioMgr->enmState == PDMACEPFILEMGRSTATE_SUSPENDING
+            || pAioMgr->enmState == PDMACEPFILEMGRSTATE_GROWING)
+@@ -1648,18 +1655,20 @@ DECLCALLBACK(int) pdmacFileAioMgrNormal(
+             rc = pdmacFileAioMgrNormalCheckEndpoints(pAioMgr);
+             CHECK_RC(pAioMgr, rc);
+ 
++            LogRel(("before while %d\n", pAioMgr->cRequestsActive));
+             while (pAioMgr->cRequestsActive)
+             {
+                 RTFILEAIOREQ apReqs[20];
+                 uint32_t     cReqsCompleted = 0;
+                 size_t       cReqsWait;
++                LogRel(("0)reqsactive=%d\n", pAioMgr->cRequestsActive));
+ 
+                 if (pAioMgr->cRequestsActive > RT_ELEMENTS(apReqs))
+                     cReqsWait = RT_ELEMENTS(apReqs);
+                 else
+                     cReqsWait = pAioMgr->cRequestsActive;
+ 
+-                LogFlow(("Waiting for %d of %d tasks to complete\n", 1, cReqsWait));
++                LogRel(("Waiting for %d of %d tasks to complete\n", 1, cReqsWait));
+ 
+                 rc = RTFileAioCtxWait(pAioMgr->hAioCtx,
+                                       1,
+@@ -1668,10 +1677,12 @@ DECLCALLBACK(int) pdmacFileAioMgrNormal(
+                 if (RT_FAILURE(rc) && (rc != VERR_INTERRUPTED))
+                     CHECK_RC(pAioMgr, rc);
+ 
+-                LogFlow(("%d tasks completed\n", cReqsCompleted));
++                LogRel(("%d tasks completed\n", cReqsCompleted));
++                LogRel(("1)reqsactive=%d\n", pAioMgr->cRequestsActive));
+ 
+                 for (uint32_t i = 0; i < cReqsCompleted; i++)
+                     pdmacFileAioMgrNormalReqComplete(pAioMgr, apReqs[i]);
++                LogRel(("2)reqsactive=%d\n", pAioMgr->cRequestsActive));
+ 
+                 /* Check for an external blocking event before we go to sleep again. */
+                 if (pAioMgr->fBlockingEventPending)
+@@ -1679,6 +1690,7 @@ DECLCALLBACK(int) pdmacFileAioMgrNormal(
+                     rc = pdmacFileAioMgrNormalProcessBlockingEvent(pAioMgr);
+                     CHECK_RC(pAioMgr, rc);
+                 }
++                LogRel(("3)reqsactive=%d\n", pAioMgr->cRequestsActive));
+ 
+                 /* Update load statistics. */
+                 uint64_t uMillisCurr = RTTimeMilliTS();
+@@ -1699,6 +1711,7 @@ DECLCALLBACK(int) pdmacFileAioMgrNormal(
+                     /* Set new update interval */
+                     uMillisEnd = RTTimeMilliTS() + PDMACEPFILEMGR_LOAD_UPDATE_PERIOD;
+                 }
++                LogRel(("4)reqsactive=%d\n", pAioMgr->cRequestsActive));
+ 
+                 /* Check endpoints for new requests. */
+                 if (pAioMgr->enmState != PDMACEPFILEMGRSTATE_GROWING)
+@@ -1706,7 +1719,9 @@ DECLCALLBACK(int) pdmacFileAioMgrNormal(
+                     rc = pdmacFileAioMgrNormalCheckEndpoints(pAioMgr);
+                     CHECK_RC(pAioMgr, rc);
+                 }
++                LogRel(("5)reqsactive=%d\n", pAioMgr->cRequestsActive));
+             } /* while requests are active. */
++            LogRel(("after while\n"));
+ 
+             if (pAioMgr->enmState == PDMACEPFILEMGRSTATE_GROWING)
+             {

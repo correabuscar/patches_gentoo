@@ -1,0 +1,66 @@
+installed as: /usr/lib64/python3.6/site-packages/portage/dbapi/vartree.py
+
+this is for files like /etc/ssh/sshd_config which packages want to install,
+but if you've already installed a certain package once, you won't be asked
+to dispatch-conf it because it's cached that you already did that for the
+package. But I want the logs to reflect that --noconfmem can be used to
+override that!
+You're always told about new config files when downgrading though!
+
+#--- orig/lib/portage/dbapi/vartree.py	2020-02-22 06:26:12.410775112 +0100
+#+++ mod/lib/portage/dbapi/vartree.py	2020-02-22 06:23:44.192791426 +0100
+#@@ -5290,7 +5290,20 @@ class dblink(object):
+# 				# An identical update has previously been
+# 				# merged.  Skip it unless the user has chosen
+# 				# --noconfmem.
+#+				writemsg_level(_("portage: config file '%s' was already dealt with; "
+#+					) % (dest_real,),
+#+					level=logging.ERROR, noiselevel=-1)
+# 				move_me = protected = bool(cfgfiledict["IGNORE"])
+#+				if move_me:
+#+					writemsg_level(_(
+#+						"but you either used --noconfmem or downgraded, so it will be placed again(so you can 'dispatch-conf' when done)\n"
+#+						),
+#+						level=logging.ERROR, noiselevel=-1)
+#+				else:
+#+					writemsg_level(_(
+#+						"use emerge --noconfmem to place it again.(then 'dispatch-conf' when done)\n"
+#+						),
+#+						level=logging.ERROR, noiselevel=-1)
+# 
+# 			if protected and \
+# 				(dest_link is not None or src_link is not None) and \
+
+Index: /var/tmp/portage/sys-apps/portage-3.0.30-r1/work/portage-3.0.30/lib/portage/dbapi/vartree.py
+===================================================================
+--- portage-3.0.30/lib/portage/dbapi/vartree.py
++++ portage-3.0.30/lib/portage/dbapi/vartree.py
+@@ -5903,15 +5903,28 @@ class dblink:
+             if src_md5 == dest_md5:
+                 protected = False
+ 
+             elif src_md5 == cfgfiledict.get(dest_real, [None])[0]:
+                 # An identical update has previously been
+                 # merged.  Skip it unless the user has chosen
+                 # --noconfmem.
++                writemsg_level(_("portage: config file '%s' was already dealt with; "
++                    ) % (dest_real,),
++                    level=logging.ERROR, noiselevel=-1)
+                 move_me = protected = bool(cfgfiledict["IGNORE"])
++                if move_me:
++                    writemsg_level(_(
++                        "but you either used --noconfmem or downgraded, so it will be placed again(so you can 'dispatch-conf' when done)\n"
++                        ),
++                        level=logging.ERROR, noiselevel=-1)
++                else:
++                    writemsg_level(_(
++                        "use emerge --noconfmem to place it again.(then 'dispatch-conf' when done)\n"
++                        ),
++                        level=logging.ERROR, noiselevel=-1)
+ 
+             if (
+                 protected
+                 and (dest_link is not None or src_link is not None)
+                 and dest_link != src_link
+             ):
+                 # If either one is a symlink, and they are not

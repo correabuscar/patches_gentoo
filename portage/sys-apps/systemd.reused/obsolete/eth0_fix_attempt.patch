@@ -1,0 +1,22 @@
+note: potentially fixed by kernel commit https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=23c78343ec36990709b636a9e02bad814f4384ad
+OR, that commit is completely unrelated, either way I wasn't able to encounter this anymore since this patch(which was made presumaby 1 day after that commit) - the commit is part of 5.1-rc3 but not -rc2 or prev.
+
+diff --git a/units/systemd-udev-trigger.service.in b/units/systemd-udev-trigger.service.in
+index b60204eccc..e25857b7a0 100644
+--- a/units/systemd-udev-trigger.service.in
++++ b/units/systemd-udev-trigger.service.in
+@@ -19,5 +19,12 @@ ConditionPathIsReadWrite=/sys
+ [Service]
+ Type=oneshot
+ RemainAfterExit=yes
+-ExecStart=@rootbindir@/udevadm trigger --type=subsystems --action=add
+-ExecStart=@rootbindir@/udevadm trigger --type=devices --action=add
++#ExecStart=/usr/bin/udevadm settle --timeout=120
++#^ bad, will block!
++#ExecStart=@rootbindir@/udevadm trigger --type=subsystems --action=add
++ExecStart=@rootbindir@/udevadm trigger --wait-daemon=20 --type=subsystems --action=add
++#ExecStart=/usr/bin/udevadm settle --timeout=120
++#ExecStart=@rootbindir@/udevadm trigger --type=devices --action=add
++ExecStart=@rootbindir@/udevadm trigger --wait-daemon=20 --type=devices --action=add
++#ExecStart=/usr/bin/udevadm trigger --type=devices --action=change
++#not reached because action=add above fails with exit code non-zero! //^ hopefully that fixes the eth0 instead of net0 appearing; code from: https://github.com/systemd/systemd/issues/11255#issuecomment-450262834  If it doesn't then workaround found by me was to re-run the 'add'(instead of 'change') command after the system is up, or simply just reboot!

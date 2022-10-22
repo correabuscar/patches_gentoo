@@ -1,0 +1,17 @@
+actually this file is generated later! so this patch won't work after a `git clean -dfx` for example! or the first time!
+--- a/src/daemon.conf	2019-07-11 06:52:52.572989861 +0200
++++ b/src/daemon.conf	2019-07-11 06:24:51.747996488 +0200
+@@ -46,9 +46,13 @@
+ 
+ ; log-target = auto
+ ; log-level = notice
++log-level = debug
+ ; log-meta = no
++log-meta = yes
+ ; log-time = no
++log-time = yes
+ ; log-backtrace = 0
++#log-backtrace = 50
+ 
+ ; resample-method = speex-float-1
+ ; avoid-resampling = false

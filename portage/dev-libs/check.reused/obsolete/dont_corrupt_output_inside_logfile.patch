@@ -1,0 +1,51 @@
+obsoleted by newer patch: append_mode.patch
+
+patch for https://github.com/libcheck/check/issues/188
+
+Thanks to <twkm> and <Learath2> on channel ##C on freenode IRC for the not-very-portable POSIX-only way of
+checking if device and inode are the same for the two different file descriptors!
+
+diff --git a/src/check_log.c b/src/check_log.c
+index c785b33..34b3039 100644
+--- a/src/check_log.c
++++ b/src/check_log.c
+@@ -34,6 +34,8 @@
+ #include "check_print.h"
+ #include "check_str.h"
+ 
++#include <sys/stat.h> // for fstat() and 'stat' struct
++
+ /*
+  * If a log file is specified to be "-", then instead of
+  * opening a file the log output is printed to stdout.
+@@ -457,11 +461,26 @@ static FILE *srunner_open_file(const char *filename)
+     }
+     else
+     {
+-        f = fopen(filename, "w");
+-        if(f == NULL)
++        /* Use stdout instead, if it's already redirected to the log file
++           which is usually done by the 'test-driver' script.
++           This avoids corrupted output in the log file. See:
++           https://github.com/libcheck/check/issues/188#issuecomment-492782675
++         */
++        struct stat sb;
++        struct stat osb;
++        if((stat(filename, &sb) != -1) && (fstat(1, &osb) != -1)
++            && (sb.st_dev == osb.st_dev) && (sb.st_ino == osb.st_ino))
++        {
++            f = stdout;
++        }
++        else
+         {
+-            eprintf("Error in call to fopen while opening file %s:", __FILE__,
+-                    __LINE__ - 2, filename);
++            f = fopen(filename, "w");
++            if(f == NULL)
++            {
++                eprintf("Error in call to fopen while opening file %s:", __FILE__,
++                        __LINE__ - 2, filename);
++            }
+         }
+     }
+     return f;

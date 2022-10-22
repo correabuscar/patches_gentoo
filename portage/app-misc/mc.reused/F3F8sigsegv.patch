@@ -1,0 +1,19 @@
+press F3 on file 'coredumped.comm_mc.uid1000_gid1000_dumptime1624705642_host_i87k_path_!usr!bin!mc.sig11_pid21787_tid21787.coredump'
+then F8 four times, the fourth will cause SIGSEGV
+
+diff --git a/lib/utilunix.c b/lib/utilunix.c
+index acd7cb07a..3183020cc 100644
+--- a/lib/utilunix.c
++++ b/lib/utilunix.c
+@@ -678,6 +678,11 @@ mc_pclose (mc_pipe_t * p, GError ** error)
+ {
+     int res;
+ 
++    if (NULL == p) {
++        //this wouldn't display!!//mc_propagate_error (error, MC_PIPE_ERROR_READ, _("Avoided nullptr/sigsegv in mc_pclose() whereby 'p' would be NULL\n"));
++        return;
++    }
++
+     if (p->out.fd >= 0)
+         res = close (p->out.fd);
+     if (p->err.fd >= 0)

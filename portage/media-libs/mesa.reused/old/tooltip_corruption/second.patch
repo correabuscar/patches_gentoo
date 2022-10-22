@@ -1,0 +1,20 @@
+diff --git a/src/loader/loader_dri3_helper.c b/src/loader/loader_dri3_helper.c
+index d192edf..f370c87 100644
+--- a/src/loader/loader_dri3_helper.c
++++ b/src/loader/loader_dri3_helper.c
+@@ -1430,6 +1430,15 @@ loader_dri3_get_buffers(__DRIdrawable *driDrawable,
+ 
+       if (!front)
+          return false;
++
++      if (draw->is_pixmap && draw->sync_fence) {
++         xshmfence_reset(draw->shm_fence);
++
++         xcb_sync_trigger_fence(draw->conn, draw->sync_fence);
++         xcb_flush(draw->conn);
++
++         xshmfence_await(draw->shm_fence);
++      }
+    } else {
+       dri3_free_buffers(driDrawable, loader_dri3_buffer_front, draw);
+       draw->have_fake_front = 0;

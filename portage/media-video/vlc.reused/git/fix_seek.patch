@@ -1,0 +1,34 @@
+    Revert "demux:mkv: do not find seek point when we don't have an end boundary"
+    
+    This reverts commit cadcd7a9842a0b2439d24999b53cd75f53328dcf.
+
+diff --git a/modules/demux/mkv/matroska_segment_seeker.cpp b/modules/demux/mkv/matroska_segment_seeker.cpp
+index 8feecb902f..8c275611a0 100644
+--- a/modules/demux/mkv/matroska_segment_seeker.cpp
++++ b/modules/demux/mkv/matroska_segment_seeker.cpp
+@@ -307,17 +307,19 @@ SegmentSeeker::get_seekpoints( matroska_segment_c& ms, mtime_t target_pts,
+         Seekpoint const& start = seekpoints.first;
+         Seekpoint const& end   = seekpoints.second;
+ 
+-        if ( start.fpos == std::numeric_limits<fptr_t>::max() )
++        if (start.fpos == std::numeric_limits<fptr_t>::max() )
+             return tracks_seekpoint_t();
+ 
+-        if ( end.fpos != std::numeric_limits<fptr_t>::max() || !ms.b_cues )
++        //if ( end.fpos != std::numeric_limits<fptr_t>::max() || !ms.b_cues )
+             // do not read the whole (infinite?) file to get seek indexes
+             index_range( ms, Range( start.fpos, end.fpos ), needle_pts );
+ 
+-        tracks_seekpoint_t tpoints = find_greatest_seekpoints_in_range( start.fpos, target_pts, filter_tracks );
++        {
++            tracks_seekpoint_t tpoints = find_greatest_seekpoints_in_range( start.fpos, target_pts, filter_tracks );
+ 
+-        if( contains_all_of_t() ( tpoints, priority_tracks ) )
+-            return tpoints;
++            if( contains_all_of_t() ( tpoints, priority_tracks ) )
++                return tpoints;
++        }
+ 
+         needle_pts = start.pts - 1;
+     }
+

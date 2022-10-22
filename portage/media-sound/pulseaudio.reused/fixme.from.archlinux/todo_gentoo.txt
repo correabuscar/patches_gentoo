@@ -1,0 +1,2 @@
+see if that volume issue still happens on gentoo,
+actually it didn't happen on archlinux for a while, now 09dec2020

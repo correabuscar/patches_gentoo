@@ -1,0 +1,46 @@
+src: https://bugzilla.samba.org/show_bug.cgi?id=13320
+
+From 46dd5c3b486c1e8a81ad28d591fd06e2832af196 Mon Sep 17 00:00:00 2001
+From: Dave Gordon <dg32768@zoho.eu>
+Date: Mon, 5 Mar 2018 15:45:22 +0000
+Subject: [PATCH] Quick fix for bug 13320 (--sparse vs. --preallocate)
+
+Problem introduced by
+    commit f3873b3d88b61167b106e7b9227a20147f8f6197
+    Author: Wayne Davison <wayned@samba.org>
+    Date:   Mon Oct 10 11:49:50 2016 -0700
+
+    Support --sparse combined with --preallocate or --inplace.
+
+    The new code tries to punch holes in the destination file using newer
+    Linux fallocate features. It also supports a --whole-file + --sparse +
+    --inplace copy on any filesystem by truncating the destination file.
+
+New variable 'sparse_past_write' is not reset when switching files,
+thus leading to miscalculation of the current seek position in
+do_punch_hole().
+
+Quick fix is to reset this variable to the current seek position on
+each call to write_sparse() - probably not the most efficient fix,
+but it seems to work.
+---
+ fileio.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/fileio.c b/fileio.c
+index 1e8a562..f1a45a9 100644
+--- a/fileio.c
++++ b/fileio.c
+@@ -74,6 +74,9 @@ static int write_sparse(int f, int use_seek, OFF_T offset, const char *buf, int
+ 	int l1 = 0, l2 = 0;
+ 	int ret;
+ 
++	/* quick fix for bug 13320 (--sparse vs. --preallocate) */
++	sparse_past_write = do_lseek(f, 0, SEEK_CUR);
++
+ 	for (l1 = 0; l1 < len && buf[l1] == 0; l1++) {}
+ 	for (l2 = 0; l2 < len-l1 && buf[len-(l2+1)] == 0; l2++) {}
+ 
+-- 
+2.7.4
+

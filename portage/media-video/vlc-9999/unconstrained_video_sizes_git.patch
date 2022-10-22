@@ -1,0 +1,43 @@
+do NOT constrain video (re)size to full screen!
+also de-maximize before resize (eg. Alt+1,2,3 keys)
+
+
+diff --git a/modules/gui/qt/main_interface.cpp b/modules/gui/qt/main_interface.cpp
+index 7f135f93ba..a829a7b056 100644
+--- a/modules/gui/qt/main_interface.cpp
++++ b/modules/gui/qt/main_interface.cpp
+@@ -670,17 +674,23 @@ void MainInterface::releaseVideoSlot( void )
+ 
+ void MainInterface::setVideoSize(unsigned int w, unsigned int h)
+ {
+-    if (!isFullScreen() && !isMaximized() )
++    if (!isFullScreen() )//&& !isMaximized() )
+     {
+         /* Resize video widget to video size, or keep it at the same
+          * size. Call setSize() either way so that vout_window_ReportSize
+          * will always get called.
+          * If the video size is too large for the screen, resize it
+          * to the screen size.
++         * found old commit 7e9d58705c550af692faa646751094a6ae0beaf5
+          */
+         if (b_autoresize)
+         {
+-            QRect screen = QApplication::desktop()->availableGeometry();
++          if (isMaximized()) {
++            //restore first, else resize has no effect!
++            showNormal();
++          }
++
++            /*QRect screen = QApplication::desktop()->availableGeometry();
+             float factor = devicePixelRatioF();
+             if( (float)h / factor > screen.height() )
+             {
+@@ -693,7 +703,7 @@ void MainInterface::setVideoSize(unsigned int w, unsigned int h)
+                 w = qRound( (float)w / factor );
+                 h = qRound( (float)h / factor );
+                 msg_Dbg( p_intf, "Logical video size: %ux%u", w, h );
+-            }
++            }*/
+             resize(w, h);
+         }
+     }

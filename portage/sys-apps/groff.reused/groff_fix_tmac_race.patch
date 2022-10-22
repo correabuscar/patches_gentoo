@@ -1,0 +1,22 @@
+Note: git groff has this code in two blocks under tmac/tmac.am ! so if this fails in the future...
+///
+otherwise, e.tmac and doc.tmac become bigger in size and thus 'man openrc' will sometimes fail to display properly! with bash patch only /patches/portage/app-shells/bash.reused/always_append_on_redirection.patch
+The problem is that this race condition would '>' (redirect) stuff into the same file at the same time (parallel) and since O_APPEND is a flag I had added to bash to catch overwrite situations, well it's causing file to grow in size because append remember file position or something of a race that's happening inside kernel or glibc or where parallel '>' into same file is doing this!
+
+either way, this wouldn't happen with the now-fixed Makefile
+
+Index: /var/tmp/portage/sys-apps/groff-1.22.4/work/groff-1.22.4/Makefile.in
+===================================================================
+--- .orig/Makefile.in
++++ groff-1.22.4/Makefile.in
+@@ -12958,9 +12958,7 @@ tmac-dist-hook:
+ 
+ $(TMACMDOCFILES) $(TMACSTRIPFILES): 
+ 	$(MKDIR_P) $(top_builddir)/tmac
+-	for f in $(TMACMDOCFILES) $(TMACSTRIPFILES); do \
+-	   sed -f $(tmac_srcdir)/strip.sed $(top_srcdir)/$$f-u > $(top_builddir)/$$f; \
+-	done
++	sed -f $(tmac_srcdir)/strip.sed $(top_srcdir)/$@-u > $(top_builddir)/$@; \
+ 
+ tmac/www.tmac: tmac/www.tmac.in
+ 	$(MKDIR_P) $(top_builddir)/tmac

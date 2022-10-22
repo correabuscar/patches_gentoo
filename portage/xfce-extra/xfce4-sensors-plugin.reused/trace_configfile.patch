@@ -1,0 +1,24 @@
+diff --git a/lib/configuration.c b/lib/configuration.c
+index 35150f0..da70546 100644
+--- a/lib/configuration.c
++++ b/lib/configuration.c
+@@ -83,6 +83,7 @@ sensors_write_config (t_sensors *ptr_sensors)
+     t_chipfeature *ptr_chipfeature;
+ 
+     TRACE ("enters sensors_write_config: 0x%llX.", (unsigned long long int) ptr_sensors);
++    TRACE ("config file='%s'", ptr_sensors->plugin_config_file);
+ 
+     g_return_if_fail(ptr_sensors!=NULL);
+ 
+diff --git a/panel-plugin/sensors-plugin.c b/panel-plugin/sensors-plugin.c
+index 4248a64..fc284ff 100644
+--- a/panel-plugin/sensors-plugin.c
++++ b/panel-plugin/sensors-plugin.c
+@@ -2765,6 +2765,7 @@ sensors_plugin_construct (XfcePanelPlugin *plugin)
+     g_signal_connect (plugin, "free-data", G_CALLBACK (sensors_free), ptr_sensorsstruct);
+ 
+     ptr_sensorsstruct->plugin_config_file = xfce_panel_plugin_save_location (plugin, TRUE);
++    TRACE ("0x%llX config file ='%s'", (unsigned long long int) ptr_sensorsstruct, ptr_sensorsstruct->plugin_config_file);
+     /* saving seens to cause problems when closing the panel on fast multi-core CPUs; writing when closing the config dialog should suffice */
+     /*g_signal_connect (plugin, "save", G_CALLBACK (sensors_write_config),
+                       ptr_sensorsstruct);*/

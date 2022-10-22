@@ -1,0 +1,32 @@
+ 27.12.2017 update_to_cvs_version.patch
+ patch was likely NOT made by me!
+ and it's already in dev-util/cscope-15.9 (10dec2020) on gentoo
+--- a/src/main.c	2014-11-20 22:12:54.017509296 +0100
++++ b/src/main.c	2015-08-07 15:11:35.011553152 +0200
+@@ -67,7 +67,7 @@
+ #define DFLT_INCDIR "/usr/include"
+ #endif
+ 
+-static char const rcsid[] = "$Id: main.c,v 1.57 2014/11/20 21:12:54 broeker Exp $";
++static char const rcsid[] = "$Id: main.c,v 1.58 2015/08/07 13:11:35 nhorman Exp $";
+ 
+ /* note: these digraph character frequencies were calculated from possible 
+    printable digraphs in the cross-reference for the C compiler */
+@@ -796,10 +796,13 @@ cscope: cannot read source file name fro
+ 	    case '9':	/* samuel only */
+ 		field = *buf - '0';
+ 		strcpy(Pattern, buf + 1);
+-		search();
+-		printf("cscope: %d lines\n", totallines);
+-		while ((c = getc(refsfound)) != EOF) {
+-		    putchar(c);
++		if (search() == NO) {
++			printf("Unable to search database\n");
++		} else {
++			printf("cscope: %d lines\n", totallines);
++			while ((c = getc(refsfound)) != EOF) {
++			    putchar(c);
++			}
+ 		}
+ 		break;
+ 

@@ -1,0 +1,46 @@
+this is from linux-usb ML, thanks Alan Stern for this!
+don't know how to use ohci_info() so... these should do
+
+diff --git a/drivers/usb/host/ohci-hcd.c b/drivers/usb/host/ohci-hcd.c
+index 1700908..f20f0ff 100644
+--- a/drivers/usb/host/ohci-hcd.c
++++ b/drivers/usb/host/ohci-hcd.c
+@@ -929,8 +929,11 @@ static irqreturn_t ohci_irq (struct usb_hcd *hcd)
+ 			spin_lock (&ohci->lock);
+ 			ohci_rh_resume (ohci);
+ 			spin_unlock (&ohci->lock);
+-		} else
++		} else {
++        printk(KERN_ALERT "ONE\n");
++        dump_stack();
+ 			usb_hcd_resume_root_hub(hcd);
++    }
+ 	}
+ 
+ 	spin_lock(&ohci->lock);
+@@ -1135,6 +1138,8 @@ int ohci_resume(struct usb_hcd *hcd, bool hibernated)
+ 		msleep(20);
+ 	}
+ 
++        printk(KERN_ALERT "TWO\n");
++        dump_stack();
+ 	usb_hcd_resume_root_hub(hcd);
+ 
+ 	return 0;
+diff --git a/drivers/usb/host/ohci-hub.c b/drivers/usb/host/ohci-hub.c
+index ed678c17..35ec722 100644
+--- a/drivers/usb/host/ohci-hub.c
++++ b/drivers/usb/host/ohci-hub.c
+@@ -397,8 +397,11 @@ static int ohci_root_hub_state_changes(struct ohci_hcd *ohci, int changed,
+ 		if (changed) {
+ 			if (ohci->autostop)
+ 				ohci_rh_resume(ohci);
+-			else
++			else {
++        printk(KERN_ALERT "THREE\n");
++        dump_stack();
+ 				usb_hcd_resume_root_hub(ohci_to_hcd(ohci));
++      }
+ 
+ 		/* If remote wakeup is disabled, stop polling */
+ 		} else if (!ohci->autostop &&

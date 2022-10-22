@@ -1,0 +1,32 @@
+{
+  "name": "Searx",
+  "description": "Search Searx",
+  "manifest_version": 2,
+  "version": "1.0",
+  "applications": {
+    "gecko": {
+      "id": "searx@search.mozilla.org"
+    }
+  },
+  "hidden": true,
+  "icons": {
+    "16": "favicon.ico"
+  },
+  "web_accessible_resources": [
+    "favicon.ico"
+  ],
+  "chrome_settings_overrides": {
+    "search_provider": {
+      "name": "Searx",
+      "search_url": "https://searx.me/",
+      "search_url_get_params": "q={searchTerms}",
+      "search_form": "https://searx.me/?q={searchTerms}",
+      "params": [
+        {
+          "name": "preferences",
+          "value": "eJxtVcuu3DYM_Zp6Y0zRJIuuvAiaRQMEuEHupFuBlmibsSw6kjwz7teHmvFDvpOFDYjmOTx8iPYYJhuDYqccXlWEujr7CQvDpDwGthf0VdB06qb6z3gtLLh2ghYrdKfvr4VlDTYdCkMBaotGjXZqyYXqPxpOlnpUHcce51DQIDg1er7NjxgwRdY8jBYjVkWABgOC1131VxE7HLDioMEX6I7ELyO6pE10K0uu38TXnq8BfUoi_PH-n8-uIUcRVdCerRXLv-fz11eBXr2Y5Xz2oHsBfP_2RawDS65ifUXbKAGzHyASu3C3JWEpkIaILftZBbSoo3y76_moNYagPr18Xvn3iqAT3Rgq8De6KJFD6HSK35PuQVCqIYspDAsVkMdxqi3pR_Qc0HjEMnATr-CxNOKpY9KiKAm5METxZk1gywENgRg9GkPP5smF0ULoBJrakoJ_mowkolp06CGVq4PaQ3ot_Ks6AxECxoOyGZzBW45eA--WFrGPNGBY-MiBUhcyyCk86DbwlBkMtXXca7Mcn_w3_Vs1N5dVwuZiSTLyc5k0BQq5uNRfumB5tF7ZNh4GsGMHebqR-5kjh457kJoNUyAtZjcD7KeBf0jGOV2qoHSXs5a_YXqb_cr1xm1FB_zfwXDIYynLClxrIBckr9pKIJMmI_HbobwzbLdvHeIGPPNG1zK3FksZpbmEcczyaqkVIITDBDTGM5msp5Pu09PyYU4y0ruIPRut9SlesjIdfPlCmPf_3S3rfUA0I8pt38h2y4ZAWSFJ4C7m0dKNpaZYi2CMywzP0PFBfONlJRHoDLOUbPfBOA_sZHfhc6RNymPuZGBxCTXMg-womd7owQUre-ggdM_mubrlQ0um6ecVXHyOvs3VlULQsk7zAmpwvgzRTzpOHg_X_7G4NRss02tRnLHsgd59-PD3Le8gRQv1iojg45j-ExnCmLY0eF_mj4W4fCoGjB2b6uvL67lY9rIMQLV-vv8-TiHO8oey3FJSdvkFAsGe5w=="
+        }
+      ]
+    }
+  }
+}

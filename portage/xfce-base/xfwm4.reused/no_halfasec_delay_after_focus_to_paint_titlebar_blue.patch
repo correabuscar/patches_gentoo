@@ -1,0 +1,15 @@
+this was addressed in https://git.xfce.org/xfce/xfwm4/commit/?id=9b37f453ee6bf6dc1698fa330cef79876f698fc1
+diff --git a/src/compositor.c b/src/compositor.c
+index 4ebbf9ab..a6fb0ee6 100644
+--- a/src/compositor.c
++++ b/src/compositor.c
+@@ -2452,7 +2452,8 @@ add_repair (ScreenInfo *screen_info)
+     if (screen_info->compositor_timeout_id == 0)
+     {
+         screen_info->compositor_timeout_id =
+-            g_timeout_add (G_PRIORITY_DEFAULT,
++            g_timeout_add (1, //G_PRIORITY_DEFAULT, this gives 0.5sec delay after alt+tab release for the window to get its title bar updated to blue(focused) color!
++                //^ interval - the time between calls to the function, in milliseconds (1/1000ths of a second)
+                            compositor_timeout_cb, screen_info);
+     }
+ #endif /* TIMEOUT_REPAINT */

@@ -1,0 +1,13 @@
+diff --git a/bin/ebuild-helpers/fowners b/bin/ebuild-helpers/fowners
+index 0eda73e58..3aee01ddd 100755
+--- a/bin/ebuild-helpers/fowners
++++ b/bin/ebuild-helpers/fowners
+@@ -26,7 +26,7 @@ done
+ # we can't prefix all arguments because
+ # chown takes random options
+ slash="/"
+-chown "${@/#${slash}/${ED%/}${slash}}"
++chown --no-dereference --changes "${@/#${slash}/${ED%/}${slash}}"
+ ret=$?
+ 
+ [[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"

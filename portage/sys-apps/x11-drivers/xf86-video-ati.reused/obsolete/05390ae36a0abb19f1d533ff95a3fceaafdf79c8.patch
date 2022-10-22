@@ -1,0 +1,43 @@
+commit 05390ae36a0abb19f1d533ff95a3fceaafdf79c8
+Author: Michel Dänzer <michel.daenzer@amd.com>
+Date:   Tue Jul 10 18:45:51 2018 +0200
+
+    Abort scanout_update_pending event when possible
+    
+    We don't need to wait for a non-TearFree scanout update before scanning
+    out from the screen pixmap or before flipping, as the scanout update
+    won't be visible anyway. Instead, just abort it.
+    
+    (Ported from amdgpu commit 36d01989cd842588f12fdae5b2cba5fdcf9c91dd)
+    Acked-by: Alex Deucher <alexander.deucher@amd.com>
+
+diff --git a/src/drmmode_display.c b/src/drmmode_display.c
+index b3e5cc99..64dab316 100644
+--- a/src/drmmode_display.c
++++ b/src/drmmode_display.c
+@@ -986,8 +986,8 @@ done:
+ 		if (drmmode_crtc->scanout[scanout_id].pixmap &&
+ 		    fb != radeon_pixmap_get_fb(drmmode_crtc->
+ 					       scanout[scanout_id].pixmap)) {
+-			drmmode_crtc_wait_pending_event(drmmode_crtc, pRADEONEnt->fd,
+-							drmmode_crtc->scanout_update_pending);
++			radeon_drm_abort_entry(drmmode_crtc->scanout_update_pending);
++			drmmode_crtc->scanout_update_pending = 0;
+ 			drmmode_crtc_scanout_free(drmmode_crtc);
+ 		} else if (!drmmode_crtc->tear_free) {
+ 			drmmode_crtc_scanout_destroy(drmmode,
+@@ -3190,8 +3190,12 @@ Bool radeon_do_pageflip(ScrnInfoPtr scrn, ClientPtr client,
+ 						 extents);
+ 			radeon_cs_flush_indirect(crtc->scrn);
+ 
+-			drmmode_crtc_wait_pending_event(drmmode_crtc, pRADEONEnt->fd,
+-							drmmode_crtc->scanout_update_pending);
++			if (drmmode_crtc->scanout_update_pending) {
++				drmmode_crtc_wait_pending_event(drmmode_crtc, pRADEONEnt->fd,
++								drmmode_crtc->flip_pending);
++				radeon_drm_abort_entry(drmmode_crtc->scanout_update_pending);
++				drmmode_crtc->scanout_update_pending = 0;
++			}
+ 		}
+ 
+ 		if (crtc == ref_crtc) {

@@ -1,0 +1,58 @@
+#Index: /var/tmp/portage/sys-apps/portage-3.0.12/work/portage-3.0.12/lib/portage/dbapi/bintree.py
+#===================================================================
+#--- .orig/lib/portage/dbapi/bintree.py
+#+++ mod/lib/portage/dbapi/bintree.py
+#@@ -985,6 +985,19 @@ class binarytree:
+# 						if hasattr(f, 'headers') and f.headers.get('timestamp', ''):
+# 							remote_timestamp = f.headers.get('timestamp')
+# 					except IOError as err:
+#+						#!!! <urlopen error [Errno 13] Permission denied: '/var/cache/binpkgs/Packages'>
+#+						#caught when running as non-root, because:
+#+						#-rw-r----- 1 root root 2251732 09.12.2020 17:38 /var/cache/binpkgs/Packages
+#+						import urllib.error
+#+						#if issubclass(err, PermissionError):
+#+						#	print("moo5")
+#+						if isinstance(err, urllib.error.URLError) and isinstance(err, IOError):
+#+							#PermissionError as err:
+#+							#print("moo5", [err], [err.cause])
+#+							if self.settings.get("PORTAGE_DEBUG", "0") != "0":
+#+								traceback.print_exc()
+#+							raise RuntimeError(f"You must run as root for --getbinpkg=y (or FEATURES=getbinpkg) to have effect and to can read {url}. Or, try arg. --getbinpkg=n") from err #!!! <urlopen error [Errno 13] Permission denied: '/var/cache/binpkgs/Packages'>
+#+
+# 						if hasattr(err, 'code') and err.code == 304: # not modified (since local_timestamp)
+# 							raise UseCachedCopyOfRemoteIndex()
+# 
+Index: /var/tmp/portage/sys-apps/portage-3.0.30-r1/work/portage-3.0.30/lib/portage/dbapi/bintree.py
+===================================================================
+--- portage-3.0.30/lib/portage/dbapi/bintree.py
++++ portage-3.0.30/lib/portage/dbapi/bintree.py
+@@ -1157,16 +1157,29 @@ class binarytree:
+                 ):
+                     try:
+                         f = _urlopen(
+                             url, if_modified_since=local_timestamp, proxies=proxies
+                         )
+                         if hasattr(f, "headers") and f.headers.get("timestamp", ""):
+                             remote_timestamp = f.headers.get("timestamp")
+                     except IOError as err:
++                        #!!! <urlopen error [Errno 13] Permission denied: '/var/cache/binpkgs/Packages'>
++                        #caught when running as non-root, because:
++                        #-rw-r----- 1 root root 2251732 09.12.2020 17:38 /var/cache/binpkgs/Packages
++                        import urllib.error
++                        #if issubclass(err, PermissionError):
++                        #   print("moo5")
++                        if isinstance(err, urllib.error.URLError) and isinstance(err, IOError):
++                            #PermissionError as err:
++                            #print("moo5", [err], [err.cause])
++                            if self.settings.get("PORTAGE_DEBUG", "0") != "0":
++                                traceback.print_exc()
++                            raise RuntimeError(f"You must run as root for --getbinpkg=y (or FEATURES=getbinpkg) to have effect and to can read {url}. Or, try arg. --getbinpkg=n") from err #!!! <urlopen error [Errno 13] Permission denied: '/var/cache/binpkgs/Packages'>
++
+                         if (
+                             hasattr(err, "code") and err.code == 304
+                         ):  # not modified (since local_timestamp)
+                             raise UseCachedCopyOfRemoteIndex()
+ 
+                         if parsed_url.scheme in ("ftp", "http", "https"):
+                             # This protocol is supposedly supported by urlopen,
+                             # so apparently there's a problem with the url

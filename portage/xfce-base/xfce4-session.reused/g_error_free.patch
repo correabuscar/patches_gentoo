@@ -1,0 +1,25 @@
+attempt to fix this:
+Jan 03 06:27:52 systemd-coredump[5605]: Process 5600 (xfsm-shutdown-h) of user 0 dumped core.
+                                        
+                                        Stack trace of thread 5600:
+                                        #0  0x00007f256b3c2304 __libc_free (libc.so.6)
+                                        #1  0x00007f256b71ab92 g_error_free (libglib-2.0.so.0)
+                                        #2  0x0000000000400cd7 run (xfsm-shutdown-helper)
+                                        #3  0x0000000000400b57 main (xfsm-shutdown-helper)
+                                        #4  0x00007f256b367291 __libc_start_main (libc.so.6)
+                                        #5  0x0000000000400bca _start (xfsm-shutdown-helper)
+
+
+diff --git a/xfsm-shutdown-helper/main.c b/xfsm-shutdown-helper/main.c
+index 2c9bb1a..5088f26 100644
+--- a/xfsm-shutdown-helper/main.c
++++ b/xfsm-shutdown-helper/main.c
+@@ -134,7 +134,7 @@ run (const gchar *command)
+ 
+   if (!result)
+     {
+-      g_error_free (err);
++//      if (NULL != err) { g_error_free (err); }
+       return FALSE;
+     }
+ 

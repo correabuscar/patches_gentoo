@@ -1,0 +1,30 @@
+panic earlier (instead of later with "Real mode trampoline was not allocated")
+now panics with "No sub-1M memory is available for the trampoline"
+which is due to... kernel cmdline/arg "memory_corruption_check_size=1M"
+tested to work =500K, =550K, =580K, =590K, =600K
+tested to NOT work =605K, =610K, =620K, 630K, 700K, 990K, 1M
+
+diff --git a/arch/x86/realmode/init.c b/arch/x86/realmode/init.c
+index 262f83cad355..727f7f424b4c 100644
+--- a/arch/x86/realmode/init.c
++++ b/arch/x86/realmode/init.c
+@@ -21,8 +21,10 @@ void __init reserve_real_mode(void)
+ 	phys_addr_t mem;
+ 	size_t size = real_mode_size_needed();
+ 
+-	if (!size)
++	if (!size) {
++		panic("bad size for real_mode_size_needed()\n");
+ 		return;
++  }
+ 
+ 	WARN_ON(slab_is_available());
+ 
+@@ -30,6 +32,7 @@ void __init reserve_real_mode(void)
+ 	mem = memblock_find_in_range(0, 1<<20, size, PAGE_SIZE);
+ 	if (!mem) {
+ 		pr_info("No sub-1M memory is available for the trampoline\n");
++		panic("No sub-1M memory is available for the trampoline (did you use 'memory_corruption_check_size=1M' or similar?) wanted size=%zu aka 0x%zx aligned to PAGE_SIZE aka %lu bytes, in range 0 to 1M!\n", size, size, PAGE_SIZE); // note: this is 0x6000 wanted aligned to 4096, so I've no idea why eg. =900K wouldn't allow it! unless it's really only 0-640K range for wtw (reserved 640-1M?) reason.
+ 		return;
+ 	}
+ 

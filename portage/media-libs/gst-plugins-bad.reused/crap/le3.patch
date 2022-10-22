@@ -1,0 +1,29 @@
+https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/issues/1194
+
+(gst-plugin-scanner:4487): GLib-GObject-CRITICAL **: 16:34:13.309: g_param_spec_int: assertion 'default_value >= minimum && default_value <= maximum' failed
+
+(gst-plugin-scanner:4487): GLib-GObject-CRITICAL **: 16:34:13.310: validate_pspec_to_install: assertion 'G_IS_PARAM_SPEC (pspec)' failed
+
+try with:
+rm ~/.cache/gstreamer-1.0/registry*; GST_DEBUG=ladspa*:0 gst-inspect-1.0 ladspa >/tmp/dbg.log 2>&1
+less -R /tmp/dbg.log
+
+the GST_DEBUG part is unnecessary!
+
+diff --git a/ext/ladspa/gstladspautils.c b/ext/ladspa/gstladspautils.c
+index d55db6f85..86fedee34 100644
+--- a/ext/ladspa/gstladspautils.c
++++ b/ext/ladspa/gstladspautils.c
+@@ -385,8 +385,10 @@ gst_ladspa_object_class_get_param_spec (GstLADSPAClass * ladspa_class,
+   }
+ 
+   if (LADSPA_IS_HINT_INTEGER (hintdesc)) {
+-    lower = CLAMP (lower, G_MININT, G_MAXINT);
+-    upper = CLAMP (upper, G_MININT, G_MAXINT);
++    lower = CLAMP (lower, G_MININT+G_MAXUINT16, G_MAXINT-G_MAXUINT16);
++    upper = CLAMP (upper, G_MININT+G_MAXUINT16, G_MAXINT-G_MAXUINT16);
++    //g_printf("!f %s %f %f %f\n", name, lower, def, upper);
++    //g_printf("!i %s %d %d %d\n", name, (gint)lower, (gint)def, (gint)upper);
+   }
+ 
+   /* default to lower bound */

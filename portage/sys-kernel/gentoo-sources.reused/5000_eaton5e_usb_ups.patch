@@ -1,0 +1,57 @@
+will prevent auto-disconnection dmesg spam for Eaton 5E UPS connection via USB cable
+thanks to Reyad Attiyat for https://bugzilla.kernel.org/show_bug.cgi?id=73321#c11 and #c12
+
+[ 1156.492171] hid-generic 0003:0463:FFFF.003F: usb_submit_urb(ctrl) failed: -1
+[ 1156.492215] hid-generic 0003:0463:FFFF.003F: timeout initializing reports
+[ 1161.918674] usb 1-14: USB disconnect, device number 63
+[ 1162.659694] gpg-agent[1068]: handler 0x752b0f137700 for fd 10 started
+[ 1162.711817] gpg-agent[1068]: handler 0x752b0f137700 for fd 10 terminated
+[ 1162.806042] usb 1-14: new low-speed USB device number 64 using xhci_hcd
+[ 1163.569330] usb 1-14: New USB device found, idVendor=0463, idProduct=ffff, bcdDevice= 0.01
+[ 1163.569339] usb 1-14: New USB device strings: Mfr=1, Product=2, SerialNumber=0
+[ 1163.569344] usb 1-14: Product: 5E
+[ 1163.569347] usb 1-14: Manufacturer: EATON
+[ 1165.529902] hid-generic 0003:0463:FFFF.0040: hiddev97,hidraw4: USB HID v1.10 Device [EATON 5E] on usb-0000:00:14.0-14/input0
+[ 1165.540017] mtp-probe[5586]: checking bus 1, device 64: "/sys/devices/pci0000:00/0000:00:14.0/usb1/1-14"
+[ 1165.540180] mtp-probe[5586]: bus: 1, device: 64 was not an MTP device
+[ 1166.081247] mtp-probe[5608]: checking bus 1, device 64: "/sys/devices/pci0000:00/0000:00:14.0/usb1/1-14"
+[ 1166.081500] mtp-probe[5608]: bus: 1, device: 64 was not an MTP device
+[ 1172.042315] usb 1-14: USB disconnect, device number 64
+[ 1172.042948] hid-generic 0003:0463:FFFF.0040: usb_submit_urb(ctrl) failed: -19
+[ 1172.931037] usb 1-14: new low-speed USB device number 65 using xhci_hcd
+[ 1173.692895] usb 1-14: New USB device found, idVendor=0463, idProduct=ffff, bcdDevice= 0.01
+[ 1173.692903] usb 1-14: New USB device strings: Mfr=1, Product=2, SerialNumber=0
+[ 1173.692907] usb 1-14: Product: 5E
+[ 1173.692912] usb 1-14: Manufacturer: EATON
+[ 1175.653569] hid-generic 0003:0463:FFFF.0041: hiddev97,hidraw4: USB HID v1.10 Device [EATON 5E] on usb-0000:00:14.0-14/input0
+[ 1175.663973] mtp-probe[5671]: checking bus 1, device 65: "/sys/devices/pci0000:00/0000:00:14.0/usb1/1-14"
+[ 1175.664700] mtp-probe[5671]: bus: 1, device: 65 was not an MTP device
+[ 1176.192214] mtp-probe[5693]: checking bus 1, device 65: "/sys/devices/pci0000:00/0000:00:14.0/usb1/1-14"
+[ 1176.192415] mtp-probe[5693]: bus: 1, device: 65 was not an MTP device
+[ 1182.156218] usb 1-14: USB disconnect, device number 65
+[ 1182.156301] hid-generic 0003:0463:FFFF.0041: usb_submit_urb(ctrl) failed: -19
+[ 1183.044037] usb 1-14: new low-speed USB device number 66 using xhci_hcd
+[ 1183.808062] usb 1-14: New USB device found, idVendor=0463, idProduct=ffff, bcdDevice= 0.01
+[ 1183.808070] usb 1-14: New USB device strings: Mfr=1, Product=2, SerialNumber=0
+[ 1183.808075] usb 1-14: Product: 5E
+[ 1183.808078] usb 1-14: Manufacturer: EATON
+[ 1185.767289] hid-generic 0003:0463:FFFF.0042: hiddev97,hidraw4: USB HID v1.10 Device [EATON 5E] on usb-0000:00:14.0-14/input0
+[ 1185.777254] mtp-probe[5757]: checking bus 1, device 66: "/sys/devices/pci0000:00/0000:00:14.0/usb1/1-14"
+[ 1185.777378] mtp-probe[5757]: bus: 1, device: 66 was not an MTP device
+[ 1186.318828] mtp-probe[5778]: checking bus 1, device 66: "/sys/devices/pci0000:00/0000:00:14.0/usb1/1-14"
+[ 1186.318946] mtp-probe[5778]: bus: 1, device: 66 was not an MTP device
+[ 1196.428121] hid-generic 0003:0463:FFFF.0042: usb_submit_urb(ctrl) failed: -1
+[ 1196.428161] hid-generic 0003:0463:FFFF.0042: timeout initializing reports
+
+diff --git a/drivers/hid/hid-quirks.c b/drivers/hid/hid-quirks.c
+index 77ffba48cc73..1afc38515719 100644
+--- a/drivers/hid/hid-quirks.c
++++ b/drivers/hid/hid-quirks.c
+@@ -112,6 +112,7 @@ static const struct hid_device_id hid_quirks[] = {
+ 	{ HID_USB_DEVICE(USB_VENDOR_ID_MICROSOFT, USB_DEVICE_ID_MS_POWER_COVER), HID_QUIRK_NO_INIT_REPORTS },
+ 	{ HID_USB_DEVICE(USB_VENDOR_ID_MICROSOFT, USB_DEVICE_ID_MS_SURFACE_PRO_2), HID_QUIRK_NO_INIT_REPORTS },
+ 	{ HID_USB_DEVICE(USB_VENDOR_ID_MICROSOFT, USB_DEVICE_ID_MS_TOUCH_COVER_2), HID_QUIRK_NO_INIT_REPORTS },
++	{ HID_USB_DEVICE(USB_VENDOR_ID_MGE, USB_DEVICE_ID_MGE_UPS), HID_QUIRK_NO_INIT_REPORTS }, //added by je
+ 	{ HID_USB_DEVICE(USB_VENDOR_ID_MICROSOFT, USB_DEVICE_ID_MS_TYPE_COVER_2), HID_QUIRK_NO_INIT_REPORTS },
+ 	{ HID_USB_DEVICE(USB_VENDOR_ID_MOJO, USB_DEVICE_ID_RETRO_ADAPTER), HID_QUIRK_MULTI_INPUT },
+ 	{ HID_USB_DEVICE(USB_VENDOR_ID_MSI, USB_DEVICE_ID_MSI_GT683R_LED_PANEL), HID_QUIRK_NO_INIT_REPORTS },

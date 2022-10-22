@@ -1,0 +1,22 @@
+diff --git a/lib/libalpm/sync.c b/lib/libalpm/sync.c
+index de579eac..9017c032 100644
+--- a/lib/libalpm/sync.c
++++ b/lib/libalpm/sync.c
+@@ -91,7 +91,7 @@ static int check_literal(alpm_handle_t *handle, alpm_pkg_t *lpkg,
+ 		/* check IgnorePkg/IgnoreGroup */
+ 		if(alpm_pkg_should_ignore(handle, spkg)
+ 				|| alpm_pkg_should_ignore(handle, lpkg)) {
+-			_alpm_log(handle, ALPM_LOG_WARNING, _("%s: ignoring package upgrade (%s => %s)\n"),
++			_alpm_log(handle, ALPM_LOG_WARNING, _("[41m%s(B[m: [41mignoring package upgrade(B[m (%s => %s)\n"),
+ 					lpkg->name, lpkg->version, spkg->version);
+ 		} else {
+ 			_alpm_log(handle, ALPM_LOG_DEBUG, "adding package %s-%s to the transaction targets\n",
+@@ -112,7 +112,7 @@ static int check_literal(alpm_handle_t *handle, alpm_pkg_t *lpkg,
+ 			}
+ 		} else {
+ 			alpm_db_t *sdb = alpm_pkg_get_db(spkg);
+-			_alpm_log(handle, ALPM_LOG_WARNING, _("%s: local (%s) is newer than %s (%s)\n"),
++			_alpm_log(handle, ALPM_LOG_WARNING, _("[42m%s(B[m: local (%s) is [42mnewer than(B[m %s (%s)\n"),
+ 					lpkg->name, lpkg->version, sdb->treename, spkg->version);
+ 		}
+ 	}

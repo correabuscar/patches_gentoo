@@ -1,0 +1,27 @@
+patch date 27 dec 2017, was applied apparently on top of yaourt commit fe1bcdd8610230bb75289f4b4c43607346ad18a9 (HEAD -> master) Date:   Sun Mar 18 11:30:28 2018 +0100
+ie. yaourt-git-1.9.r3.gfe1bcdd-1-any.pkg.tar
+
+diff --git a/src/lib/aur.sh b/src/lib/aur.sh
+index b3f6ccc..25bbb94 100644
+--- a/src/lib/aur.sh
++++ b/src/lib/aur.sh
+@@ -194,7 +194,9 @@ install_from_aur() {
+ 	in_array ${pkginfo[0]} "${AUR_INSTALLED_PKGS[@]}" && return 0
+ 	title $(_gettext 'Installing %s from AUR' "${pkginfo[0]}")
+ 	cwd=$PWD
+-	init_build_dir "$YAOURTTMPDIR/aur-${pkginfo[0]}" || return 1
++	the_aur_prefix="aur-" #normal
++	the_aur_prefix="" #none for now - aka patched out!
++	init_build_dir "$YAOURTTMPDIR/${the_aur_prefix}${pkginfo[0]}" || return 1
+ 	echo
+ 	msg $(_gettext 'Downloading %s PKGBUILD from AUR...' "${pkginfo[0]}")
+ 	aur_get_pkgbuild "${pkginfo[0]}" "${pkginfo[5]}" ||
+@@ -209,7 +211,7 @@ install_from_aur() {
+ 	package_loop ${pkginfo[0]} 0 || manage_error ${pkginfo[0]} ||
+ 	  { cd "$cwd"; return 1; }
+ 	cd "$cwd"
+-	rm -rf "$YAOURTTMPDIR/aur-${pkginfo[0]}"
++	rm -rf "$YAOURTTMPDIR/${the_aur_prefix}${pkginfo[0]}"
+ 
+ 	if ((AURVOTE)) && [[ ! "${pkginfo[7]#-}" ]]; then
+ 		# Check if this package has been voted on AUR, and vote for it

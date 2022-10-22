@@ -1,0 +1,147 @@
+WARNING: don't use mozconfig line: ac_add_options --with-system-nspr
+else this won't have any effect!
+(^ wasn't that true only when using this patch inside firefox compilation? since this is system nspr package otherwise that we're compiling here!)
+ah yes, I'm here in nspr package dir now, which is a symlink to the firefox patch! so it makes some sense.
+
+diff -upr nspr-4.23/nsprpub/pr/src/misc/prnetdb.c nspr-4.23.mod/nsprpub/pr/src/misc/prnetdb.c
+--- nspr-4.23/nsprpub/pr/src/misc/prnetdb.c	2019-10-15 16:21:38.000000000 +0200
++++ nspr-4.23.mod/nsprpub/pr/src/misc/prnetdb.c	2019-10-21 23:50:34.004910907 +0200
+@@ -11,6 +11,13 @@
+ #include <sys/un.h>
+ #endif
+ 
++//#include "mozilla/Logging.h" //added by je
++//static LazyLogModule gPrNetDB("PrNetDB");
++//#define LOG(msg, ...) \
++//  MOZ_LOG(gPrNetDB, LogLevel::Warning, ("[DNS]: " msg, ##__VA_ARGS__))
++////added by je, end of.
++
++
+ /*
+  * On Unix, the error code for gethostbyname() and gethostbyaddr()
+  * is returned in the global variable h_errno, instead of the usual
+@@ -638,7 +645,9 @@ static PRStatus CopyProtoent(
+  * VARIABLES OR ARGUMENTS.
+  * #################################################################
+  */
++#define SHIT 0
+ #if defined(_PR_HAVE_GETHOST_R_INT)
++#define SHIT 1
+ 
+ #define GETHOSTBYNAME(name) \
+     (gethostbyname_r(name, &tmphe, tmpbuf, bufsize, &h, &h_err), h)
+@@ -650,6 +659,7 @@ static PRStatus CopyProtoent(
+ 
+ #elif defined(_PR_HAVE_GETHOST_R_POINTER)
+ 
++#define SHIT 2
+ #define GETHOSTBYNAME(name) \
+     gethostbyname_r(name, &tmphe, tmpbuf, bufsize, &h_err)
+ #define GETHOSTBYNAME2(name, af) \
+@@ -659,12 +669,39 @@ static PRStatus CopyProtoent(
+ 
+ #else
+ 
++#define SHIT 3
+ #define GETHOSTBYNAME(name) gethostbyname(name)
+ #define GETHOSTBYNAME2(name, af) gethostbyname2(name, af)
+ #define GETHOSTBYADDR(addr, addrlen, af) gethostbyaddr(addr, addrlen, af)
+ 
+ #endif  /* definition of GETHOSTBYXXX */
+ 
++/*
++ * Prints the contents of a PRHostEnt structure
++ * code from: nsprpub/pr/tests/gethost.c
++ */
++void PrintHostent(const PRHostEnt *he)
++{
++    int i;
++    int j;
++
++    printf("h_name: '%s'\t", he->h_name);
++    for (i = 0; he->h_aliases[i]; i++) {
++        printf("h_aliases[%d]: '%s'\t", i, he->h_aliases[i]);
++    }
++    printf("h_addrtype: '%d'\t", he->h_addrtype);
++    printf("h_length: '%d'\t", he->h_length);
++    for (i = 0; he->h_addr_list[i]; i++) {
++        printf("h_addr_list[%d]: '", i);
++        for (j = 0; j < he->h_length; j++) {
++            if (j != 0) printf(".");
++            printf("%u", (unsigned char)he->h_addr_list[i][j]);
++        }
++        printf("'\t");
++    }
++    printf("\n");
++}
++
+ PR_IMPLEMENT(PRStatus) PR_GetHostByName(
+     const char *name, char *buf, PRIntn bufsize, PRHostEnt *hp)
+ {
+@@ -698,9 +735,14 @@ PR_IMPLEMENT(PRStatus) PR_GetHostByName(
+ 
+     h = GETHOSTBYNAME(name);
+ 
++
++  #define ASSTR_RND6603(one,two) one # two
++  #define ASSTR_RND29998(name) ASSTR_RND6603("", name)
++
+     if (NULL == h)
+     {
+         PR_SetError(PR_DIRECTORY_LOOKUP_ERROR, _MD_GETHOST_ERRNO());
++        fprintf( stderr, "!! Couldn't resolve(via %s(%d)) the hostname: %s\n", ASSTR_RND29998(GETHOSTBYNAME(name)), SHIT, name); //added by je
+     }
+     else
+     {
+@@ -708,6 +750,9 @@ PR_IMPLEMENT(PRStatus) PR_GetHostByName(
+         rv = CopyHostent(h, &buf, &bufsize, conversion, hp);
+         if (PR_SUCCESS != rv) {
+             PR_SetError(PR_INSUFFICIENT_RESOURCES_ERROR, 0);
++            fprintf(stderr, "! Resolved1(PR_SUCCESS:%d) via %s(%d) the hostname '%s' with official name: '%s'\t", PR_SUCCESS == rv, ASSTR_RND29998(GETHOSTBYNAME(name)), SHIT, name, h->h_name); //added by je, so it's GETHOSTBYNAME(1) aka gethostbyname_r which is hard to find in glibc and definitely not found within nss/getXXbyYY.c because a debug syslog print in there doesn't show gethostbyname when firefox seems to be running it! oh wait, I should be using REENTRANT_NAME not FUNCTION_NAME here, which is in glibc-2.27/nss/getXXbyYY_r.c  DAYUMMM! that's it then... brb.
++            PrintHostent(hp);//includes an endline aka \n
++            //fprintf(stderr, "! Resolved(PR_SUCCESS:%d) hostname '%s' as: %s %s\n", PR_SUCCESS == rv, name, hp, h->h_name); //added by je doneTODO: show all addresses AND aliases, see 'man gethostbyaddr' // done via PrintHostent
+         }
+     }
+     UNLOCK_DNS();
+@@ -956,6 +1001,7 @@ PR_IMPLEMENT(PRStatus) PR_GetIPNodeByNam
+ #else
+         PR_SetError(PR_DIRECTORY_LOOKUP_ERROR, _MD_GETHOST_ERRNO());
+ #endif
++        fprintf( stderr, "!! Couldn't resolve3(via %s(%d)) the hostname: %s\n", ASSTR_RND29998(GETHOSTBYNAME(name)), SHIT, name); //added by je
+     }
+     else
+     {
+@@ -967,6 +1013,8 @@ PR_IMPLEMENT(PRStatus) PR_GetIPNodeByNam
+         rv = CopyHostent(h, &buf, &bufsize, conversion, hp);
+         if (PR_SUCCESS != rv) {
+             PR_SetError(PR_INSUFFICIENT_RESOURCES_ERROR, 0);
++            fprintf(stderr, "! Resolved2(PR_SUCCESS:%d) via %s(%d) the hostname '%s' with official name: '%s'\t", PR_SUCCESS == rv, ASSTR_RND29998(GETHOSTBYNAME(name)), SHIT, name, h->h_name); //added by je
++            PrintHostent(hp);//includes an endline aka \n
+         }
+ #if defined(_PR_INET6) && defined(_PR_HAVE_GETIPNODEBYNAME)
+         freehostent(h);
+@@ -2072,6 +2120,7 @@ pr_GetAddrInfoByNameFB(const char  *host
+                        PRUint16     af,
+                        PRIntn       flags)
+ {
++  //fprintf(stderr, "!!!!!!! mooooooooo\n");//ok so this is what gets hit!
+     PRStatus rv;
+     PRAddrInfoFB *ai;
+     /* fallback on PR_GetHostByName */
+@@ -2174,6 +2223,14 @@ PR_IMPLEMENT(PRAddrInfo *) PR_GetAddrInf
+             return (PRAddrInfo *) res;
+         }
+ 
++        fprintf( stderr, "!! 2Couldn't resolve: %s\n", hostname); //added by je; no effect! because not hit!
++        //        LOG("Couldn't resolve: %s\n", hostname); //added by je; can't use due to  0:04.05 /tmp/obj-x86_64-pc-linux-gnu/dist/include/mozilla/TypeTraits.h:22:1: error: unknown type name ‘namespace’ AND  0:04.05 /tmp/obj-x86_64-pc-linux-gnu/dist/system_wrappers/atomic:3:15: fatal error: atomic: No such file or directory
++        //        FILE *sometmpfile=fopen("/tmp/ff.dns_fail.log","a");//created with mode 0666(hardcoded implicit aka a+rw) &(aka AND operator) 0022(umask, aka g-w,o-w) == 0644 (u+rw,g+r,o+r); assumed /tmp is tmpfs, else thrashing hell!
++        //        if (NULL != sometmpfile) {
++        //          fprintf(sometmpfile, "Couldn't resolve: %s\n", hostname); //added by je; no effect, looks like because this code isn't even hit!
++        //          fclose(sometmpfile);
++        //        }
++        //
+         PR_SetError(PR_DIRECTORY_LOOKUP_ERROR, rv);
+     }
+     return NULL;
+Only in nspr-4.23.mod/nsprpub/pr/src/misc: prnetdb.c.orig
+Only in nspr-4.23.mod/nsprpub/pr/src/misc: prnetdb.c.rej

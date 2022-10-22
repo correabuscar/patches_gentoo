@@ -1,0 +1,79 @@
+codec/vpx.c:120:23: error: ‘VPX_IMG_FMT_444A’ undeclared here (not in a function); did you mean ‘VPX_IMG_FMT_I440’?
+     { VLC_CODEC_YUVA, VPX_IMG_FMT_444A, 8, 0 },
+                       ^~~~~~~~~~~~~~~~
+                       VPX_IMG_FMT_I440
+codec/vpx.c:121:23: error: ‘VPX_IMG_FMT_YUY2’ undeclared here (not in a function); did you mean ‘VPX_IMG_FMT_YV12’?
+     { VLC_CODEC_YUYV, VPX_IMG_FMT_YUY2, 8, 0 },
+                       ^~~~~~~~~~~~~~~~
+                       VPX_IMG_FMT_YV12
+codec/vpx.c:122:23: error: ‘VPX_IMG_FMT_UYVY’ undeclared here (not in a function); did you mean ‘VPX_IMG_FMT_YV12’?
+     { VLC_CODEC_UYVY, VPX_IMG_FMT_UYVY, 8, 0 },
+                       ^~~~~~~~~~~~~~~~
+                       VPX_IMG_FMT_YV12
+codec/vpx.c:123:23: error: ‘VPX_IMG_FMT_YVYU’ undeclared here (not in a function); did you mean ‘VPX_IMG_FMT_YV12’?
+     { VLC_CODEC_YVYU, VPX_IMG_FMT_YVYU, 8, 0 },
+                       ^~~~~~~~~~~~~~~~
+                       VPX_IMG_FMT_YV12
+codec/vpx.c:125:24: error: ‘VPX_IMG_FMT_RGB555’ undeclared here (not in a function); did you mean ‘VPX_IMG_FMT_I44016’?
+     { VLC_CODEC_RGB15, VPX_IMG_FMT_RGB555, 8, 0 },
+                        ^~~~~~~~~~~~~~~~~~
+                        VPX_IMG_FMT_I44016
+codec/vpx.c:126:24: error: ‘VPX_IMG_FMT_RGB565’ undeclared here (not in a function); did you mean ‘VPX_IMG_FMT_I44016’?
+     { VLC_CODEC_RGB16, VPX_IMG_FMT_RGB565, 8, 0 },
+                        ^~~~~~~~~~~~~~~~~~
+                        VPX_IMG_FMT_I44016
+codec/vpx.c:127:24: error: ‘VPX_IMG_FMT_RGB24’ undeclared here (not in a function); did you mean ‘VPX_IMG_FMT_I444’?
+     { VLC_CODEC_RGB24, VPX_IMG_FMT_RGB24, 8, 0 },
+                        ^~~~~~~~~~~~~~~~~
+                        VPX_IMG_FMT_I444
+codec/vpx.c:128:24: error: ‘VPX_IMG_FMT_RGB32’ undeclared here (not in a function); did you mean ‘VPX_IMG_FMT_I422’?
+     { VLC_CODEC_RGB32, VPX_IMG_FMT_RGB32, 8, 0 },
+                        ^~~~~~~~~~~~~~~~~
+                        VPX_IMG_FMT_I422
+codec/vpx.c:130:23: error: ‘VPX_IMG_FMT_ARGB’ undeclared here (not in a function); did you mean ‘VPX_IMG_FMT_I440’?
+     { VLC_CODEC_ARGB, VPX_IMG_FMT_ARGB, 8, 0 },
+                       ^~~~~~~~~~~~~~~~
+                       VPX_IMG_FMT_I440
+codec/vpx.c:131:23: error: ‘VPX_IMG_FMT_ARGB_LE’ undeclared here (not in a function); did you mean ‘VPX_IMG_FMT_NONE’?
+     { VLC_CODEC_BGRA, VPX_IMG_FMT_ARGB_LE, 8, 0 },
+                       ^~~~~~~~~~~~~~~~~~~
+                       VPX_IMG_FMT_NONE
+make[4]: *** [Makefile:23102: codec/libvpx_plugin_la-vpx.lo] Error 1
+make[4]: *** Waiting for unfinished jobs....
+
+they were removed by libvpx-git commit c9a459216dc3d33db60147d14caad58c586f354b
+diff --git a/modules/codec/vpx.c b/modules/codec/vpx.c
+index 7c111e66d0..e96f81dee7 100644
+--- a/modules/codec/vpx.c
++++ b/modules/codec/vpx.c
+@@ -117,18 +117,18 @@ static const struct
+     { VLC_CODEC_I440, VPX_IMG_FMT_I440, 8, 0 },
+ 
+     { VLC_CODEC_YV12, VPX_IMG_FMT_YV12, 8, 0 },
+-    { VLC_CODEC_YUVA, VPX_IMG_FMT_444A, 8, 0 },
+-    { VLC_CODEC_YUYV, VPX_IMG_FMT_YUY2, 8, 0 },
+-    { VLC_CODEC_UYVY, VPX_IMG_FMT_UYVY, 8, 0 },
+-    { VLC_CODEC_YVYU, VPX_IMG_FMT_YVYU, 8, 0 },
+-
+-    { VLC_CODEC_RGB15, VPX_IMG_FMT_RGB555, 8, 0 },
+-    { VLC_CODEC_RGB16, VPX_IMG_FMT_RGB565, 8, 0 },
+-    { VLC_CODEC_RGB24, VPX_IMG_FMT_RGB24, 8, 0 },
+-    { VLC_CODEC_RGB32, VPX_IMG_FMT_RGB32, 8, 0 },
+-
+-    { VLC_CODEC_ARGB, VPX_IMG_FMT_ARGB, 8, 0 },
+-    { VLC_CODEC_BGRA, VPX_IMG_FMT_ARGB_LE, 8, 0 },
++//    { VLC_CODEC_YUVA, VPX_IMG_FMT_I444 | VPX_IMG_FMT_HAS_ALPHA, 8, 0 },
++//    { VLC_CODEC_YUYV, VPX_IMG_FMT_YUY2, 8, 0 },
++//    { VLC_CODEC_UYVY, VPX_IMG_FMT_UYVY, 8, 0 },
++//    { VLC_CODEC_YVYU, VPX_IMG_FMT_YVYU, 8, 0 },
++//
++//    { VLC_CODEC_RGB15, VPX_IMG_FMT_RGB555, 8, 0 },
++//    { VLC_CODEC_RGB16, VPX_IMG_FMT_RGB565, 8, 0 },
++//    { VLC_CODEC_RGB24, VPX_IMG_FMT_RGB24, 8, 0 },
++//    { VLC_CODEC_RGB32, VPX_IMG_FMT_RGB32, 8, 0 },
++//
++//    { VLC_CODEC_ARGB, VPX_IMG_FMT_ARGB, 8, 0 },
++//    { VLC_CODEC_BGRA, VPX_IMG_FMT_ARGB_LE, 8, 0 },
+ 
+     { VLC_CODEC_GBR_PLANAR, VPX_IMG_FMT_I444, 8, 1 },
+     { VLC_CODEC_GBR_PLANAR_10L, VPX_IMG_FMT_I44416, 10, 1 },

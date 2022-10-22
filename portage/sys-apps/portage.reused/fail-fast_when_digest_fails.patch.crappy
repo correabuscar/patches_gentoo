@@ -1,0 +1,80 @@
+this is bad: it only works when two digests fail, but not when only 1
+
+installed as :/usr/lib64/python3.6/site-packages/_emerge/depgraph.py
+this makes the emerge exit when this happens:
+
+# time emerge -av ">$(equery l openssh)"
+
+These are the packages that would be merged, in order:
+
+Calculating dependencies | * Digest verification failed:
+ * /var/db/repos/localrepo/net-misc/openssh/openssh-8.1_p1-r2.ebuild
+ * Reason: Filesize does not match recorded size
+ * Got: 16571
+ * Expected: 16501
+... done!
+Traceback (most recent call last):
+  File "/usr/lib/python-exec/python3.6/emerge", line 53, in <module>
+    retval = emerge_main()
+  File "/usr/lib64/python3.6/site-packages/_emerge/main.py", line 1309, in emerge_main
+    return run_action(emerge_config)
+  File "/usr/lib64/python3.6/site-packages/_emerge/actions.py", line 3371, in run_action
+    retval = action_build(emerge_config, spinner=spinner)
+  File "/usr/lib64/python3.6/site-packages/_emerge/actions.py", line 358, in action_build
+    settings, trees, myopts, myparams, myaction, myfiles, spinner)
+  File "/usr/lib64/python3.6/site-packages/_emerge/depgraph.py", line 9914, in backtrack_depgraph
+    myaction, myfiles, spinner)
+  File "/usr/lib64/python3.6/site-packages/_emerge/depgraph.py", line 9951, in _backtrack_depgraph
+    success, favorites = mydepgraph.select_files(myfiles)
+  File "/usr/lib64/python3.6/site-packages/_emerge/depgraph.py", line 4004, in select_files
+    return self._select_files(args)
+  File "/usr/lib64/python3.6/site-packages/_emerge/depgraph.py", line 4013, in _select_files
+    self._load_vdb()
+  File "/usr/lib64/python3.6/site-packages/_emerge/depgraph.py", line 687, in _load_vdb
+    raise RuntimeError('something bad happened!')
+RuntimeError: something bad happened!
+
+real	0m1.329s
+user	0m1.248s
+sys	0m0.067s
+
+without patch you get:
+# time emerge -av ">$(equery l openssh)"
+
+These are the packages that would be merged, in order:
+
+Calculating dependencies / * Digest verification failed:
+ * /var/db/repos/localrepo/net-misc/openssh/openssh-8.1_p1-r2.ebuild
+ * Reason: Filesize does not match recorded size
+ * Got: 16571
+ * Expected: 16501
+ * Digest verification failed:
+ * /var/db/repos/localrepo/net-misc/openssh/openssh-8.2_p1-r2.ebuild
+ * Reason: Filesize does not match recorded size
+ * Got: 16965
+ * Expected: 16895
+... done!
+[ebuild     U  ] net-misc/openssh-8.2_p1-r2::gentoo [8.1_p1-r2::localrepo] USE="X bindist pam pie ssl -X509 -audit -debug -hpn -kerberos -ldns -libedit -libressl -livecd -sctp -security-key% (-selinux) -static -test -xmss" 0 KiB
+
+Total: 1 package (1 upgrade), Size of downloads: 0 KiB
+
+Would you like to merge these packages? [Yes/No] n
+
+Quitting.
+
+
+real	0m5.916s
+user	0m4.490s
+sys	0m0.104s
+
+--- orig/lib/_emerge/depgraph.py	2020-02-22 01:54:04.394572255 +0100
++++ mod/lib/_emerge/depgraph.py	2020-02-22 01:54:27.880569670 +0100
+@@ -683,6 +683,8 @@ class depgraph(object):
+ 						event_loop=fake_vartree._portdb._event_loop)
+ 					scheduler.start()
+ 					scheduler.wait()
++					if 0 != scheduler._error_count:
++						raise RuntimeError('something bad happened!')
+ 
+ 		self._dynamic_config._vdb_loaded = True
+ 

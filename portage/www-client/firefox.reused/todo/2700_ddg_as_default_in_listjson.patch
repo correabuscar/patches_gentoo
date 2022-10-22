@@ -1,0 +1,49 @@
+29nov2020: this file is gone and I've no idea where to find it or in which form! tried!
+
+copied&modified from searx_in_listjson.patch
+searx was removed 
+
+some mess: hg diff -c 417342:f8a023df39e2
+
+#last good:
+#diff -r b1146cce5053 browser/components/search/extensions/list.json
+#--- a/browser/components/search/extensions/list.json	Tue Jun 23 02:23:48 2020 +0300
+#+++ b/browser/components/search/extensions/list.json	Tue Jun 23 07:41:57 2020 +0200
+#@@ -1,7 +1,7 @@
+# {
+#   "default": {
+#-    "searchDefault": "Google",
+#-    "searchOrder": ["Google", "Bing"],
+#+    "searchDefault": "DuckDuckGo",
+#+    "searchOrder": ["DuckDuckGo", "Google"],
+#     "visibleDefaultEngines": [
+#       "google-b-d", "amazondotcom", "bing", "ddg", "ebay", "wikipedia"
+#     ]
+
+#old:
+
+#diff -r ce9872f98d62 browser/components/search/searchplugins/list.json
+#--- a/browser/components/search/extensions/list.json	Fri Jan 04 05:45:10 2019 +0200
+#+++ b/browser/components/search/extensions/list.json	Fri Jan 04 04:52:26 2019 +0100
+#@@ -1,9 +1,9 @@
+# {
+#   "default": {
+#-    "searchDefault": "Google",
+#-    "searchOrder": ["Google", "Bing"],
+#+    "searchDefault": "DuckDuckGo",
+#+    "searchOrder": ["DuckDuckGo", "Google"],
+#     "visibleDefaultEngines": [
+#-      "google-b-d", "amazondotcom", "bing", "ddg", "ebay", "twitter", "wikipedia"
+#+      "google-b-d", "amazondotcom", "bing", "ddg", "ebay", "twitter", "wikipedia"
+#     ]
+#   },
+#   "regionOverrides": {
+#@@ -54,7 +54,7 @@
+#     "en-US": {
+#       "default": {
+#         "visibleDefaultEngines": [
+#-          "google-b-d", "amazondotcom", "bing", "ddg", "ebay", "twitter", "wikipedia"
+#+          "google-b-d", "amazondotcom", "bing", "ddg", "ebay", "twitter", "wikipedia"
+#         ]
+#       },
+#       "KZ": {

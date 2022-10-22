@@ -1,0 +1,16 @@
+ -O3 -DNDEBUG is the default,
+I simply add -DQT_FORCE_ASSERTS here
+
+diff --git a/kernel-shark/CMakeLists.txt b/kernel-shark/CMakeLists.txt
+index 45c6f23..c2d0a9b 100644
+--- a/kernel-shark/CMakeLists.txt
++++ b/kernel-shark/CMakeLists.txt
+@@ -42,6 +42,8 @@ endif (NOT CMAKE_BUILD_TYPE)
+ 
+ message("\n Build type: ${CMAKE_BUILD_TYPE}")
+ 
++set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG -DQT_FORCE_ASSERTS")
++set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -DQT_FORCE_ASSERTS")
+ if (NOT CMAKE_C_FLAGS_PACKAGE)
+     set(CMAKE_C_FLAGS_PACKAGE "-O3")
+ endif (NOT CMAKE_C_FLAGS_PACKAGE)

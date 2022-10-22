@@ -1,0 +1,31 @@
+playlist-visible by default!
+
+for old vlc:
+diff --git a/modules/gui/qt/main_interface.cpp b/modules/gui/qt/main_interface.cpp
+index 349f6c0..6d8ca06 100644
+--- a/modules/gui/qt/main_interface.cpp
++++ b/modules/gui/qt/main_interface.cpp
+@@ -251,7 +251,7 @@ MainInterface::MainInterface( intf_thread_t *_p_intf ) : QVLCMW( _p_intf )
+ 
+ 
+     /* Final Sizing, restoration and placement of the interface */
+-    if( settings->value( "MainWindow/playlist-visible", false ).toBool() )
++    if( settings->value( "MainWindow/playlist-visible", true ).toBool() )
+         togglePlaylist();
+ 
+     QVLCTools::restoreWidgetPosition( settings, this, QSize(600, 420) );
+
+for latest git vlc 4
+#diff --git a/modules/gui/qt/main_interface.cpp b/modules/gui/qt/main_interface.cpp
+#index e9bf16938f..bb000b4172 100644
+#--- a/modules/gui/qt/main_interface.cpp
+#+++ b/modules/gui/qt/main_interface.cpp
+#@@ -127,7 +127,7 @@ MainInterface::MainInterface( intf_thread_t *_p_intf ) : QVLCMW( _p_intf ),
+#     cryptedLabel         = NULL;
+# 
+#     b_hideAfterCreation  = false; // --qt-start-minimized
+#-    playlistVisible      = false;
+#+    playlistVisible      = true;
+#     b_interfaceFullScreen= false;
+#     b_hasPausedWhenMinimized = false;
+#     i_kc_offset          = false;

@@ -1,0 +1,32 @@
+this only shows playback speed when using finer(faster/slower), not when normal or fast/slow ! which is weird because DisplayRate is called for all 5 !!!!
+
+So, to see speed values, do this instead:
+Tools->Messages, set Verbosity to 2 (debug), then change playback speed (Playback->Speed->Faster) it shows speed changed from 2.3 to 3.0
+
+for old vlc 3:
+diff --git a/modules/control/hotkeys.c b/modules/control/hotkeys.c
+index 8472c12771..8c2d45e19e 100644
+--- a/modules/control/hotkeys.c
++++ b/modules/control/hotkeys.c
+@@ -1567,6 +1567,7 @@ static void DisplayVolume( vout_thread_t *p_vout, int slider_chan, float vol )
+ static void DisplayRate( vout_thread_t *p_vout, float f_rate )
+ {
+     DisplayMessage( p_vout, _("Speed: %.2fx"), (double) f_rate );
++    fprintf(stderr,"!!! Playback speed now: %.2fx\n", (double) f_rate);
+ }
+ 
+ static float AdjustRateFine( vlc_object_t *p_obj, const int i_dir )
+
+for latest git vlc 4:
+#diff --git a/src/player/player.c b/src/player/player.c
+#index 22dad216cc..4bc0f3ca66 100644
+#--- a/src/player/player.c
+#+++ b/src/player/player.c
+#@@ -1265,6 +1265,7 @@ vlc_player_ChangeRate(vlc_player_t *player, float rate)
+# 
+#     /* Save rate accross inputs */
+#     var_SetFloat(player, "rate", rate);
+#+    fprintf(stderr,"!!! Playback speed now: %.2fx\n", rate);
+# 
+#     /* The event is sent from the thread processing the control */
+#     if (input

@@ -1,0 +1,46 @@
+Index: /var/db/repos/gentoo/eclass/git-r3.eclass
+===================================================================
+--- .orig/var/db/repos/gentoo/eclass/git-r3.eclass
++++ /var/db/repos/gentoo/eclass/git-r3.eclass
+@@ -581,16 +581,6 @@ git-r3_fetch() {
+ 
+ 	[[ ${repos[@]} ]] || die "No URI provided and EGIT_REPO_URI unset"
+ 
+-	local r
+-	for r in "${repos[@]}"; do
+-		if [[ ${r} == git:* || ${r} == http:* ]]; then
+-			ewarn "git-r3: ${r%%:*} protocol is completely unsecure and may render the ebuild"
+-			ewarn "easily susceptible to MITM attacks (even if used only as fallback). Please"
+-			ewarn "use https instead."
+-			ewarn "[URI: ${r}]"
+-		fi
+-	done
+-
+ 	local -x GIT_DIR
+ 	_git-r3_set_gitdir "${repos[0]}"
+ 
+@@ -666,6 +656,24 @@ git-r3_fetch() {
+ 		saved_umask=$(umask)
+ 		umask "${EVCS_UMASK}" || die "Bad options to umask: ${EVCS_UMASK}"
+ 	fi
++	local r
++	local oopsie=0
++	for r in "${repos[@]}"; do
++		if [[ ${r} == git:* || ${r} == http:* ]]; then
++			ewarn "git-r3: ${r%%:*} protocol is completely unsecure and may render the ebuild"
++			ewarn "easily susceptible to MITM attacks (even if used only as fallback). Please"
++			ewarn "use https instead."
++			ewarn "[URI: ${r}]"
++			oopsie=1
++			#block copied from above! TODO: XXX: FIXME: find a better way
++			local override_name=${GIT_DIR##*/}
++			override_name=${override_name%.git}
++			override_name=${override_name//[^a-zA-Z0-9_]/_}
++			override_name=${override_name^^}
++			ewarn "(fix the ebuild! or use EGIT_OVERRIDE_REPO_${override_name} in make.conf or in /etc/portage/package.env file then /etc/portage/env/ dir)"
++		fi
++	done
++	test "$oopsie" == "0" || die "Not allowed to continue!"
+ 	for r in "${repos[@]}"; do
+ 		if [[ ! ${EVCS_OFFLINE} ]]; then
+ 			einfo "Fetching ${r} ..."

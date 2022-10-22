@@ -1,0 +1,31 @@
+diff --git a/lib/hddtemp.c b/lib/hddtemp.c
+index 20fbee1..0c3d75f 100644
+--- a/lib/hddtemp.c
++++ b/lib/hddtemp.c
+@@ -446,7 +446,7 @@ get_hddtemp_d_str (char *buffer, size_t bufsize)
+ {
+     int socket_number;
+     struct sockaddr_in sockaddr_hddtemplocalhost;
+-    struct hostent *ptr_hostinfo;
++    //struct hostent *ptr_hostinfo;
+     int num_read_bytes_total = 0, num_read = 0;
+ 
+     /* Create the socket. */
+@@ -458,11 +458,12 @@ get_hddtemp_d_str (char *buffer, size_t bufsize)
+     /* Connect to the server. */
+     sockaddr_hddtemplocalhost.sin_family = AF_INET;
+     sockaddr_hddtemplocalhost.sin_port = htons(HDDTEMP_PORT);
+-    ptr_hostinfo = gethostbyname("localhost");
+-    if (ptr_hostinfo == NULL) {
+-      return HDDTEMP_CONNECTION_FAILED;
+-    }
+-    sockaddr_hddtemplocalhost.sin_addr = *(struct in_addr *) ptr_hostinfo->h_addr;
++//    ptr_hostinfo = gethostbyname("localhost");
++//    if (ptr_hostinfo == NULL) {
++//      return HDDTEMP_CONNECTION_FAILED;
++//    }
++    //sockaddr_hddtemplocalhost.sin_addr = *(struct in_addr *) ptr_hostinfo->h_addr;
++    sockaddr_hddtemplocalhost.sin_addr.s_addr = htonl(INADDR_LOOPBACK);//ie. don't lookup localhost, but rather just use the IP address of it directly
+ 
+     if (connect (socket_number, (struct sockaddr *) &sockaddr_hddtemplocalhost, sizeof (sockaddr_hddtemplocalhost)) < 0) {
+       return HDDTEMP_CONNECTION_FAILED;

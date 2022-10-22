@@ -1,0 +1,9 @@
+#!/bin/bash
+
+export CK_FORK=yes #to catch segfault last line number
+rm compare_directories{,.log} ; make check || cat compare_directories.log
+checksmade="0$( cat compare_directories.log |grep Checks:|cut -d':' -f3|cut -f1 -d','|tr -d ' '| sort -u|tail -n1 )"
+if test "$checksmade" == "00"; then
+  echo 'Detected updated "check" library, you must "make clean", doing it now:' >&2
+  make clean
+fi

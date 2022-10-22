@@ -1,0 +1,100 @@
+make -i and -I inside 'less' act the same as -I
+and exporting LESS with -I or -i should act the same as -I also
+ie. ignore both pattern and search case (found -i to be uselessly confusing! and having to toggle it twice inside less when using LESS=-I to get case sensitivity)
+
+diff --git a/option.c b/option.c
+index b4e5d9f..3486ce0 100644
+--- a/option.c
++++ b/option.c
+@@ -385,7 +399,11 @@ toggle_option(o, lower, s, how_toggle)
+ 			switch (how_toggle)
+ 			{
+ 			case OPT_TOGGLE:
+-				*(o->ovar) = flip_triple(*(o->ovar), lower);
++				if (o->oletter == 'i' && *(o->ovar) != 0) {
++					*(o->ovar) = 0; // both uppercase i and lowercase i will toggle to zero!
++				} else {
++					*(o->ovar) = flip_triple(*(o->ovar), lower);
++				}
+ 				break;
+ 			case OPT_UNSET:
+ 				*(o->ovar) = o->odefault;
+diff --git a/pattern.c b/pattern.c
+index 97f7e6a..700fdd6 100644
+--- a/pattern.c
++++ b/pattern.c
+@@ -146,7 +146,7 @@ compile_pattern(pattern, search_type, comp_pattern)
+ 	char *cvt_pattern;
+ 	int result;
+ 
+-	if (caseless != OPT_ONPLUS)
++	if (caseless == 0)
+ 		cvt_pattern = pattern;
+ 	else
+ 	{
+@@ -280,7 +280,7 @@ match(pattern, pattern_len, buf, buf_len, pfound, pend)
+ 		{
+ 			char cp = *pp;
+ 			char cl = *lp;
+-			if (caseless == OPT_ONPLUS && ASCII_IS_UPPER(cp))
++			if (caseless != 0 && ASCII_IS_UPPER(cp))
+ 				cp = ASCII_TO_LOWER(cp);
+ 			if (cp != cl)
+ 				break;
+diff --git a/search.c b/search.c
+index 1761a6a..7e37ea3 100644
+--- a/search.c
++++ b/search.c
+@@ -34,7 +34,6 @@ extern int can_goto_line;
+ static int hide_hilite;
+ static POSITION prep_startpos;
+ static POSITION prep_endpos;
+-static int is_caseless;
+ static int is_ucase_pattern;
+ 
+ /*
+@@ -155,14 +154,10 @@ set_pattern(info, pattern, search_type)
+ 	info->search_type = search_type;
+ 
+ 	/*
+-	 * Ignore case if -I is set OR
+-	 * -i is set AND the pattern is all lowercase.
++	 * Ignore (search&pattern)case if either -I or -i is set
++   * this is computed for later
+ 	 */
+ 	is_ucase_pattern = is_ucase(pattern);
+-	if (is_ucase_pattern && caseless != OPT_ONPLUS)
+-		is_caseless = 0;
+-	else
+-		is_caseless = caseless;
+ 	return 0;
+ }
+ 
+@@ -210,9 +205,9 @@ init_search(VOID_PARAM)
+ get_cvt_ops(VOID_PARAM)
+ {
+ 	int ops = 0;
+-	if (is_caseless || bs_mode == BS_SPECIAL)
++	if (caseless || bs_mode == BS_SPECIAL)
+ 	{
+-		if (is_caseless) 
++		if (caseless) 
+ 			ops |= CVT_TO_LC;
+ 		if (bs_mode == BS_SPECIAL)
+ 			ops |= CVT_BS;
+@@ -1372,13 +1385,8 @@ hist_pattern(search_type)
+ 	public void
+ chg_caseless(VOID_PARAM)
+ {
+-	if (!is_ucase_pattern)
+-		/*
+-		 * Pattern did not have uppercase.
+-		 * Just set the search caselessness to the global caselessness.
+-		 */
+-		is_caseless = caseless;
+-	else
++  // note, this is needed when searching for "-E" (aka uppercase E) otherwise, toggling -i will find "-e" instead!
++  if (is_ucase_pattern) // computed earlier
+ 	{
+ 		/*
+ 		 * Pattern did have uppercase.

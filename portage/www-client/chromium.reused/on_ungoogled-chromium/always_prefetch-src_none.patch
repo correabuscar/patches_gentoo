@@ -1,0 +1,17 @@
+assuming chromium is ran with --enable-experimental-web-platform-features
+then this is supposed to replace any specified prefetch-src values with 'none'
+
+todo: always set this! which is why isn't working for preconnect on www.pcmag.com as per: https://github.com/uBlockOrigin/uBlock-issues/issues/548#issuecomment-524763679
+
+--- a/third_party/blink/renderer/core/frame/csp/csp_directive_list.cc	2019-08-26 11:27:13.200846767 +0200
++++ b/third_party/blink/renderer/core/frame/csp/csp_directive_list.cc	2019-08-26 11:36:06.356144097 +0200
+@@ -1355,7 +1355,8 @@ void CSPDirectiveList::AddDirective(cons
+     if (type == ContentSecurityPolicy::DirectiveType::kRequireSRIFor) {
+       ParseRequireSRIFor(name, value);
+     } else if (type == ContentSecurityPolicy::DirectiveType::kPrefetchSrc) {
+-      SetCSPDirective<SourceListDirective>(name, value, prefetch_src_);
++      static const String none=* new String("none");
++      SetCSPDirective<SourceListDirective>(name, none, prefetch_src_);
+     } else {
+       policy_->ReportUnsupportedDirective(name);
+     }

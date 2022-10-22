@@ -1,0 +1,23 @@
+fixes: JavaScript error: chrome://browser/content/preferences/languages.js, line 134: TypeError: null has no properties
+which happens when you click Choose button under Language in about:preferences#general
+diff -r 0d261741c461 browser/components/preferences/languages.js
+--- a/browser/components/preferences/dialogs/languages.js	Sun Mar 03 23:57:22 2019 +0200
++++ b/browser/components/preferences/dialogs/languages.js	Mon Mar 04 06:03:55 2019 +0100
+#@@ -129,7 +129,7 @@
+# 
+#     var selectedIndex = 0;
+#     var preference = Preferences.get("intl.accept_languages");
+#-    if (preference.value == "")
+#+    if (preference.value == "" || preference.value == undefined)
+#       return;
+#     var languages = preference.value.toLowerCase().split(/\s*,\s*/);
+#     for (var i = 0; i < languages.length; ++i) {
+@@ -149,7 +149,7 @@
+ 
+     var selectedIndex = 0;
+     var preference = Preferences.get("intl.accept_languages");
+-    if (preference.value == "") {
++    if (preference.value == "" || preference.value == undefined) {
+       return;
+     }
+     var languages = preference.value.toLowerCase().split(/\s*,\s*/);

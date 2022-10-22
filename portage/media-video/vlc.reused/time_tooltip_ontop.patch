@@ -1,0 +1,17 @@
+this fixes the time tooltip stealing focus when hovering on the time bar
+which got broken by https://trac.videolan.org/vlc/ticket/17829
+diff --git a/modules/gui/qt/util/timetooltip.cpp b/modules/gui/qt/util/timetooltip.cpp
+index 7a63a9d7d9..fb0fc42951 100644
+--- a/modules/gui/qt/util/timetooltip.cpp
++++ b/modules/gui/qt/util/timetooltip.cpp
+@@ -35,7 +35,9 @@ TimeTooltip::TimeTooltip( QWidget *parent ) :
+ {
+     setWindowFlags( Qt::ToolTip                 |
+                     Qt::WindowStaysOnTopHint    |
+-                    Qt::FramelessWindowHint     );
++                    Qt::FramelessWindowHint     |
++                    Qt::X11BypassWindowManagerHint
++                    );
+ 
+     // Tell Qt that it doesn't need to erase the background before
+     // a paintEvent occurs. This should save some CPU cycles.

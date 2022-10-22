@@ -1,0 +1,27 @@
+workaround for
+https://gitlab.gnome.org/GNOME/vte/issues/154#note_556367
+diff --git a/src/vte.cc b/src/vte.cc
+index e7815b44..8b28957a 100644
+--- a/src/vte.cc
++++ b/src/vte.cc
+@@ -3986,17 +3986,18 @@ Terminal::process_incoming()
+ 		}
+ 		/* Deselect the current selection if its contents are changed
+ 		 * by this insertion. */
+-                if (!m_selection_resolved.empty()) {
++/*                if (!m_selection_resolved.empty()) { // https://gitlab.gnome.org/GNOME/vte/issues/154#note_556367
+                         //FIXMEchpe: this is atrocious
+ 			auto selection = get_selected_text();
+ 			if ((selection == nullptr) ||
+ 			    (m_selection[VTE_SELECTION_PRIMARY] == nullptr) ||
+ 			    (strcmp(selection->str, m_selection[VTE_SELECTION_PRIMARY]->str) != 0)) {
++        _vte_debug_print(VTE_DEBUG_SELECTION, "boo1.\n");
+ 				deselect_all();
+ 			}
+                         if (selection)
+                                 g_string_free(selection, TRUE);
+-		}
++		} */
+ 	}
+ 
+ 	if (modified || (m_screen != previous_screen)) {

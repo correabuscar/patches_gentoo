@@ -1,0 +1,13 @@
+--- orig/lib/_emerge/depgraph.py	2020-02-22 04:30:51.559536856 +0100
++++ mod/lib/_emerge/depgraph.py	2020-02-22 04:30:28.815539359 +0100
+@@ -5718,8 +5718,8 @@ class depgraph(object):
+ 						pkg = self._pkg(cpv, pkg_type, root_config,
+ 							installed=installed, onlydeps=onlydeps,
+ 							myrepo=getattr(cpv, 'repo', None))
+-					except portage.exception.PackageNotFound:
+-						pass
++					except portage.exception.PackageNotFound as e:
++						raise RuntimeError('something bad happened3 ',e)
+ 					else:
+ 						# A cpv can be returned from dbapi.match() as an
+ 						# old-style virtual match even in cases when the

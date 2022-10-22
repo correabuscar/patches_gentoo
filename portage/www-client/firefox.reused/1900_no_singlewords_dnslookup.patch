@@ -1,0 +1,201 @@
+https://bugzilla.mozilla.org/show_bug.cgi?id=1180329
+TODO: fix it when this lands: https://bugzilla.mozilla.org/show_bug.cgi?id=1636583
+
+#diff -r 8f68705097b4 browser/base/content/browser.js
+#--- a/browser/base/content/browser.js	Tue May 19 13:19:39 2020 +0300
+#+++ b/browser/base/content/browser.js	Wed May 20 04:14:53 2020 +0200
+#@@ -1325,92 +1325,92 @@
+#       return;
+#     }
+# 
+#-    let onLookupCompleteListener = {
+#-      onLookupComplete(request, record, status) {
+#-        let browserRef = weakBrowser.get();
+#-        if (!Components.isSuccessCode(status) || !browserRef) {
+#-          return;
+#-        }
+#-
+#-        let currentURI = browserRef.currentURI;
+#-        // If we're in case (3) (see above), don't show an info bar.
+#-        if (
+#-          !currentURI.equals(previousURI) &&
+#-          !currentURI.equals(preferredURI)
+#-        ) {
+#-          return;
+#-        }
+#-
+#-        // show infobar offering to visit the host
+#-        let notificationBox = gBrowser.getNotificationBox(browserRef);
+#-        if (notificationBox.getNotificationWithValue("keyword-uri-fixup")) {
+#-          return;
+#-        }
+#-
+#-        let displayHostName = "http://" + hostName + "/";
+#-        let message = gNavigatorBundle.getFormattedString(
+#-          "keywordURIFixup.message",
+#-          [displayHostName]
+#-        );
+#-        let yesMessage = gNavigatorBundle.getFormattedString(
+#-          "keywordURIFixup.goTo",
+#-          [displayHostName]
+#-        );
+#-
+#-        let buttons = [
+#-          {
+#-            label: yesMessage,
+#-            accessKey: gNavigatorBundle.getString(
+#-              "keywordURIFixup.goTo.accesskey"
+#-            ),
+#-            callback() {
+#-              // Do not set this preference while in private browsing.
+#-              if (!PrivateBrowsingUtils.isWindowPrivate(window)) {
+#-                let pref = "browser.fixup.domainwhitelist." + asciiHost;
+#-                Services.prefs.setBoolPref(pref, true);
+#-              }
+#-              openTrustedLinkIn(fixedURI.spec, "current");
+#-            },
+#-          },
+#-          {
+#-            label: gNavigatorBundle.getString("keywordURIFixup.dismiss"),
+#-            accessKey: gNavigatorBundle.getString(
+#-              "keywordURIFixup.dismiss.accesskey"
+#-            ),
+#-            callback() {
+#-              let notification = notificationBox.getNotificationWithValue(
+#-                "keyword-uri-fixup"
+#-              );
+#-              notificationBox.removeNotification(notification, true);
+#-            },
+#-          },
+#-        ];
+#-        let notification = notificationBox.appendNotification(
+#-          message,
+#-          "keyword-uri-fixup",
+#-          null,
+#-          notificationBox.PRIORITY_INFO_HIGH,
+#-          buttons
+#-        );
+#-        notification.persistence = 1;
+#-      },
+#-    };
+#-
+#-    try {
+#-      gDNSService.asyncResolve(
+#-        hostName,
+#-        0,
+#-        onLookupCompleteListener,
+#-        Services.tm.mainThread,
+#-        contentPrincipal.originAttributes
+#-      );
+#-    } catch (ex) {
+#-      // Do nothing if the URL is invalid (we don't want to show a notification in that case).
+#-      if (ex.result != Cr.NS_ERROR_UNKNOWN_HOST) {
+#-        // ... otherwise, report:
+#-        Cu.reportError(ex);
+#-      }
+#-    }
+#+//    let onLookupCompleteListener = {
+#+//      onLookupComplete(request, record, status) {
+#+//        let browserRef = weakBrowser.get();
+#+//        if (!Components.isSuccessCode(status) || !browserRef) {
+#+//          return;
+#+//        }
+#+//
+#+//        let currentURI = browserRef.currentURI;
+#+//        // If we're in case (3) (see above), don't show an info bar.
+#+//        if (
+#+//          !currentURI.equals(previousURI) &&
+#+//          !currentURI.equals(preferredURI)
+#+//        ) {
+#+//          return;
+#+//        }
+#+//
+#+//        // show infobar offering to visit the host
+#+//        let notificationBox = gBrowser.getNotificationBox(browserRef);
+#+//        if (notificationBox.getNotificationWithValue("keyword-uri-fixup")) {
+#+//          return;
+#+//        }
+#+//
+#+//        let displayHostName = "http://" + hostName + "/";
+#+//        let message = gNavigatorBundle.getFormattedString(
+#+//          "keywordURIFixup.message",
+#+//          [displayHostName]
+#+//        );
+#+//        let yesMessage = gNavigatorBundle.getFormattedString(
+#+//          "keywordURIFixup.goTo",
+#+//          [displayHostName]
+#+//        );
+#+//
+#+//        let buttons = [
+#+//          {
+#+//            label: yesMessage,
+#+//            accessKey: gNavigatorBundle.getString(
+#+//              "keywordURIFixup.goTo.accesskey"
+#+//            ),
+#+//            callback() {
+#+//              // Do not set this preference while in private browsing.
+#+//              if (!PrivateBrowsingUtils.isWindowPrivate(window)) {
+#+//                let pref = "browser.fixup.domainwhitelist." + asciiHost;
+#+//                Services.prefs.setBoolPref(pref, true);
+#+//              }
+#+//              openTrustedLinkIn(fixedURI.spec, "current");
+#+//            },
+#+//          },
+#+//          {
+#+//            label: gNavigatorBundle.getString("keywordURIFixup.dismiss"),
+#+//            accessKey: gNavigatorBundle.getString(
+#+//              "keywordURIFixup.dismiss.accesskey"
+#+//            ),
+#+//            callback() {
+#+//              let notification = notificationBox.getNotificationWithValue(
+#+//                "keyword-uri-fixup"
+#+//              );
+#+//              notificationBox.removeNotification(notification, true);
+#+//            },
+#+//          },
+#+//        ];
+#+//        let notification = notificationBox.appendNotification(
+#+//          message,
+#+//          "keyword-uri-fixup",
+#+//          null,
+#+//          notificationBox.PRIORITY_INFO_HIGH,
+#+//          buttons
+#+//        );
+#+//        notification.persistence = 1;
+#+//      },
+#+//    };
+#+//
+#+//    try {
+#+//      gDNSService.asyncResolve(
+#+//        hostName,
+#+//        0,
+#+//        onLookupCompleteListener,
+#+//        Services.tm.mainThread,
+#+//        contentPrincipal.originAttributes
+#+//      );
+#+//    } catch (ex) {
+#+//      // Do nothing if the URL is invalid (we don't want to show a notification in that case).
+#+//      if (ex.result != Cr.NS_ERROR_UNKNOWN_HOST) {
+#+//        // ... otherwise, report:
+#+//        Cu.reportError(ex);
+#+//      }
+#+//    }
+#   },
+# 
+#   observe(fixupInfo, topic, data) {
+
+
+hopefully this doesn't break anything and just works!
+
+Index: /var/tmp/portage/www-client/firefox-83.0/work/firefox-83.0/browser/base/content/browser.js
+===================================================================
+--- .orig/browser/base/content/browser.js
++++ mod/browser/base/content/browser.js
+@@ -1273,6 +1273,7 @@ XPCOMUtils.defineLazyPreferenceGetter(
+ 
+ var gKeywordURIFixup = {
+   check(browser, { fixedURI, keywordProviderName, preferredURI }) {
++    return;
+     // We get called irrespective of whether we did a keyword search, or
+     // whether the original input would be vaguely interpretable as a URL,
+     // so figure that out first.

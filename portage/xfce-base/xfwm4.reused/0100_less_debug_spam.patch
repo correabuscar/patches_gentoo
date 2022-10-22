@@ -1,0 +1,26 @@
+#diff --git a/src/client.c b/src/client.c
+#index 74dc65f..91a324f 100644
+#--- a/src/client.c
+#+++ b/src/client.c
+#@@ -644,7 +644,7 @@ clientSendConfigureNotify (Client *c)
+#     g_return_if_fail (c != NULL);
+#     g_return_if_fail (c->window != None);
+# 
+#-    DBG ("Sending ConfigureNotify");
+#+//    DBG ("Sending ConfigureNotify");
+#     ce.type = ConfigureNotify;
+#     ce.display = clientGetXDisplay (c);
+#     ce.send_event = TRUE;
+diff --git a/src/client.c b/src/client.c
+index a34408fc..916a384b 100644
+--- a/src/client.c
++++ b/src/client.c
+@@ -683,7 +683,7 @@ clientSendConfigureNotify (Client *c)
+     screen_info = c->screen_info;
+     display_info = screen_info->display_info;
+ 
+-    DBG ("Sending ConfigureNotify");
++    // DBG ("Sending ConfigureNotify");
+     ce.type = ConfigureNotify;
+     ce.display = display_info->dpy;
+     ce.send_event = TRUE;

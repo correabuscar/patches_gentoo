@@ -1,0 +1,43 @@
+in:
+/home/user/build/1packages/glibc/makepkg_pacman/glibc/src/glibc/resolv
+
+files:
+compat-gethnamaddr.c #maybe we don't need this file
+nss_dns/dns-host.c
+../nss/nss_files/files-hosts.c
+../nscd/nscd_gethst_r.c
+../nscd/gethstbynm3_r.c
+../nis/nss_nisplus/nisplus-hosts.c
+../nis/nss_nis/nis-hosts.c
+../inet/getnameinfo.c
+
+
+also search for partial string:
+gethostbyname
+gethostbyaddr
+
+===========
+how to print to syslog(dmesg) AND stderr at the same time:
+/home/user/sandbox/cpp/syslog/a.cpp
+========
+man gethostbyname
+man getaddrinfo
+========
+
+/home/user/build/1packages/glibc/makepkg_pacman/glibc/src/glibc-2.27/resolv/getaddrinfo_a.c
+
+this is the one:
+/home/user/build/1packages/glibc/makepkg_pacman/glibc/src/glibc-2.27/sysdeps/posix/getaddrinfo.c
+
+=========
+
+todo: also trap:
+gethostbyaddr
+getnameinfo
+
+so that you can see when 'ping localhost' reverse resolves it to 'localhost.localdomain'
+ie.
+$ ping localhost
+PING localhost.localdomain (127.0.0.1) 56(84) bytes of data.
+
+========

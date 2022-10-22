@@ -1,0 +1,61 @@
+patches from: https://bugzilla.kernel.org/show_bug.cgi?id=202103#c24
+
+applying this on top of kernel stable 5.5.5 duplicated it!! so only apply this on 5.4.21 or less!
+thus you'll see:
+[    3.369102] Error: Driver 'RTL8208 Fast Ethernet' is already registered, aborting...
+[    3.369130] libphy: RTL8208 Fast Ethernet: Error -16 in registering driver
+[    3.371524] libphy: r8169: probed
+and this warn: https://bugzilla.kernel.org/show_bug.cgi?id=202103#c21
+
+duplication example:
+$ cd /home/user/build/1packages/4used/kernel/linux-stable/makepkg_pacman/linux-stable/src/linux-stable
+
+$ patch -Np1 -i /home/user/build/1packages/4used/kernel/linuxgit/NIC_replug.patch
+patching file drivers/net/phy/realtek.c
+Hunk #1 succeeded at 465 (offset 26 lines).
+
+$ patch -Np1 -i /home/user/build/1packages/4used/kernel/linuxgit/NIC_replug.patch
+patching file drivers/net/phy/realtek.c
+Hunk #1 succeeded at 474 (offset 35 lines).
+
+
+#this part is already upstream in 5.4.2 stable, at least.
+#diff --git a/drivers/net/ethernet/realtek/r8169_main.c b/drivers/net/ethernet/realtek/r8169_main.c
+#index d47a038cb..0b47db2ff 100644
+#--- a/drivers/net/ethernet/realtek/r8169_main.c
+#+++ b/drivers/net/ethernet/realtek/r8169_main.c
+#@@ -1542,6 +1542,7 @@ static void __rtl8169_set_wol(struct rtl8169_private *tp, u32 wolopts)
+# 	rtl_lock_config_regs(tp);
+# 
+# 	device_set_wakeup_enable(tp_to_dev(tp), wolopts);
+#+	tp->dev->wol_enabled = wolopts ? 1 : 0;
+# }
+# 
+# static int rtl8169_set_wol(struct net_device *dev, struct ethtool_wolinfo *wol)
+#-- 
+#2.24.0
+#
+#
+#
+diff --git a/drivers/net/phy/realtek.c b/drivers/net/phy/realtek.c
+index 677c45985..476db5345 100644
+--- a/drivers/net/phy/realtek.c
++++ b/drivers/net/phy/realtek.c
+@@ -439,6 +439,15 @@ static struct phy_driver realtek_drvs[] = {
+ 		.resume		= genphy_resume,
+ 		.read_page	= rtl821x_read_page,
+ 		.write_page	= rtl821x_write_page,
++	}, {
++		PHY_ID_MATCH_MODEL(0x001cc880),
++		.name		= "RTL8208 Fast Ethernet",
++		.read_mmd	= genphy_read_mmd_unsupported,
++		.write_mmd	= genphy_write_mmd_unsupported,
++		.suspend	= genphy_suspend,
++		.resume		= genphy_resume,
++		.read_page	= rtl821x_read_page,
++		.write_page	= rtl821x_write_page,
+ 	}, {
+ 		PHY_ID_MATCH_EXACT(0x001cc910),
+ 		.name		= "RTL8211 Gigabit Ethernet",
+-- 
+2.24.0

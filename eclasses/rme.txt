@@ -1,0 +1,6 @@
+the script /etc/portage/postsync.d/10_eclasses_patching
+is using the +++ line from the .patch files
+eg. +++ /var/db/repos/gentoo/eclass/multilib.eclass
+to find the eclass file to copy and then patching that copy
+so don't use a name like mod/var/db/....eclass or it would fail
+

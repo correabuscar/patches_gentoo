@@ -1,0 +1,399 @@
+TODO: untouched chrome/browser/devtools/device/cast_device_provider.cc
+
+fixedFIXME: if there are host:port pairs in the list on `chrome://inspect` and you enable `Discover network targets` (enabled by default) then it will try to ipv6 listen and thus trigger all_ipv6_internal_connections_are_set_to_fail.patch // fixed by targets = nullptr; in this patch!
+doneFIXME: opening devtools still triggers all_ipv6_internal_connections_are_set_to_fail.patch // fixed by commenting out this: {host: 'localhost', port: 9229*}
+
+--- a/headless/app/headless_shell.cc	2019-08-26 21:02:25.000000000 +0200
++++ b/headless/app/headless_shell.cc	2019-09-08 08:55:12.326375077 +0200
+@@ -710,32 +710,32 @@ int HeadlessShellMain(int argc, const ch
+         command_line.GetSwitchValuePath(switches::kCrashDumpsDir));
+   }
+ 
+-  // Enable devtools if requested, by specifying a port (and optional address).
+-  if (command_line.HasSwitch(::switches::kRemoteDebuggingPort)) {
+-    std::string address = kUseLocalHostForDevToolsHttpServer;
+-    if (command_line.HasSwitch(switches::kRemoteDebuggingAddress)) {
+-      address =
+-          command_line.GetSwitchValueASCII(switches::kRemoteDebuggingAddress);
+-      net::IPAddress parsed_address;
+-      if (!net::ParseURLHostnameToAddress(address, &parsed_address)) {
+-        LOG(ERROR) << "Invalid devtools server address";
+-        return EXIT_FAILURE;
+-      }
+-    }
+-    int parsed_port;
+-    std::string port_str =
+-        command_line.GetSwitchValueASCII(::switches::kRemoteDebuggingPort);
+-    if (!base::StringToInt(port_str, &parsed_port) ||
+-        !base::IsValueInRangeForNumericType<uint16_t>(parsed_port)) {
+-      LOG(ERROR) << "Invalid devtools server port";
+-      return EXIT_FAILURE;
+-    }
+-    const net::HostPortPair endpoint(address,
+-                                     base::checked_cast<uint16_t>(parsed_port));
+-    builder.EnableDevToolsServer(endpoint);
+-  }
+-  if (command_line.HasSwitch(::switches::kRemoteDebuggingPipe))
+-    builder.EnableDevToolsPipe();
++//  // Enable devtools if requested, by specifying a port (and optional address).
++//  if (command_line.HasSwitch(::switches::kRemoteDebuggingPort)) {
++//    std::string address = kUseLocalHostForDevToolsHttpServer;
++//    if (command_line.HasSwitch(switches::kRemoteDebuggingAddress)) {
++//      address =
++//          command_line.GetSwitchValueASCII(switches::kRemoteDebuggingAddress);
++//      net::IPAddress parsed_address;
++//      if (!net::ParseURLHostnameToAddress(address, &parsed_address)) {
++//        LOG(ERROR) << "Invalid devtools server address";
++//        return EXIT_FAILURE;
++//      }
++//    }
++//    int parsed_port;
++//    std::string port_str =
++//        command_line.GetSwitchValueASCII(::switches::kRemoteDebuggingPort);
++//    if (!base::StringToInt(port_str, &parsed_port) ||
++//        !base::IsValueInRangeForNumericType<uint16_t>(parsed_port)) {
++//      LOG(ERROR) << "Invalid devtools server port";
++//      return EXIT_FAILURE;
++//    }
++//    const net::HostPortPair endpoint(address,
++//                                     base::checked_cast<uint16_t>(parsed_port));
++//    builder.EnableDevToolsServer(endpoint);
++//  }
++//  if (command_line.HasSwitch(::switches::kRemoteDebuggingPipe))
++//    builder.EnableDevToolsPipe();
+ 
+   if (command_line.HasSwitch(switches::kProxyServer)) {
+     std::string proxy_server =
+--- a/headless/public/headless_browser.cc	2019-09-08 09:03:17.088280794 +0200
++++ b/headless/public/headless_browser.cc	2019-09-08 09:03:28.057142897 +0200
+@@ -79,12 +79,13 @@ Builder& Builder::SetEnableBeginFrameCon
+ }
+ 
+ Builder& Builder::EnableDevToolsServer(const net::HostPortPair& endpoint) {
+-  options_.devtools_endpoint = endpoint;
++  //options_.devtools_endpoint = endpoint;
+   return *this;
+ }
+ 
+ Builder& Builder::EnableDevToolsPipe() {
+-  options_.devtools_pipe_enabled = true;
++  //options_.devtools_pipe_enabled = true;
++  options_.devtools_pipe_enabled = false;
+   return *this;
+ }
+ 
+--- a/content/shell/browser/shell_devtools_manager_delegate.cc	2019-08-26 21:02:22.000000000 +0200
++++ b/content/shell/browser/shell_devtools_manager_delegate.cc	2019-09-08 09:10:10.274086345 +0200
+@@ -115,36 +115,36 @@ class TCPServerSocketFactory : public co
+ };
+ #endif
+ 
+-std::unique_ptr<content::DevToolsSocketFactory> CreateSocketFactory() {
+-  const base::CommandLine& command_line =
+-      *base::CommandLine::ForCurrentProcess();
+-#if defined(OS_ANDROID)
+-  std::string socket_name = "content_shell_devtools_remote";
+-  if (command_line.HasSwitch(switches::kRemoteDebuggingSocketName)) {
+-    socket_name = command_line.GetSwitchValueASCII(
+-        switches::kRemoteDebuggingSocketName);
+-  }
+-  return std::unique_ptr<content::DevToolsSocketFactory>(
+-      new UnixDomainServerSocketFactory(socket_name));
+-#else
+-  // See if the user specified a port on the command line (useful for
+-  // automation). If not, use an ephemeral port by specifying 0.
+-  uint16_t port = 0;
+-  if (command_line.HasSwitch(switches::kRemoteDebuggingPort)) {
+-    int temp_port;
+-    std::string port_str =
+-        command_line.GetSwitchValueASCII(switches::kRemoteDebuggingPort);
+-    if (base::StringToInt(port_str, &temp_port) &&
+-        temp_port >= 0 && temp_port < 65535) {
+-      port = static_cast<uint16_t>(temp_port);
+-    } else {
+-      DLOG(WARNING) << "Invalid http debugger port number " << temp_port;
+-    }
+-  }
+-  return std::unique_ptr<content::DevToolsSocketFactory>(
+-      new TCPServerSocketFactory("127.0.0.1", port));
+-#endif
+-}
++//std::unique_ptr<content::DevToolsSocketFactory> CreateSocketFactory() {
++//  const base::CommandLine& command_line =
++//      *base::CommandLine::ForCurrentProcess();
++//#if defined(OS_ANDROID)
++//  std::string socket_name = "content_shell_devtools_remote";
++//  if (command_line.HasSwitch(switches::kRemoteDebuggingSocketName)) {
++//    socket_name = command_line.GetSwitchValueASCII(
++//        switches::kRemoteDebuggingSocketName);
++//  }
++//  return std::unique_ptr<content::DevToolsSocketFactory>(
++//      new UnixDomainServerSocketFactory(socket_name));
++//#else
++//  // See if the user specified a port on the command line (useful for
++//  // automation). If not, use an ephemeral port by specifying 0.
++//  uint16_t port = 0;
++//  if (command_line.HasSwitch(switches::kRemoteDebuggingPort)) {
++//    int temp_port;
++//    std::string port_str =
++//        command_line.GetSwitchValueASCII(switches::kRemoteDebuggingPort);
++//    if (base::StringToInt(port_str, &temp_port) &&
++//        temp_port >= 0 && temp_port < 65535) {
++//      port = static_cast<uint16_t>(temp_port);
++//    } else {
++//      DLOG(WARNING) << "Invalid http debugger port number " << temp_port;
++//    }
++//  }
++//  return std::unique_ptr<content::DevToolsSocketFactory>(
++//      new TCPServerSocketFactory("127.0.0.1", port));
++//#endif
++//}
+ 
+ } //  namespace
+ 
+@@ -158,14 +158,14 @@ int ShellDevToolsManagerDelegate::GetHtt
+ // static
+ void ShellDevToolsManagerDelegate::StartHttpHandler(
+     BrowserContext* browser_context) {
+-  std::string frontend_url;
+-  DevToolsAgentHost::StartRemoteDebuggingServer(
+-      CreateSocketFactory(), browser_context->GetPath(), base::FilePath());
+-
+-  const base::CommandLine& command_line =
+-      *base::CommandLine::ForCurrentProcess();
+-  if (command_line.HasSwitch(switches::kRemoteDebuggingPipe))
+-    DevToolsAgentHost::StartRemoteDebuggingPipeHandler();
++//  std::string frontend_url;
++//  DevToolsAgentHost::StartRemoteDebuggingServer(
++//      CreateSocketFactory(), browser_context->GetPath(), base::FilePath());
++//
++//  const base::CommandLine& command_line =
++//      *base::CommandLine::ForCurrentProcess();
++//  if (command_line.HasSwitch(switches::kRemoteDebuggingPipe))
++//    DevToolsAgentHost::StartRemoteDebuggingPipeHandler();
+ }
+ 
+ // static
+--- a/content/shell/browser/shell_browser_main_parts.cc	2019-09-07 09:29:41.585001129 +0200
++++ b/content/shell/browser/shell_browser_main_parts.cc	2019-09-08 09:15:11.504299369 +0200
+@@ -167,7 +167,7 @@ void ShellBrowserMainParts::PreMainMessa
+   InitializeBrowserContexts();
+   Shell::Initialize();
+   net::NetModule::SetResourceProvider(PlatformResourceProvider);
+-  ShellDevToolsManagerDelegate::StartHttpHandler(browser_context_.get());
++//  ShellDevToolsManagerDelegate::StartHttpHandler(browser_context_.get());
+   InitializeMessageLoopContext();
+ 
+   if (parameters_.ui_task) {
+diff --git a/extensions/shell/browser/shell_browser_main_parts.cc b/extensions/shell/browser/shell_browser_main_parts.cc
+index 762d16580b65..5484749559ab 100644
+--- a/extensions/shell/browser/shell_browser_main_parts.cc
++++ b/extensions/shell/browser/shell_browser_main_parts.cc
+@@ -239,8 +239,8 @@ void ShellBrowserMainParts::PreMainMessageLoopRun() {
+       FROM_HERE, base::Bind(nacl::NaClProcessHost::EarlyStartup));
+ #endif
+ 
+-  content::ShellDevToolsManagerDelegate::StartHttpHandler(
+-      browser_context_.get());
++  //content::ShellDevToolsManagerDelegate::StartHttpHandler(
++  //    browser_context_.get());
+ 
+   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+           ::switches::kBrowserCrashTest))
+#--- a/extensions/shell/browser/shell_browser_main_parts.cc	2019-09-08 09:17:28.829572956 +0200
+#+++ b/extensions/shell/browser/shell_browser_main_parts.cc	2019-09-08 09:18:01.437163023 +0200
+#@@ -246,8 +246,8 @@ void ShellBrowserMainParts::PreMainMessa
+#       FROM_HERE, base::Bind(nacl::NaClProcessHost::EarlyStartup));
+# #endif
+# 
+#-  content::ShellDevToolsManagerDelegate::StartHttpHandler(
+#-      browser_context_.get());
+#+//  content::ShellDevToolsManagerDelegate::StartHttpHandler(
+#+//      browser_context_.get());
+# 
+#   if (cmd->HasSwitch(::switches::kBrowserCrashTest))
+#     CrashForTest();
+--- a/content/browser/devtools/protocol/target_handler.cc	2019-08-26 21:02:20.000000000 +0200
++++ b/content/browser/devtools/protocol/target_handler.cc	2019-09-08 09:23:04.816349030 +0200
+@@ -561,7 +561,8 @@ Response TargetHandler::SetDiscoverTarge
+     return Response::Error(kNotAllowedError);
+   if (discover_ == discover)
+     return Response::OK();
+-  discover_ = discover;
++  //discover_ = discover;
++  discover_ = false;
+   if (discover_) {
+     DevToolsAgentHost::AddObserver(this);
+   } else {
+--- a/chrome/browser/devtools/remote_debugging_server.cc	2019-08-26 21:02:03.000000000 +0200
++++ b/chrome/browser/devtools/remote_debugging_server.cc	2019-09-08 09:28:13.184472318 +0200
+@@ -85,6 +85,7 @@ void RemoteDebuggingServer::EnableTether
+ }
+ 
+ RemoteDebuggingServer::RemoteDebuggingServer() {
++  return;
+   const base::CommandLine& command_line =
+       *base::CommandLine::ForCurrentProcess();
+   if (command_line.HasSwitch(switches::kRemoteDebuggingPipe)) {
+--- a/content/browser/gpu/viz_devtools_connector.cc	2019-08-26 21:02:20.000000000 +0200
++++ b/content/browser/gpu/viz_devtools_connector.cc	2019-09-08 09:36:11.200462843 +0200
+@@ -46,34 +46,34 @@ VizDevToolsConnector::VizDevToolsConnect
+ VizDevToolsConnector::~VizDevToolsConnector() {}
+ 
+ void VizDevToolsConnector::ConnectVizDevTools() {
+-  constexpr int kVizDevToolsDefaultPort = 9229;
+-  network::mojom::TCPServerSocketPtr server_socket;
+-  network::mojom::TCPServerSocketRequest server_socket_request =
+-      mojo::MakeRequest(&server_socket);
+-  int port = ui_devtools::UiDevToolsServer::GetUiDevToolsPort(
+-      switches::kEnableVizDevTools, kVizDevToolsDefaultPort);
+-  // Jump to the UI thread to get the network context, create the socket, then
+-  // jump back to the IO thread to complete the callback.
+-  base::PostTaskWithTraits(
+-      FROM_HERE, {BrowserThread::UI},
+-      base::BindOnce(
+-          &CreateSocketOnUiThread, std::move(server_socket_request), port,
+-          base::BindOnce(&VizDevToolsConnector::OnVizDevToolsSocketCreated,
+-                         weak_ptr_factory_.GetWeakPtr(),
+-                         server_socket.PassInterface())));
++//  constexpr int kVizDevToolsDefaultPort = 9229;
++//  network::mojom::TCPServerSocketPtr server_socket;
++//  network::mojom::TCPServerSocketRequest server_socket_request =
++//      mojo::MakeRequest(&server_socket);
++//  int port = ui_devtools::UiDevToolsServer::GetUiDevToolsPort(
++//      switches::kEnableVizDevTools, kVizDevToolsDefaultPort);
++//  // Jump to the UI thread to get the network context, create the socket, then
++//  // jump back to the IO thread to complete the callback.
++//  base::PostTaskWithTraits(
++//      FROM_HERE, {BrowserThread::UI},
++//      base::BindOnce(
++//          &CreateSocketOnUiThread, std::move(server_socket_request), port,
++//          base::BindOnce(&VizDevToolsConnector::OnVizDevToolsSocketCreated,
++//                         weak_ptr_factory_.GetWeakPtr(),
++//                         server_socket.PassInterface())));
+ }
+ 
+ void VizDevToolsConnector::OnVizDevToolsSocketCreated(
+     network::mojom::TCPServerSocketPtrInfo socket,
+     int result,
+     int port) {
+-  viz::mojom::VizDevToolsParamsPtr params =
+-      viz::mojom::VizDevToolsParams::New();
+-  params->server_socket = std::move(socket);
+-  params->server_port = port;
+-  auto* gpu_process_host = GpuProcessHost::Get();
+-  if (gpu_process_host)
+-    gpu_process_host->gpu_host()->ConnectVizDevTools(std::move(params));
++//  viz::mojom::VizDevToolsParamsPtr params =
++//      viz::mojom::VizDevToolsParams::New();
++//  params->server_socket = std::move(socket);
++//  params->server_port = port;
++//  auto* gpu_process_host = GpuProcessHost::Get();
++//  if (gpu_process_host)
++//    gpu_process_host->gpu_host()->ConnectVizDevTools(std::move(params));
+ }
+ 
+ }  // namespace content
+--- a/components/ui_devtools/devtools.gni	2019-08-26 21:02:19.000000000 +0200
++++ b/components/ui_devtools/devtools.gni	2019-09-08 09:38:40.096590965 +0200
+@@ -5,5 +5,6 @@
+ declare_args() {
+   # Indicates if the Viz Devtools server is enabled. This is disabled on iOS,
+   # and on official Android builds to reduce binary size.
+-  use_viz_devtools = !(is_ios || (is_android && is_official_build))
++  #use_viz_devtools = !(is_ios || (is_android && is_official_build))
++  use_viz_devtools = false
+ }
+--- a/chrome/browser/devtools/device/devtools_android_bridge.cc	2019-08-26 21:02:03.000000000 +0200
++++ b/chrome/browser/devtools/device/devtools_android_bridge.cc	2019-09-08 09:41:02.262803694 +0200
+@@ -56,8 +56,8 @@ using content::DevToolsAgentHost;
+ namespace {
+ 
+ const char kNewPageRequestWithURL[] = "/json/new?%s";
+-const char kChromeDiscoveryURL[] = "localhost:9222";
+-const char kNodeDiscoveryURL[] = "localhost:9229";
++///const char kChromeDiscoveryURL[] = "localhost:9222";
++//const char kNodeDiscoveryURL[] = "localhost:9229";
+ 
+ bool BrowserIdFromString(const std::string& browser_id_str,
+                          std::string* serial,
+@@ -168,8 +168,8 @@ DevToolsAndroidBridge::DevToolsAndroidBr
+       base::Bind(&DevToolsAndroidBridge::CreateDeviceProviders,
+                  base::Unretained(this)));
+   base::Value target_discovery(base::Value::Type::LIST);
+-  target_discovery.GetList().emplace_back(kChromeDiscoveryURL);
+-  target_discovery.GetList().emplace_back(kNodeDiscoveryURL);
++  //target_discovery.GetList().emplace_back(kChromeDiscoveryURL);
++  //target_discovery.GetList().emplace_back(kNodeDiscoveryURL);
+   profile->GetPrefs()->SetDefaultPrefValue(prefs::kDevToolsTCPDiscoveryConfig,
+                                            std::move(target_discovery));
+   CreateDeviceProviders();
+@@ -363,9 +363,10 @@ void DevToolsAndroidBridge::CreateDevice
+   AndroidDeviceManager::DeviceProviders device_providers;
+   PrefService* service = profile_->GetPrefs();
+   const base::ListValue* targets =
+-      service->GetBoolean(prefs::kDevToolsDiscoverTCPTargetsEnabled)
+-          ? service->GetList(prefs::kDevToolsTCPDiscoveryConfig)
+-          : nullptr;
++    nullptr;
++//      service->GetBoolean(prefs::kDevToolsDiscoverTCPTargetsEnabled)
++//          ? service->GetList(prefs::kDevToolsTCPDiscoveryConfig)
++//          : nullptr;
+   scoped_refptr<TCPDeviceProvider> provider = CreateTCPDeviceProvider(targets);
+   if (tcp_provider_callback_)
+     tcp_provider_callback_.Run(provider);
+--- a/third_party/blink/renderer/devtools/front_end/sdk/ChildTargetManager.js	2019-08-26 21:02:40.000000000 +0200
++++ b/third_party/blink/renderer/devtools/front_end/sdk/ChildTargetManager.js	2019-09-08 10:24:23.291104340 +0200
+@@ -25,7 +25,7 @@ SDK.ChildTargetManager = class extends S
+ 
+     if (!parentTarget.parentTarget() && !Host.isUnderTest()) {
+       this._targetAgent.setDiscoverTargets(true);
+-      this._targetAgent.setRemoteLocations([{host: 'localhost', port: 9229}]);
++      this._targetAgent.setRemoteLocations([/*{host: 'localhost', port: 9229*}*/]);
+     }
+   }
+ 
+--- a/chrome/browser/devtools/devtools_window.cc	2019-08-26 21:02:03.000000000 +0200
++++ b/chrome/browser/devtools/devtools_window.cc	2019-09-08 11:38:35.369134139 +0200
+@@ -435,13 +435,13 @@ void DevToolsWindow::RegisterProfilePref
+   registry->RegisterStringPref(prefs::kDevToolsAdbKey, std::string());
+ 
+   registry->RegisterBooleanPref(prefs::kDevToolsDiscoverUsbDevicesEnabled,
+-                                true);
++                                false);
+   registry->RegisterBooleanPref(prefs::kDevToolsPortForwardingEnabled, false);
+   registry->RegisterBooleanPref(prefs::kDevToolsPortForwardingDefaultSet,
+                                 false);
+   registry->RegisterDictionaryPref(prefs::kDevToolsPortForwardingConfig);
+   registry->RegisterBooleanPref(prefs::kDevToolsDiscoverTCPTargetsEnabled,
+-                                true);
++                                false);
+   registry->RegisterListPref(prefs::kDevToolsTCPDiscoveryConfig);
+   registry->RegisterDictionaryPref(prefs::kDevToolsPreferences);
+ }
+
+
+this is added from i87k (untested, and likely unneeded because everything was already solved by the above!)
+--- a/services/network/socket_factory.cc	2019-08-26 21:02:33.000000000 +0200
++++ b/services/network/socket_factory.cc	2019-09-01 10:51:43.218210214 +0200
+@@ -58,13 +58,14 @@ void SocketFactory::CreateTCPServerSocke
+   auto socket =
+       std::make_unique<TCPServerSocket>(this, net_log_, traffic_annotation);
+   net::IPEndPoint local_addr_out;
+-  int result = socket->Listen(local_addr, backlog, &local_addr_out);
+-  if (result != net::OK) {
+-    std::move(callback).Run(result, base::nullopt);
++//  int result = socket->Listen(local_addr, backlog, &local_addr_out);
++//  if (result != net::OK) {
++  PLOG(WARNING) << "SocketFactory::CreateTCPServerSocket() not allowed for local_addr='" << local_addr.address().ToString() << ":" << local_addr.port() << ( local_addr.GetFamily() == net::ADDRESS_FAMILY_IPV6? "ipv6":"not-ipv6") <<"'."; //note: can't use PLOG(ERROR) due to ERROR being defined as 8 (instead of 0) in some .h here, and can't qualify it like logging::ERROR either because it's supposed to expand to LOG_ERROR see base/logging.h:369
++    std::move(callback).Run(/*result*/ net::ERR_FAILED, base::nullopt); // ERR_FAILED is seen as NET_ERROR(FAILED, -2) in ./net/base/net_error_list.h
+     return;
+-  }
+-  tcp_server_socket_bindings_.AddBinding(std::move(socket), std::move(request));
+-  std::move(callback).Run(result, local_addr_out);
++//  }
++  //tcp_server_socket_bindings_.AddBinding(std::move(socket), std::move(request));
++  //std::move(callback).Run(result, local_addr_out);
+ }
+ 
+ void SocketFactory::CreateTCPConnectedSocket(

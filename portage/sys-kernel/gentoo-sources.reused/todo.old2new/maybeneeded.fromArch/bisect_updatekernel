@@ -1,0 +1,212 @@
+#!/bin/bash
+
+#As an example, suppose you are trying to find the commit that broke a
+#       feature that was known to work in version v2.6.13-rc2 of your project.
+#       You start a bisect session as follows:
+#
+#           $ git bisect start
+#           $ git bisect bad                 # Current version is bad
+#           $ git bisect good v2.6.13-rc2    # v2.6.13-rc2 is known to be good
+
+
+#echo 'this will execute prepare too (which means: reapplies patches)'
+#time makepkg --install  --force
+
+#TODO: kernel 5.4.1+(git) bad commit for bisect starting is: 81b6b96475ac7a4ebfceae9f16fb3758327adbfe  and good one is: tag v5.3  (let's say)
+if git bisect log |& grep 'We are not bisecting.'; then
+  echo "Bisect not started. You must and do this manually: cdkk && git bisect start && git bisect good && git checkout . && git bisect bad commit_or_tag_here"
+  echo "Then, run this script. Reboot, test, then run: cdkk && git checkout . && git bisect bad/good. Then repeat this line."
+  echo
+  echo "WARNING: this script assumes you've already at least once compiled this kernel via ./0 so that prepare() of PKGBUILD was run at least once" # FIXME: see what's needed for this to not be a requirement ?
+  exit 1
+fi
+
+set -e
+cdk() {
+  cd "${HOME}/build/1packages/4used/kernel/linuxgit/"
+}
+cdkk() {
+  cd "${HOME}/build/1packages/4used/kernel/linuxgit/makepkg_pacman/linux-git/src/linux-git/"
+}
+
+#src: /home/user/build/1packages/4used/pacman/1pacman-git/applyallpatches_and_patch2_functions_implement.patch
+#pasted via MMB click
+patch2() {
+  # this will set the timestamp(atime+mtime) of all patched files to the same one that the patch file itself has!              
+  #set -v
+  #set +e
+  local fil="${1}"
+  shift 1
+  if test -z "$fil"; then
+    echo "!! patch2() inner pacman function called without any args, expected only the patch file as first arg!" >&2
+    return 1
+  fi
+  if test "$#" -gt "0"; then
+    echo "!! patch2() inner pacman function called with more than one args, expected only the patch file as first arg!" >&2
+    return 1
+  fi
+  if ! test -f "$fil"; then
+    echo "!! patch file '$fil' doesn't exist as a regular file?!" >&2
+    return 2
+  fi
+  if ! test -r "$fil"; then
+    echo "!! patch file '$fil' exists but isn't readable by me!" >&2
+    return 3
+  fi
+  #patch "$@" "$fil"; local ec="$?"
+  #if you change --strip value of 1 to something else, you've to modify the below 'sed' too!
+  patch -F0 -N --strip=1 -i "$fil"; local ec="$?"
+  if test "0$ec" != "00"; then
+    echo "!! patch2 failed(ec=$ec) to apply patch file '$fil' !" >&2
+    return 7
+  fi
+  local atime
+  atime="$(stat --dereference --printf=%X -- "$fil")"
+  if test -z "$atime"; then
+    echo "!! failed to get patch file '$fil' 's atime!" >&2
+    return 4
+  fi
+  local mtime
+  mtime="$(stat --dereference --printf=%Y -- "$fil")"
+  if test -z "$mtime"; then
+    echo "!! failed to get patch file '$fil' 's mtime!" >&2
+    return 5
+  fi
+  local allfilespatched
+  # shellcheck disable=SC2207
+  allfilespatched=( $(cat -- "$fil" |
+    #grep -F '+++ '|cut -f2- -d' '|sed -e 's/^b\///' #no good
+    #grep '^+++ '|cut -f1 -d$'\t'|sed -e 's/^+++ b\///' #no good for: +++ patched/modules/gui/qt/util/input_slider.cpp
+    grep '^+++ '|cut -f1 -d$'\t' |sed -re 's/^\+\+\+ [^/]*\///' #hardcoded --strip=1 behavior!
+      ) )
+  for thefile in "${allfilespatched[@]}"; do
+    if test -w "$thefile"; then  #file is writable by me, else how would've 'patch' succeeded patching it?!
+      #set -e
+      #eval "$(retouch "$fil" |tail -n1)"
+      #set +e
+      touch "--date=@$atime" --no-dereference --time=atime -- "$thefile"; ec="$?"
+      if test "0$ec" != "00"; then
+        echo "!! patch2's touch portion failed(ec=$ec) to set atime for patched file '$thefile' to the same atime as patch file '$fil' !" >&2
+        return 8
+      fi
+      check_atime="$(stat --dereference --printf=%X -- "$thefile")"
+      if test "$atime" != "$check_atime"; then
+        echo "!! patch2's touch portion failed to set properly set atime($atime) for patched file '$thefile' to the same atime as patch file '$fil' ! It set it to '$check_atime' instead!" >&2
+        return 10
+      fi
+      touch "--date=@$mtime" --no-dereference --time=mtime -- "$thefile"; ec="$?"
+      if test "0$ec" != "00"; then
+        echo "!! patch2's touch portion failed(ec=$ec) to set mtime for patched file '$thefile' to the same mtime as patch file '$fil' !" >&2
+        return 9
+      fi
+      check_mtime="$(stat --dereference --printf=%Y -- "$thefile")"
+      if test "$mtime" != "$check_mtime"; then
+        echo "!! patch2's touch portion failed to set properly set mtime($mtime) for patched file '$thefile' to the same mtime as patch file '$fil' ! It set it to '$check_mtime' instead!" >&2
+        return 11
+      fi
+    else
+      if test "$thefile" == "dev/null" -o "$thefile" == "/dev/null"; then
+        echo "!! ignoring '$thefile'(ie. some file got removed/deleted) from patch '$fil'" >&2
+      else
+        echo "!! the patched file '$thefile' doesn't exist while read from patch '$fil' ! (this might require fixing the code within pacman's patch2() function in scripts/libmakepkg/util/message.sh.in)" >&2
+        return 6
+      fi
+    fi
+  done
+  return 0 #all good, nonzero is bad! this just works with return due to set -e being in effect during the execution of these, so a non-zero return will fail the whole makepkg/pacman execution
+  #set +v
+  #set -e
+
+#close but not perfect(those .000000000 is obvious sign the granularity is the second(s)):
+#$ stat src/bootstrap/tool.rs ../tools_are_never_optional.patch
+#  File: src/bootstrap/tool.rs
+#  Size: 24296       Blocks: 48         IO Block: 4096   regular file
+#Device: 15h/21d Inode: 18461055    Links: 1
+#Access: (0644/-rw-r--r--)  Uid: ( 1000/    user)   Gid: ( 1000/    user)
+#Access: 2019-06-16 14:46:32.000000000 +0200
+#Modify: 2019-06-16 14:46:32.000000000 +0200
+#Change: 2019-06-17 11:50:30.474906740 +0200
+# Birth: 2019-06-17 11:50:30.466906740 +0200
+#  File: ../tools_are_never_optional.patch
+#  Size: 817         Blocks: 8          IO Block: 4096   regular file
+#Device: 15h/21d Inode: 18264632    Links: 1
+#Access: (0644/-rw-r--r--)  Uid: ( 1000/    user)   Gid: ( 1000/    user)
+#Access: 2019-06-16 14:46:32.700963386 +0200
+#Modify: 2019-06-16 14:46:32.700963386 +0200
+#Change: 2019-06-16 14:46:32.711963386 +0200
+# Birth: 2019-06-16 14:46:32.700963386 +0200
+
+}
+
+
+cdkk
+#must update pkgver manually because it's gonna be used inside .config and thus seen in `uname -r` wrongly if not updated here!
+pkgver_new="$(git describe --long | sed -E 's/^v//;s/([^-]*-g)/r\1/;s/-/./g;s/\.rc/rc/')"
+cdk
+sed --follow-symlinks -re 's/^(pkgver=)(.*)$/\1'"${pkgver_new}"'/' --in-place=".bisectmodded" PKGBUILD
+
+source PKGBUILD
+cdkk
+patches_to_apply=(
+  "${allpatches[@]}"
+  #le9g.patch
+)
+patches_to_ignore=(
+  ipv6sender_warnmorethanonce.patch
+  ##trackpoint_detect.patch
+  ##compaction.patch
+  #compaction_info.patch
+  bc_futureproof.patch
+  3200_amd_errata_665.patch
+)
+
+git checkout .  #shouldn't be needed except maybe the first time! or if this script was rerun without a git bisect bad/good first!
+
+#XXX some preliminary prepare() is needed:
+
+  # don't run depmod on 'make install'. We'll do this ourselves in packaging
+  #TODO: find better way to prevent this from adding a line every time!
+  _sdm="scripts/depmod.sh"
+  _marker='sHT4fLdFiGeeh8Zv910y'
+  if ! grep -q -s "${_marker}" -- "${_sdm}" 2>/dev/null; then
+    sed -i "2iexit 0\\n#$_marker" "${_sdm}"
+  fi
+
+
+#apply patches
+for i in "${patches_to_apply[@]}"; do
+  i="${i%%::*}" #truncate url from stuff like this: "/home/user/build/1packages/4used/kernel/linuxgit/1700_enable-thinkpad-micled.patch::http://sources.gentoo.org/cgi-bin/viewvc.cgi/linux-patches/genpatches-2.6/trunk/3.15/1700_enable-thinkpad-micled.patch"
+  ignored=0
+  for ipatch in "${patches_to_ignore[@]}"; do
+    if test "$i" == "$ipatch"; then
+      echo "!! ignoring patch '$i'"
+      ignored=1
+      break
+    fi
+  done
+  if test "$ignored" == "0"; then
+    echo "!! applying patch '$i'"
+    #patch --fuzz=0 -Np1 -i "/home/user/build/1packages/4used/kernel/linuxgit/$i"
+    patch2 "/home/user/build/1packages/4used/kernel/linuxgit/$i"
+  fi
+done
+
+# keep defaults for the NEWly added kernel options, yes must be done AFTER applying the patches! duhhh!
+  yes "" | make config >/dev/null
+make prepare
+mkdir -p firmware/{amd-ucode,rtl_nic} #don't know if needed
+
+make clean
+cdk
+set +e
+./2recompile_and_inst q ; ec="$?"
+#"q" arg is so that linux-api-headers package doesn't get installed, else it will ccache miss the next time you try to compile this! using linux-stable's linux-api-headers package for example is fine, so using the older/prev. one seems ok. Not sure what's it used for, maybe compiling modules?
+
+#//echo when done, do: git checkout .  to make sure the patches are cleaned
+echo '1. reboot and test the newly installed kernel,'
+echo 'then do: git bisect good OR git bisect bad (if errors "git checkout ." first)'
+echo 'then rerun this script'
+echo 'goto 1'
+#//which will reapply the patches on the new bisect
+
+exit "$ec"

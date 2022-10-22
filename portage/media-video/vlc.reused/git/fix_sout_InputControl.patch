@@ -1,0 +1,33 @@
+  fix this:
+  CC       linux/thread.lo
+  CCLD     libvlccore.la
+/usr/bin/ld: input/.libs/decoder.o: in function `input_DecoderSetSpuHighlight':
+/home/user/build/1packages/4used/vlc-git/makepkg_pacman/vlc-git/src/vlc/src/input/decoder.c:2549: undefined reference to `sout_InputControl'
+collect2: error: ld returned 1 exit status
+make[3]: *** [Makefile:2457: libvlccore.la] Error 1
+make[3]: Leaving directory '/home/user/build/1packages/4used/vlc-git/makepkg_pacman/vlc-git/src/vlc/src'
+make[2]: *** [Makefile:1972: all] Error 2
+make[2]: Leaving directory '/home/user/build/1packages/4used/vlc-git/makepkg_pacman/vlc-git/src/vlc/src'
+make[1]: *** [Makefile:1552: all-recursive] Error 1
+make[1]: Leaving directory '/home/user/build/1packages/4used/vlc-git/makepkg_pacman/vlc-git/src/vlc'
+make: *** [Makefile:1437: all] Error 2
+==> ERROR: A failure occurred in build().
+
+diff --git a/src/missing.c b/src/missing.c
+index 32bc24c5bf..a78fa361d6 100644
+--- a/src/missing.c
++++ b/src/missing.c
+@@ -128,6 +128,13 @@ sout_input_t *sout_MuxAddStream( sout_mux_t *mux, const es_format_t *fmt )
+     vlc_assert_unreachable ();
+ }
+ 
++int sout_InputControl( sout_packetizer_input_t *p_input, int i_query, ... )
++{
++  VLC_UNUSED (p_input); VLC_UNUSED (i_query);
++    vlc_assert_unreachable ();
++    return NULL;
++}
++
+ void sout_MuxDelete (sout_mux_t *mux)
+ {
+     VLC_UNUSED (mux);

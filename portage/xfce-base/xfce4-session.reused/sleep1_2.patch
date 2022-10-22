@@ -1,0 +1,30 @@
+#diff --git a/settings/xfce4-session.xml b/settings/xfce4-session.xml
+#index a1c87bd..e2075d1 100644
+#--- a/settings/xfce4-session.xml
+#+++ b/settings/xfce4-session.xml
+#@@ -14,7 +14,9 @@
+#       </property>
+#       <property name="Client0_PerScreen" type="bool" value="false"/>
+#       <property name="Client1_Command" type="array">
+#-        <value type="string" value="xfsettingsd"/>
+#+        <value type="string" value="sh"/>
+#+        <value type="string" value="-c"/>
+#+        <value type="string" value="sleep 1;xfsettingsd"/>
+#       </property>
+#       <property name="Client1_PerScreen" type="bool" value="false"/>
+#       <property name="Client2_Command" type="array">
+diff --git a/settings/xfce4-session.xml b/settings/xfce4-session.xml
+index 66d28dfa..1bf406e8 100644
+--- a/settings/xfce4-session.xml
++++ b/settings/xfce4-session.xml
+@@ -15,7 +15,9 @@
+       <property name="Client0_Priority" type="int" value="15"/>
+       <property name="Client0_PerScreen" type="bool" value="false"/>
+       <property name="Client1_Command" type="array">
+-        <value type="string" value="xfsettingsd"/>
++        <value type="string" value="sh"/>
++        <value type="string" value="-c"/>
++        <value type="string" value="sleep 1;xfsettingsd"/>
+       </property>
+       <property name="Client1_Priority" type="int" value="20"/>
+       <property name="Client1_PerScreen" type="bool" value="false"/>

@@ -1,0 +1,4 @@
+* remove compiling of openVR even tho there's no option to disable it!
+  * in gfx/vr/service/moz.build search for OpenVRSession.cpp
+    \ due to 110:49.51 ../../../../gfx/vr/service/OpenVRSession.cpp:285: warning: the use of `tmpnam' is dangerous, better use `mkstemp'
+

@@ -1,0 +1,24 @@
+diff --git a/components/net_log/net_export_file_writer.cc b/components/net_log/net_export_file_writer.cc
+index a64a35e259d3..18eb87fc20db 100644
+--- a/components/net_log/net_export_file_writer.cc
++++ b/components/net_log/net_export_file_writer.cc
+@@ -60,13 +60,13 @@ NetExportFileWriter::DefaultLogPathResults SetUpDefaultLogPath(
+ base::FilePath GetPathWithAllPermissions(const base::FilePath& path) {
+   if (!base::PathExists(path))
+     return base::FilePath();
+-#if defined(OS_POSIX)
+-  return base::SetPosixFilePermissions(path, base::FILE_PERMISSION_MASK)
+-             ? path
+-             : base::FilePath();
+-#else
++//#if defined(OS_POSIX) // sets a+rwx for chrome-net-export-log.json when Open File is pressed in chrome://net-export/ see: https://bugs.chromium.org/p/chromium/issues/detail?id=1015279
++//  return base::SetPosixFilePermissions(path, base::FILE_PERMISSION_MASK)
++//             ? path
++//             : base::FilePath();
++//#else
+   return path;
+-#endif
++//#endif
+ }
+ 
+ scoped_refptr<base::SequencedTaskRunner> CreateFileTaskRunner() {

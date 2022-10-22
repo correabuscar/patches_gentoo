@@ -1,0 +1,41 @@
+[7743] WARNING: !! NS_APP_PERMISSION_PARENT_DIR='permissionDBPDir' permissionsFile=''
+: file /home/user/build/1packages/firefox-hg/makepkg_pacman/firefox-hg/src/firefox-hg/extensions/cookie/nsPermissionManager.cpp, line 974
+[7743] WARNING: !! NS_APP_USER_PROFILE_50_DIR='ProfD' permissionsFile=''
+: file /home/user/build/1packages/firefox-hg/makepkg_pacman/firefox-hg/src/firefox-hg/extensions/cookie/nsPermissionManager.cpp, line 977
+[7743] WARNING: NS_ENSURE_SUCCESS(rv, NS_ERROR_UNEXPECTED) failed with result 0x80004005: file /home/user/build/1packages/firefox-hg/makepkg_pacman/firefox-hg/src/firefox-hg/extensions/cookie/nsPermissionManager.cpp, line 979
+JavaScript error: jar:file:///usr/lib/firefox/omni.ja!/components/XULStore.js, line 64: NS_ERROR_FAILURE: Component returned failure code: 0x80004005 (NS_ERROR_FAILURE) [nsIProperties.get]
+^    this._storeFile = Services.dirsvc.get("ProfD", Ci.nsIFile);
+
+#diff -r c68ff92fe54c extensions/permissions/nsPermissionManager.cpp
+#--- a/extensions/permissions/nsPermissionManager.cpp	Fri May 03 16:01:03 2019 +0300
+#+++ b/extensions/permissions/nsPermissionManager.cpp	Fri May 03 17:46:05 2019 +0200
+#@@ -1019,9 +1019,11 @@
+#   nsCOMPtr<nsIFile> permissionsFile;
+#   nsresult rv = NS_GetSpecialDirectory(NS_APP_PERMISSION_PARENT_DIR,
+#                                        getter_AddRefs(permissionsFile));
+#+  NS_WARNING(nsPrintfCString("!! NS_APP_PERMISSION_PARENT_DIR='%s' permissionsFile='%s'\n", NS_APP_PERMISSION_PARENT_DIR, permissionsFile).get());
+#   if (NS_FAILED(rv)) {
+#     rv = NS_GetSpecialDirectory(NS_APP_USER_PROFILE_50_DIR,
+#                                 getter_AddRefs(permissionsFile));
+#+    NS_WARNING(nsPrintfCString("!! NS_APP_USER_PROFILE_50_DIR='%s' permissionsFile='%s'\n", NS_APP_USER_PROFILE_50_DIR, permissionsFile).get());
+#     if (NS_FAILED(rv)) {
+#       return NS_ERROR_UNEXPECTED;
+#     }
+
+#updated:
+
+diff -r dc5251d30a38 extensions/permissions/PermissionManager.cpp
+--- a/extensions/permissions/PermissionManager.cpp	Tue Apr 14 00:32:50 2020 +0000
++++ b/extensions/permissions/PermissionManager.cpp	Tue Apr 14 11:06:07 2020 +0200
+@@ -798,9 +798,11 @@
+   if (!mPermissionsFile) {
+     nsresult rv = NS_GetSpecialDirectory(NS_APP_PERMISSION_PARENT_DIR,
+                                          getter_AddRefs(mPermissionsFile));
++    NS_WARNING(nsPrintfCString("!! NS_APP_PERMISSION_PARENT_DIR='%s' permissionsFile='%s'\n", NS_APP_PERMISSION_PARENT_DIR, permissionsFile).get());
+     if (NS_FAILED(rv)) {
+       rv = NS_GetSpecialDirectory(NS_APP_USER_PROFILE_50_DIR,
+                                   getter_AddRefs(mPermissionsFile));
++      NS_WARNING(nsPrintfCString("!! NS_APP_USER_PROFILE_50_DIR='%s' permissionsFile='%s'\n", NS_APP_USER_PROFILE_50_DIR, permissionsFile).get());
+       if (NS_FAILED(rv)) {
+         return;
+       }

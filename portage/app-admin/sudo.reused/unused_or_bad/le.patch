@@ -1,0 +1,128 @@
+FIXME: currently doesn't do the equivalent of `/usr/bin/stty echo` if C-c during password prompt! only when success/fail of pwd or no pwd was asked!
+so you have to run it like this, to workaround:  /usr/bin/sudo "$@" ; ec="$?"; /usr/bin/stty echo ; return "$ec"
+(^ from a bash function; or maybe exit "$ec" will work in non-function, unless it exits the whole shell!)
+see function sudo() within ~/.second_bashrc to see how it currently works!
+
+diff -upr sudo-1.8.27/include/sudo_util.h sudo-1.8.27.mod3/include/sudo_util.h
+--- sudo-1.8.27/include/sudo_util.h	2019-01-11 21:30:17.000000000 +0100
++++ sudo-1.8.27.mod3/include/sudo_util.h	2019-03-02 04:12:04.287209210 +0100
+@@ -257,6 +257,8 @@ __dso_public bool sudo_term_cbreak_v1(in
+ #define sudo_term_cbreak(_a) sudo_term_cbreak_v1((_a))
+ __dso_public bool sudo_term_copy_v1(int src, int dst);
+ #define sudo_term_copy(_a, _b) sudo_term_copy_v1((_a), (_b))
++__dso_public bool sudo_term_yesecho_v1(int fd);
++#define sudo_term_yesecho(_a) sudo_term_yesecho_v1((_a))
+ __dso_public bool sudo_term_noecho_v1(int fd);
+ #define sudo_term_noecho(_a) sudo_term_noecho_v1((_a))
+ __dso_public bool sudo_term_raw_v1(int fd, int isig);
+diff -upr sudo-1.8.27/lib/util/term.c sudo-1.8.27.mod3/lib/util/term.c
+--- sudo-1.8.27/lib/util/term.c	2019-01-02 15:37:41.000000000 +0100
++++ sudo-1.8.27.mod3/lib/util/term.c	2019-03-02 04:16:33.150829137 +0100
+@@ -146,6 +146,28 @@ tcsetattr_nobg(int fd, int flags, struct
+     return rc;
+ }
+ 
++bool
++sudo_term_yesecho_v1(int fd)
++{
++    debug_decl(sudo_term_yesecho, SUDO_DEBUG_UTIL)
++
++      //printf("!! sudo_term_yesecho_v1 \n");
++    if (tcgetattr(fd, &oterm) != 0) {
++      //printf("!! sudo_term_yesecho_v1 fail1\n");
++	debug_return_bool(false);
++    }
++    (void) memcpy(&term, &oterm, sizeof(term));
++    SET(term.c_lflag, ECHO|ECHONL);
++#ifdef VSTATUS
++    term.c_cc[VSTATUS] = VENABLE;
++#endif
++    if (tcsetattr_nobg(fd, TCSASOFT|TCSADRAIN, &term) == 0) {
++      //printf("!! sudo_term_yesecho_v1 ok\n");
++	debug_return_bool(true);
++    }
++      //printf("!! sudo_term_yesecho_v1 fail2\n");
++    debug_return_bool(false);
++}
+ /*
+  * Restore saved terminal settings if we are in the foreground process group.
+  * Returns true on success or false on failure.
+@@ -156,10 +178,17 @@ sudo_term_restore_v1(int fd, bool flush)
+     debug_decl(sudo_term_restore, SUDO_DEBUG_UTIL)
+ 
+     if (changed) {
++//      printf("!! sudo_term_restore_v1 changed\n");
+ 	const int flags = flush ? (TCSASOFT|TCSAFLUSH) : (TCSASOFT|TCSADRAIN);
+-	if (tcsetattr_nobg(fd, flags, &oterm) != 0)
++	if (tcsetattr_nobg(fd, flags, &oterm) != 0) {
++//      printf("!! sudo_term_restore_v1 changed fail1\n");
+ 	    debug_return_bool(false);
++  }
+ 	changed = 0;
++//  if (!sudo_term_yesecho_v1(fd)) {
++//      printf("!! sudo_term_restore_v1 changed fail2\n");
++//    debug_return_bool(false);
++//  }
+     }
+     debug_return_bool(true);
+ }
+@@ -182,11 +211,12 @@ sudo_term_noecho_v1(int fd)
+ #endif
+     if (tcsetattr_nobg(fd, TCSASOFT|TCSADRAIN, &term) == 0) {
+ 	changed = 1;
+-	debug_return_bool(true);
++    debug_return_bool(true);
+     }
+     debug_return_bool(false);
+ }
+ 
++
+ /*
+  * Set terminal to raw mode.
+  * Returns true on success or false on failure.
+diff -upr sudo-1.8.27/src/conversation.c sudo-1.8.27.mod3/src/conversation.c
+--- sudo-1.8.27/src/conversation.c	2019-01-02 15:37:41.000000000 +0100
++++ sudo-1.8.27.mod3/src/conversation.c	2019-03-02 03:56:39.261838354 +0100
+@@ -54,6 +54,7 @@ sudo_conversation(int num_msgs, const st
+     char *pass;
+     int fd, n;
+     const int conv_debug_instance = sudo_debug_get_active_instance();
++    //printf("!! sudo_conversation\n"); //during auth / password ask
+ 
+     sudo_debug_set_active_instance(sudo_debug_instance);
+ 
+diff -upr sudo-1.8.27/src/sudo.c sudo-1.8.27.mod3/src/sudo.c
+--- sudo-1.8.27/src/sudo.c	2019-01-04 16:47:20.000000000 +0100
++++ sudo-1.8.27.mod3/src/sudo.c	2019-03-02 04:13:10.886371945 +0100
+@@ -1114,6 +1114,7 @@ policy_open(struct plugin_container *plu
+     plugin->debug_instance = sudo_debug_get_active_instance();
+     sudo_debug_set_active_instance(sudo_debug_instance);
+ 
++    //printf("!! policy_open\n"); // before auth, always ran!
+     debug_return_int(ret);
+ }
+ 
+@@ -1292,6 +1293,23 @@ iolog_open(struct plugin_container *plug
+     plugin->debug_instance = sudo_debug_get_active_instance();
+     sudo_debug_set_active_instance(sudo_debug_instance);
+ 
++    //printf("!! iolog_open\n"); //after auth but before cmd exec
++    int input;
++    int flags = tgetpass_flags;
++    /* Open /dev/tty for reading/writing if possible else use stdin/stderr. */
++    if (ISSET(flags, TGP_STDIN) ||
++        (input = open(_PATH_TTY, O_RDWR)) == -1) {
++      input = STDIN_FILENO;
++    }
++    /* Restore old tty settings. */
++    if (!ISSET(flags, TGP_ECHO)) {
++      ///* Restore old tty settings if possible. */
++      //(void) sudo_term_restore(input, true);
++      (void) sudo_term_yesecho(input);
++    }
++    if (input != STDIN_FILENO)
++      (void) close(input);
++
+     debug_return_int(ret);
+ }
+ 

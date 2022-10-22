@@ -1,0 +1,8 @@
+man 7 inode
+man 2 stat
+man calloc
+/home/user/build/1packages/4used/mc-git/makepkg_pacman/mc/src/mc
+$ v src/vfs/smbfs/helpers/param/loadparm.c
+$ stat -c%Y /tmp/datte
+1557859190
+

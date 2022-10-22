@@ -1,0 +1,35 @@
+! can't be applied, see next patch!
+
+will make this work:
+rustc -C target-cpu=help
+OR rustc --print target-cpus
+instead of show: "Target CPU help is not supported by this LLVM version."
+
+From 68e1e29618b2bd094d82faac16cf8e89959bbd68 Mon Sep 17 00:00:00 2001
+From: Cameron Hart <cameron.hart@gmail.com>
+Date: Sun, 10 Jul 2016 23:55:53 +1000
+Subject: [PATCH] Add accessors for MCSubtargetInfo CPU and Feature tables
+
+---
+ include/llvm/MC/MCSubtargetInfo.h | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/include/llvm/MC/MCSubtargetInfo.h b/include/llvm/MC/MCSubtargetInfo.h
+index 5ede043fa2ee..cf4c496e1e60 100644
+--- a/include/llvm/MC/MCSubtargetInfo.h
++++ b/include/llvm/MC/MCSubtargetInfo.h
+@@ -164,6 +164,14 @@ class MCSubtargetInfo {
+     auto Found = std::lower_bound(ProcDesc.begin(), ProcDesc.end(), CPU);
+     return Found != ProcDesc.end() && StringRef(Found->Key) == CPU;
+   }
++
++  ArrayRef<SubtargetFeatureKV> getCPUTable() const {
++    return ProcDesc;
++  }
++
++  ArrayRef<SubtargetFeatureKV> getFeatureTable() const {
++    return ProcFeatures;
++  }
+ };
+ 
+ } // End llvm namespace

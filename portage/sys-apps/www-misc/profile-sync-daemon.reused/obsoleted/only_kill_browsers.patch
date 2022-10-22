@@ -1,0 +1,35 @@
+#ie. don't kill processes with 'browsername' in their name! like the second, in:
+#11302 pts/10   Sl+    0:02 /usr/lib/chromium/chromium --type=gpu-process --enabl
+#16780 pts/6    Ss+    0:00 /bin/bash /home/user/bin/watch_chromium_compilat
+
+#for this we use word boundaries
+
+diff --git a/common/profile-sync-daemon.in b/common/profile-sync-daemon.in
+index 4e83af6..f94d824 100644
+--- a/common/profile-sync-daemon.in
++++ b/common/profile-sync-daemon.in
+@@ -351,7 +351,7 @@ running_check() {
+   for browser in "${BROWSERS[@]}"; do
+     load_env_for "$browser"
+     [[ -z "$PSNAME" ]] && continue
+-    if pgrep -u "$user" "$PSNAME" &>/dev/null; then
++    if pgrep -u "$user" "\<$PSNAME\>" &>/dev/null; then
+       echo "Refusing to start; $browser is running by $user!"
+       exit 1
+     fi
+@@ -404,12 +404,12 @@ kill_browsers() {
+     local x=1
+     while [[ $x -le 60 ]]; do
+       [[ -n "$PSNAME" ]] || break
+-      pgrep -u "$user" "$PSNAME" &>/dev/null || break
++      pgrep -u "$user" "\<$PSNAME\>" &>/dev/null || break
+ 
+       if [[ $x -le 5 ]]; then
+-        pkill -SIGTERM -u "$user" "$PSNAME"
++        pkill -SIGTERM -u "$user" "\<$PSNAME\>"
+       else
+-        pkill -SIGKILL -u "$user" "$PSNAME"
++        pkill -SIGKILL -u "$user" "\<$PSNAME\>"
+       fi
+ 
+       x=$(( x + 1 ))

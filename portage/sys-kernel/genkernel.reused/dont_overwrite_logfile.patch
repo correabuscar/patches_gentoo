@@ -1,0 +1,15 @@
+don't overwrite LOGFILE aka /var/log/genkernel.log on each run! append instead!
+
+Index: /var/tmp/portage/sys-kernel/genkernel-4.1.2-r3/work/genkernel-4.1.2/gen_determineargs.sh
+===================================================================
+--- .orig/gen_determineargs.sh
++++ mod/gen_determineargs.sh
+@@ -473,7 +473,7 @@ determine_real_args() {
+ 		small_die "Cannot write to '${LOGFILE}'!"
+ 	fi
+ 
+-	echo ">>> Started genkernel v${GK_V} on: $(date +"%Y-%m-%d %H:%M:%S")" > "${LOGFILE}" 2>/dev/null || small_die "Could not write to '${LOGFILE}'!"
++	echo ">>> Started genkernel v${GK_V} on: $(date +"%Y-%m-%d %H:%M:%S")" >> "${LOGFILE}" 2>/dev/null || small_die "Could not write to '${LOGFILE}'!"
+ 
+ 	dump_debugcache
+ 

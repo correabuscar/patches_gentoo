@@ -1,0 +1,18 @@
+thanks to arvidjaar in https://github.com/systemd/systemd/issues/12409#issuecomment-487263813
+
+diff --git a/rules/60-persistent-storage.rules b/rules/60-persistent-storage.rules
+index 1d8880ef02..469a5f5c34 100644
+--- a/rules.d/60-persistent-storage.rules
++++ b/rules.d/60-persistent-storage.rules
+@@ -13,7 +13,10 @@ KERNEL!="loop*|mmcblk*[0-9]|msblk*[0-9]|mspblk*[0-9]|nvme*|sd*|sr*|vd*|xvd*|bcac
+ TEST=="whole_disk", GOTO="persistent_storage_end"
+ 
+ # for partitions import parent information
+-ENV{DEVTYPE}=="partition", IMPORT{parent}="ID_*"
++#ENV{DEVTYPE}=="partition", IMPORT{parent}="ID_*"
++ENV{DEVTYPE}=="partition", IMPORT{parent}="ID_VENDOR*", IMPORT{parent}="ID_MODEL*", IMPORT{parent}="ID_REVISION", IMPORT{parent}="ID_SERIAL*", IMPORT{parent}="ID_TYPE", IMPORT{parent}="ID_BUS", IMPORT{parent}="ID_USB*", IMPORT{parent}="ID_PATH*", IMPORT{parent}="ID_PART*" IMPORT{parent}="ID_ATA*" IMPORT{parent}="ID_WWN*" IMPORT{parent}="ID_INSTANCE"
++#^ https://github.com/systemd/systemd/issues/12409#issuecomment-487263813
++# unsure if ID_INSTANCE is needed/used for anything! (but it's from the dd-ed archlinux.iso on the USB stick uhm card reader)
+ 
+ # NVMe
+ KERNEL=="nvme*[0-9]n*[0-9]", ATTR{wwid}=="?*", SYMLINK+="disk/by-id/nvme-$attr{wwid}"

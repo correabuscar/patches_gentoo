@@ -1,0 +1,62 @@
+https://github.com/rust-lang/rust/pull/80122
+fixes: https://github.com/rust-lang/rust/issues/76213 https://github.com/rust-lang/rust/issues/79564
+workaround for: https://bugs.llvm.org/show_bug.cgi?id=48340 loop-vectorize assertion failure "argument of incompatible type"
+
+confirmed "fixes" this(steps to repro. in one of the rust issues):
+error: could not compile `glib`
+
+Caused by:
+  process didn't exit successfully: `rustc --crate-name glib src/lib.rs --error-format=json --json=diagnostic-rendered-ansi --crate-type lib --emit=dep-info,metadata,link -C opt-level=3 -C embed-bitcode=no -C metadata=18d6cd9e8bb3ac51 -C extra-filename=-18d6cd9e8bb3ac51 --out-dir /tmp/glib/target/release/deps -L dependency=/tmp/glib/target/release/deps --extern bitflags=/tmp/glib/target/release/deps/libbitflags-3481844fb16a27e3.rmeta --extern glib_sys=/tmp/glib/target/release/deps/libglib_sys-5a574b4c35bd8b9b.rmeta --extern gobject_sys=/tmp/glib/target/release/deps/libgobject_sys-99558dabc9cdded9.rmeta --extern lazy_static=/tmp/glib/target/release/deps/liblazy_static-53201e5af8cd3135.rmeta --extern libc=/tmp/glib/target/release/deps/liblibc-4d99ed65a64cc7b6.rmeta -C opt-level=2 -C target-cpu=skylake` (signal: 11, SIGSEGV: invalid memory reference)
+
+
+From 88dc58fc9bb3dddccb99fc0e9f7a917c2052f8d0 Mon Sep 17 00:00:00 2001
+From: David Wood <david@davidtw.co>
+Date: Thu, 17 Dec 2020 16:06:24 +0000
+Subject: [PATCH] Revert "cg_llvm: `fewer_names` in `uncached_llvm_type`"
+
+This reverts commit fa01ce802f1b403a2140fd945b43af86ec3998a1.
+---
+ compiler/rustc_codegen_llvm/src/type_of.rs | 10 +---------
+ src/test/ui/issues/issue-75763.rs          |  3 ++-
+ 2 files changed, 3 insertions(+), 10 deletions(-)
+
+diff --git a/compiler/rustc_codegen_llvm/src/type_of.rs b/compiler/rustc_codegen_llvm/src/type_of.rs
+index 8ea4768f77dbd..0876907e1194b 100644
+--- a/compiler/rustc_codegen_llvm/src/type_of.rs
++++ b/compiler/rustc_codegen_llvm/src/type_of.rs
+@@ -40,9 +40,7 @@ fn uncached_llvm_type<'a, 'tcx>(
+         // FIXME(eddyb) producing readable type names for trait objects can result
+         // in problematically distinct types due to HRTB and subtyping (see #47638).
+         // ty::Dynamic(..) |
+-        ty::Adt(..) | ty::Closure(..) | ty::Foreign(..) | ty::Generator(..) | ty::Str
+-            if !cx.sess().fewer_names() =>
+-        {
++        ty::Adt(..) | ty::Closure(..) | ty::Foreign(..) | ty::Generator(..) | ty::Str => {
+             let mut name = with_no_trimmed_paths(|| layout.ty.to_string());
+             if let (&ty::Adt(def, _), &Variants::Single { index }) =
+                 (layout.ty.kind(), &layout.variants)
+@@ -58,12 +56,6 @@ fn uncached_llvm_type<'a, 'tcx>(
+             }
+             Some(name)
+         }
+-        ty::Adt(..) => {
+-            // If `Some` is returned then a named struct is created in LLVM. Name collisions are
+-            // avoided by LLVM (with increasing suffixes). If rustc doesn't generate names then that
+-            // can improve perf.
+-            Some(String::new())
+-        }
+         _ => None,
+     };
+ 
+##No file to patch.  Skipping patch.
+#diff --git a/src/test/ui/issues/issue-75763.rs b/src/test/ui/issues/issue-75763.rs
+#index 2fd9f9a60de9f..c311de05a1cff 100644
+#--- a/src/test/ui/issues/issue-75763.rs
+#+++ b/src/test/ui/issues/issue-75763.rs
+#@@ -1,4 +1,5 @@
+#-// build-pass
+#+// ignore-test
+#+// FIXME(const_generics): This test causes an ICE after reverting #76030.
+# 
+# #![allow(incomplete_features)]
+# #![feature(const_generics)]

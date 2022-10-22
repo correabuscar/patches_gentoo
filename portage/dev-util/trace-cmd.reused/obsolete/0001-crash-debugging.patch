@@ -1,0 +1,47 @@
+From 44b07b20d6ec784786e894accbdd7fecf7866b0f Mon Sep 17 00:00:00 2001
+From: "Yordan Karadzhov (VMware)" <y.karadz@gmail.com>
+Date: Mon, 22 Jul 2019 16:13:53 +0300
+Subject: [PATCH] crash debugging
+
+Signed-off-by: Yordan Karadzhov (VMware) <y.karadz@gmail.com>
+---
+ kernel-shark/src/KsCaptureDialog.cpp | 2 ++
+ kernel-shark/src/KsWidgetsLib.cpp    | 9 +++++++--
+ 2 files changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/kernel-shark/src/KsCaptureDialog.cpp b/kernel-shark/src/KsCaptureDialog.cpp
+index 0a29518..9f3ab00 100644
+--- a/kernel-shark/src/KsCaptureDialog.cpp
++++ b/kernel-shark/src/KsCaptureDialog.cpp
+@@ -47,6 +47,8 @@ KsCaptureControl::KsCaptureControl(QWidget *parent)
+ 	QStringList pluginList = _getPlugins();
+ 	int row(0);
+ 
++	qInfo() << "tep ptr:" << (void *) _localTEP;
++
+ 	auto lamAddLine = [&] {
+ 		QFrame* line = new QFrame();
+ 
+diff --git a/kernel-shark/src/KsWidgetsLib.cpp b/kernel-shark/src/KsWidgetsLib.cpp
+index 84afec9..9890b26 100644
+--- a/kernel-shark/src/KsWidgetsLib.cpp
++++ b/kernel-shark/src/KsWidgetsLib.cpp
+@@ -749,8 +749,13 @@ QStringList KsEventsCheckBoxWidget::getCheckedEvents(bool option)
+ 
+ /** Remove a System from the Checkbox tree. */
+ void KsEventsCheckBoxWidget::removeSystem(QString name) {
+-	QTreeWidgetItem *item =
+-		_tree.findItems(name, Qt::MatchFixedString, 0)[0];
++	auto itemList = _tree.findItems(name, Qt::MatchFixedString, 0);
++	QTreeWidgetItem *item;
++
++	if (itemList.isEmpty())
++		return;
++
++	item = itemList[0];
+ 
+ 	int index = _tree.indexOfTopLevelItem(item);
+ 	if (index >= 0)
+-- 
+2.20.1
+

@@ -1,0 +1,22 @@
+https://github.com/ungoogled-software/ungoogled-chromium-archlinux/issues/36
+
+[353061:353061:1009/030620.387579:ERROR:child_process_security_policy_impl.cc(1444)] Invalid isolated origin:
+
+
+diff --git a/chrome/browser/extensions/chrome_content_browser_client_extensions_part.cc b/chrome/browser/extensions/chrome_content_browser_client_extensions_part.cc
+index 691f83446883..652f81f388a6 100644
+--- a/chrome/browser/extensions/chrome_content_browser_client_extensions_part.cc
++++ b/chrome/browser/extensions/chrome_content_browser_client_extensions_part.cc
+@@ -622,11 +622,11 @@ std::vector<url::Origin> ChromeContentBrowserClientExtensionsPart::
+     GetOriginsRequiringDedicatedProcess() {
+   std::vector<url::Origin> list;
+ 
+   // Require a dedicated process for the webstore origin.  See
+   // https://crbug.com/939108.
+-  list.push_back(url::Origin::Create(extension_urls::GetWebstoreLaunchURL()));
++  //list.push_back(url::Origin::Create(extension_urls::GetWebstoreLaunchURL()));
+ 
+   return list;
+ }
+ 
+ // static

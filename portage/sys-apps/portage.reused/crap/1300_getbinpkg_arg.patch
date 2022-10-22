@@ -1,0 +1,59 @@
+BAD PATCH! ignore it!
+there's no way to detect whether or not arg --getbinpkg=n was passed to emerge, since it acts as if it wasn't passed at all!
+
+-------example output after patch:
+
+# FEATURES=getbinpkg emerge  --getbinpkg=n --usepkg=n --pretend --ask=n rust
+ * Just avoided bug https://bugs.gentoo.org/759067 where --getbinpkg=n wouldn't be considered!
+
+These are the packages that would be merged, in order:
+
+Calculating dependencies... done!
+[ebuild   R    ] dev-lang/rust-1.48.0
+
+
+# FEATURES=-getbinpkg emerge  --getbinpkg=n --usepkg=n --pretend --ask=n rust
+
+These are the packages that would be merged, in order:
+
+Calculating dependencies... done!
+[ebuild   R    ] dev-lang/rust-1.48.0
+
+-------example output before patch:
+
+# FEATURES=getbinpkg emerge  --getbinpkg=n --usepkg=n --pretend --ask=n rust
+
+These are the packages that would be merged, in order:
+
+Calculating dependencies... done!
+[binary   R    ] dev-lang/rust-1.48.0
+
+# FEATURES=-getbinpkg emerge  --getbinpkg=n --usepkg=n --pretend --ask=n rust
+
+These are the packages that would be merged, in order:
+
+Calculating dependencies... done!
+[ebuild   R    ] dev-lang/rust-1.48.0
+
+#--- /usr/lib/python3.9/site-packages/_emerge/actions.py	2020-12-09 00:53:44.035854159 +0100
+--- orig/lib/_emerge/actions.py	2020-12-09 00:53:44.035854159 +0100
++++ mod/lib/_emerge/actions.py	2020-12-09 00:53:25.771856170 +0100
+@@ -2920,14 +2920,18 @@ def run_action(emerge_config):
+ 	# options adjustments should be made prior to calling adjust_configs().
+ 	if "--buildpkgonly" in emerge_config.opts:
+ 		emerge_config.opts["--buildpkg"] = True
+ 
+ 	if "getbinpkg" in emerge_config.target_config.settings.features:
+ 		emerge_config.opts["--getbinpkg"] = True
+ 
++	if emerge_config.opts.get('--getbinpkg') != 'n':
++		if None != emerge_config.opts.pop("--getbinpkg", None):
++			portage.output.EOutput().ewarn("Just avoided bug https://bugs.gentoo.org/759067 where --getbinpkg=n wouldn't be considered!")
++
+ 	if "--getbinpkgonly" in emerge_config.opts:
+ 		emerge_config.opts["--getbinpkg"] = True
+ 
+ 	if "--getbinpkgonly" in emerge_config.opts:
+ 		emerge_config.opts["--usepkgonly"] = True
+ 
+ 	if "--getbinpkg" in emerge_config.opts:

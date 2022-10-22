@@ -1,0 +1,40 @@
+now looks like:
+[1637:22063:0826/223256.092269:ERROR:socket_posix.cc(98)] CreatePlatformSocket() failed: Permission denied (13)
+
+#--- a/net/socket/socket_posix.cc	2019-08-24 01:52:35.404551016 +0200
+#+++ b/net/socket/socket_posix.cc	2019-08-24 01:53:27.596545271 +0200
+#@@ -86,10 +86,14 @@ int SocketPosix::Open(int address_family
+#          address_family == AF_INET6 ||
+#          address_family == AF_UNIX);
+# 
+#+  if ( AF_INET6 == address_family) {
+#+    socket_fd_ = -1; errno = EACCES;
+#+  } else {
+#   socket_fd_ = CreatePlatformSocket(
+#       address_family,
+#       SOCK_STREAM,
+#       address_family == AF_UNIX ? 0 : IPPROTO_TCP);
+#+  }
+#   if (socket_fd_ < 0) {
+#     PLOG(ERROR) << "CreatePlatformSocket() failed";
+#     return MapSystemError(errno);
+--- a/net/socket/socket_posix.cc	2019-09-08 10:15:47.178592753 +0200
++++ b/net/socket/socket_posix.cc	2019-09-08 10:16:00.355427098 +0200
+@@ -88,12 +88,16 @@ int SocketPosix::Open(int address_family
+          address_family == AF_INET6 ||
+          address_family == AF_UNIX);
+ 
++  if ( AF_INET6 == address_family) {
++    socket_fd_ = -1; errno = EACCES;
++  } else {
+   socket_fd_ = CreatePlatformSocket(
+       address_family,
+       SOCK_STREAM,
+       address_family == AF_UNIX ? 0 : IPPROTO_TCP);
++  }
+   if (socket_fd_ < 0) {
+-    PLOG(ERROR) << "CreatePlatformSocket() failed";
++    PLOG(ERROR) << "CreatePlatformSocket() failed, errno=" << errno << " address_family=" << address_family;
+     base::debug::StackTrace().Print();
+     return MapSystemError(errno);
+   }

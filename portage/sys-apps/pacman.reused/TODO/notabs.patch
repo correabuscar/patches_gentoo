@@ -1,0 +1,30 @@
+feb 20 2019, was applied on top of pacman-contrib-git on archlinux, specifically on commit c7be86316c1ee7bea8a892f618fb9f1fc126c7f7 (HEAD -> makepkg, origin/master, origin/HEAD) Date:   Mon Mar 9 19:22:06 2020 +0100
+
+but there's no ebuild on gentoo for it!
+
+diff --git a/src/vim/syntax/PKGBUILD.vim b/src/vim/syntax/PKGBUILD.vim
+index 8e3e1b9..692ddd1 100644
+--- a/src/vim/syntax/PKGBUILD.vim
++++ b/src/vim/syntax/PKGBUILD.vim
+@@ -324,3 +324,21 @@ hi def link pbKeywords Keyword
+ hi def link pbDate Special
+ 
+ "let b:current_syntax = 'PKGBUILD'
++
++" Indentation settings for using 2 spaces instead of tabs.
++" Do not change 'tabstop' from its default value of 8 with this setup.
++set shiftwidth=2
++set softtabstop=2
++" uses spaces instead of tabs(then you can reindent with = key or gg=G for
++" entire file):
++set expandtab
++" or use tabs instead of spaces for tabs:
++" set noexpandtab
++
++" Indentation settings for using hard tabs for indent. Display tabs as
++" two characters wide.
++" set shiftwidth=2
++set tabstop=2
++
++
++

@@ -1,0 +1,32 @@
+diff --git a/plugins/tasklist/tasklist-widget.c b/plugins/tasklist/tasklist-widget.c
+index 8114f615..41a5648e 100644
+--- a/plugins/tasklist/tasklist-widget.c
++++ b/plugins/tasklist/tasklist-widget.c
+@@ -2696,10 +2696,26 @@ xfce_tasklist_button_name_changed (WnckWindow        *window,
+         gtk_style_context_add_class (ctx, "label-hidden");
+     }
+ 
+-  gtk_label_set_text (GTK_LABEL (child->label), name);
++  gchar           *prefixspacing = NULL;
++  //static int level=0;
++  WnckWorkspace *active_ws=wnck_screen_get_active_workspace (child->tasklist->screen);
++  int level=(active_ws!=NULL?wnck_workspace_get_number(active_ws):0);
++  gchar *repeat_char(unsigned int cnt, char ch, const gchar *append) { // src: https://stackoverflow.com/a/27052822
++    char buffer[cnt + 1];
++    memset(buffer,ch,cnt); buffer[cnt]='\0';
++    //printf("%s",buffer)
++    return g_strdup_printf ("%s%s%s", buffer, "⮕",append);
++  }
++  //prefixspacing=g_strdup_printf ("%*s%s", level,"", name);
++  prefixspacing=repeat_char (level,'|'/*TODO string for unicode chars like "⎸" */, name);
++  //printf("%*s", count, ""); //src: https://stackoverflow.com/a/31934958
++  level++;
++  gtk_label_set_text (GTK_LABEL (child->label), prefixspacing);
++  //gtk_label_set_text (GTK_LABEL (child->label), name);
+   gtk_label_set_ellipsize (GTK_LABEL (child->label), child->tasklist->ellipsize_mode);
+ 
+   g_free (label);
++  g_free (prefixspacing);
+ 
+   /* if window is null, we have not inserted the button the in
+    * tasklist, so no need to sort, because we insert with sorting */

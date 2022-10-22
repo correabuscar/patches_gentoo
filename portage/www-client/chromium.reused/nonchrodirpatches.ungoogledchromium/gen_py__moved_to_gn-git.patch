@@ -1,0 +1,121 @@
+#diff --git a/patches/debian_buster/system/event.patch b/patches/debian_buster/system/event.patch
+#index 4bef970..0f47662 100644
+#--- a/patches/debian_buster/system/event.patch
+#+++ b/patches/debian_buster/system/event.patch
+#@@ -23,13 +23,13 @@ author: Michael Gilbert <mgilbert@debian.org>
+#  #include "base/time/time.h"
+#  #include "base/trace_event/trace_event.h"
+#  #include "build/build_config.h"
+#---- a/tools/gn/build/gen.py
+#-+++ b/tools/gn/build/gen.py
+#-@@ -328,6 +328,7 @@ def WriteGNNinja(path, platform, host, o
+#-       ])
+#-       # Additional system libraries that are used.
+#-       libs.append('-lnspr4')
+#-+      libs.append('-levent')
+#-       # This is needed by libc++.
+#-       libs.append('-ldl')
+#-     elif platform.is_darwin():
+#+#--- a/tools/gn/build/gen.py
+#+#+++ b/tools/gn/build/gen.py
+#+#@@ -328,6 +328,7 @@ def WriteGNNinja(path, platform, host, o
+#+#       ])
+#+#       # Additional system libraries that are used.
+#+#       libs.append('-lnspr4')
+#+#+      libs.append('-levent')
+#+#       # This is needed by libc++.
+#+#       libs.append('-ldl')
+#+#     elif platform.is_darwin():
+#diff --git a/patches/debian_buster/system/nspr.patch b/patches/debian_buster/system/nspr.patch
+#index 0592833..5cfd983 100644
+#--- a/patches/debian_buster/system/nspr.patch
+#+++ b/patches/debian_buster/system/nspr.patch
+#@@ -44,14 +44,14 @@ author: Michael Gilbert <mgilbert@debian.org>
+#      "third_party/superfasthash/superfasthash.c",
+#      "thread_annotations.h",
+#      "threading/platform_thread.cc",
+#---- a/tools/gn/build/gen.py
+#-+++ b/tools/gn/build/gen.py
+#-@@ -326,6 +326,8 @@ def WriteGNNinja(path, platform, host, o
+#-           '-static-libstdc++',
+#-           '-Wl,--as-needed',
+#-       ])
+#-+      # Additional system libraries that are used.
+#-+      libs.append('-lnspr4')
+#-       # This is needed by libc++.
+#-       libs.append('-ldl')
+#-     elif platform.is_darwin():
+#+#--- a/tools/gn/build/gen.py
+#+#+++ b/tools/gn/build/gen.py
+#+#@@ -326,6 +326,8 @@ def WriteGNNinja(path, platform, host, o
+#+#           '-static-libstdc++',
+#+#           '-Wl,--as-needed',
+#+#       ])
+#+#+      # Additional system libraries that are used.
+#+#+      libs.append('-lnspr4')
+#+#       # This is needed by libc++.
+#+#       libs.append('-ldl')
+#+#     elif platform.is_darwin():
+
+updated for "git+https://github.com/nikolowry/ungoogled-chromium-archlinux.git#commit=${_ungoogled_archlinux_version}"
+where _ungoogled_archlinux_version=91ddb32901286c7e339152118b1e622a0d5dafda
+
+
+diff --git a/patches/debian_buster/system/event.patch b/patches/debian_buster/system/event.patch
+index a1dcf9b..fdd3792 100644
+--- a/patches/debian_buster/system/event.patch
++++ b/patches/debian_buster/system/event.patch
+@@ -23,13 +23,13 @@ author: Michael Gilbert <mgilbert@debian.org>
+  #include "base/time/time.h"
+  #include "base/trace_event/trace_event.h"
+  #include "build/build_config.h"
+---- a/tools/gn/build/gen.py
+-+++ b/tools/gn/build/gen.py
+-@@ -330,6 +330,7 @@ def WriteGNNinja(path, platform, host, o
+-       ])
+-       # Additional system libraries that are used.
+-       libs.append('-lnspr4')
+-+      libs.append('-levent')
+-       # This is needed by libc++.
+-       libs.append('-ldl')
+-     elif platform.is_darwin():
++#--- a/tools/gn/build/gen.py
++#+++ b/tools/gn/build/gen.py
++#@@ -330,6 +330,7 @@ def WriteGNNinja(path, platform, host, o
++#       ])
++#       # Additional system libraries that are used.
++#       libs.append('-lnspr4')
++#+      libs.append('-levent')
++#       # This is needed by libc++.
++#       libs.append('-ldl')
++#     elif platform.is_darwin():
+diff --git a/patches/debian_buster/system/nspr.patch b/patches/debian_buster/system/nspr.patch
+index f7b16f4..c5328fb 100644
+--- a/patches/debian_buster/system/nspr.patch
++++ b/patches/debian_buster/system/nspr.patch
+@@ -44,14 +44,14 @@ author: Michael Gilbert <mgilbert@debian.org>
+      "third_party/superfasthash/superfasthash.c",
+      "thread_annotations.h",
+      "threading/platform_thread.cc",
+---- a/tools/gn/build/gen.py
+-+++ b/tools/gn/build/gen.py
+-@@ -328,6 +328,8 @@ def WriteGNNinja(path, platform, host, o
+-           '-static-libstdc++',
+-           '-Wl,--as-needed',
+-       ])
+-+      # Additional system libraries that are used.
+-+      libs.append('-lnspr4')
+-       # This is needed by libc++.
+-       libs.append('-ldl')
+-     elif platform.is_darwin():
++#--- a/tools/gn/build/gen.py
++#+++ b/tools/gn/build/gen.py
++#@@ -328,6 +328,8 @@ def WriteGNNinja(path, platform, host, o
++#           '-static-libstdc++',
++#           '-Wl,--as-needed',
++#       ])
++#+      # Additional system libraries that are used.
++#+      libs.append('-lnspr4')
++#       # This is needed by libc++.
++#       libs.append('-ldl')
++#     elif platform.is_darwin():

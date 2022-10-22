@@ -1,0 +1,105 @@
+My temp version:
+#diff --git a/sig.c b/sig.c
+#index 54bf7d76..f7c9f8bf 100644
+#--- a/sig.c
+#+++ b/sig.c
+#@@ -606,16 +606,26 @@ termsig_handler (sig)
+# 
+#   run_exit_trap ();	/* XXX - run exit trap possibly in signal context? */
+# 
+#+  //fprintf (stderr, "!1!\n");fflush (stderr);
+#   /* We don't change the set of blocked signals. If a user starts the shell
+#      with a terminating signal blocked, we won't get here (and if by some
+#      magic chance we do, we'll exit below). */
+#   set_signal_handler (sig, SIG_DFL);
+# 
+#+  //fprintf (stderr, "!2!\n");fflush (stderr);
+#   kill (getpid (), sig);
+#+  //fprintf (stderr, "!3!\n");fflush (stderr);
+# 
+#-  if (dollar_dollar_pid != 1)
+#+  if (dollar_dollar_pid != 1) {
+#+    if (11 == sig) { // if it's segfault inside bash, do cause the coredump
+#+      //fprintf (stderr, "!3.5!\n");fflush (stderr);
+#+      *((volatile unsigned long *) NULL) = 0xdead0000 + sig;	/* SIGSEGV */
+#+    }
+#+    //fprintf (stderr, "!4!\n");fflush (stderr);
+#     exit (128+sig);		/* just in case the kill fails? */
+#+  }
+# 
+#+  //fprintf (stderr, "!5!\n");fflush (stderr);
+#   /* We get here only under extraordinary circumstances. */
+# 
+#   /* We are PID 1, and the kill above failed to kill the process. We assume
+#@@ -629,13 +639,20 @@ termsig_handler (sig)
+#     {
+#       set_signal_handler (XSIG (i), SIG_DFL);
+#       sigdelset (&mask, XSIG (i));
+#-      if (sig == XSIG (i))
+#+      if (sig == XSIG (i)) {
+#+        //fprintf (stderr, "!6!\n");fflush (stderr);
+# 	core = XCOREDUMP (i);
+#+      }
+#     }
+#+  //fprintf (stderr, "!7!\n");fflush (stderr);
+#   sigprocmask (SIG_SETMASK, &mask, (sigset_t *)NULL);
+#+  //fprintf (stderr, "!8!\n");fflush (stderr);
+# 
+#-  if (core)
+#+  if (core) {
+#+      //fprintf (stderr, "!9!\n");fflush (stderr);
+#     *((volatile unsigned long *) NULL) = 0xdead0000 + sig;	/* SIGSEGV */
+#+  }
+#+  //fprintf (stderr, "!A!\n");fflush (stderr);
+# 
+#   exit (128+sig);
+# }
+
+# src: https://lists.gnu.org/archive/html/bug-bash/2020-04/msg00066.html
+> user@Z575 2020/04/12 07:00:36 bash5.0.16 t:6 j:0 d:4 pp:16407 p:155787 ut2069
+> !76112 1 0  5.6.3-gf9fb85751506 #90 SMP PREEMPT Thu Apr 9 19:22:52 CEST 2020
+> /home/user/build/1packages/4used/bash-devel-git/makepkg_pacman/bash/src/bash
+> $ !1!
+> !2!
+> !3!
+> !4!
+>
+> that "!4!" is in sig.c here:
+>     if (dollar_dollar_pid != 1) {
+>       fprintf (stderr, "!4!\n");fflush (stderr);
+>       exit (128+sig);   /* just in case the kill fails? */
+>     }
+
+That code happens after bash sets the signal handler to SIG_DFL and resends
+itself the signal with kill(2), so it's supposed to ensure exit if the kill
+fails to kill the bash process.
+
+It avoids the rest of the code in the function, which is supposed to handle
+this pathological Linux situation described in this thread:
+
+https://lists.gnu.org/archive/html/bug-bash/2018-04/msg00088.html
+https://lists.gnu.org/archive/html/bug-bash/2018-05/msg00001.html
+
+It may be the case that this is called from a signal handler context, where
+the terminating signal is blocked. This patch should fix that:
+
+*** bash-20200408/sig.c      2020-04-07 16:41:19.000000000 -0400
+--- fix/sig.c       2020-04-12 13:26:50.000000000 -0400
+***************
+*** 609,613 ****
+    /* We don't change the set of blocked signals. If a user starts the shell
+       with a terminating signal blocked, we won't get here (and if by some
+!      magic chance we do, we'll exit below). */
+    set_signal_handler (sig, SIG_DFL);
+
+--- 609,617 ----
+    /* We don't change the set of blocked signals. If a user starts the shell
+       with a terminating signal blocked, we won't get here (and if by some
+!      magic chance we do, we'll exit below). What we do is to restore the
+!      top-level signal mask, in case this is called from a terminating signal
+!      handler context, in which case the signal is blocked. */
+!   restore_sigmask ();
+!
+    set_signal_handler (sig, SIG_DFL);
+
+

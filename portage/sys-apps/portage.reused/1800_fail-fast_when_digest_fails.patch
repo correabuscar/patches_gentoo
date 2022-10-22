@@ -1,0 +1,40 @@
+#--- orig/lib/_emerge/depgraph.py	2020-02-22 04:30:51.559536856 +0100
+#+++ mod/lib/_emerge/depgraph.py	2020-02-22 04:30:28.815539359 +0100
+#@@ -5718,8 +5718,8 @@ class depgraph(object):
+# 						pkg = self._pkg(cpv, pkg_type, root_config,
+# 							installed=installed, onlydeps=onlydeps,
+# 							myrepo=getattr(cpv, 'repo', None))
+#-					except portage.exception.PackageNotFound:
+#-						pass
+#+					except portage.exception.PackageNotFound as e:
+#+						raise RuntimeError('something bad happened3 ',e)
+# 					else:
+# 						# A cpv can be returned from dbapi.match() as an
+# 						# old-style virtual match even in cases when the
+Index: /var/tmp/portage/sys-apps/portage-3.0.30-r1/work/portage-3.0.30/lib/_emerge/depgraph.py
+===================================================================
+--- portage-3.0.30/lib/_emerge/depgraph.py
++++ portage-3.0.30/lib/_emerge/depgraph.py
+@@ -6605,18 +6605,20 @@ class depgraph:
+                         pkg = self._pkg(
+                             cpv,
+                             pkg_type,
+                             root_config,
+                             installed=installed,
+                             onlydeps=onlydeps,
+                             myrepo=getattr(cpv, "repo", None),
+                         )
+-                    except portage.exception.PackageNotFound:
+-                        pass
++                    #except portage.exception.PackageNotFound:
++                    #    pass
++                    except portage.exception.PackageNotFound as e:
++                        raise RuntimeError('something bad happened3 ',e)
+                     else:
+                         # A cpv can be returned from dbapi.match() as an
+                         # old-style virtual match even in cases when the
+                         # package does not actually PROVIDE the virtual.
+                         # Filter out any such false matches here.
+ 
+                         # Make sure that cpv from the current repo satisfies the atom.
+                         # This might not be the case if there are several repos with

@@ -1,0 +1,18 @@
+#le2.patch #should be fixed in commit d4cb932567407cc3cfb40fa11763a7459a278741
+
+27sept2018 patch:
+diff --git a/lib/sysfs.c b/lib/sysfs.c
+index 6a3c8fa8..b10eae4f 100644
+--- a/lib/sysfs.c
++++ b/lib/sysfs.c
+@@ -666,6 +666,10 @@ static int sensors_read_one_sysfs_chip(const char *dev_path,
+ 		subsys = strrchr(subsys_path, '/') + 1;
+ 	}
+ 
++  if (0 == strncmp(subsys,"thermal",8)) {
++    snprintf(linkpath, NAME_MAX, "%s/device", dev_path); // add another "/device" ie. /sys/class/hwmon/hwmon0/device/device/subsystem->../../../../bus/acpi/ is good but /sys/class/hwmon/hwmon0/device/subsystem->../../../../class/thermal/ isn't
++    return sensors_read_one_sysfs_chip(linkpath, dev_name, hwmon_path);
++  } else
+ 	if ((!subsys || !strcmp(subsys, "i2c")) &&
+ 	    sscanf(dev_name, "%hd-%x", &entry.chip.bus.nr,
+ 		   &entry.chip.addr) == 2) {

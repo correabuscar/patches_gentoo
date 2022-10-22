@@ -1,0 +1,69 @@
+note: it's now obsoleted by upstream, lookslike!
+
+before patch:
+[   70.869956] systemd[1]: Shutting down.
+[   70.911084] systemd-shutdown[1]: Syncing filesystems and block devices.
+[   71.012787] systemd-shutdown[1]: Sending SIGTERM to remaining processes...
+[   71.018635] systemd-journald[209]: Received SIGTERM from PID 1 (systemd-shutdow).
+[   71.048668] systemd-shutdown[1]: Sending SIGKILL to remaining processes...
+[   71.054794] systemd-shutdown[1]: Unmounting file systems.
+[   71.058281] [1874]: Remounting '/' read-only in with options 'lazytime,compress-force=lzo,ssd,discard,space_cache,autodefrag,commit=300,subvolid=5,subvol=/'.
+[   71.130039] BTRFS info (device sda1): unrecognized mount option 'lazytime'
+[   71.132255] [1874]: Failed to remount '/' read-only: Invalid argument
+[   71.134903] systemd-shutdown[1]: Remounting '/' failed abnormally, child process 1874 aborted or exited non-zero.
+[   71.137124] systemd-shutdown[1]: Not all file systems unmounted, 1 left.
+[   71.139748] systemd-shutdown[1]: Deactivating swaps.
+[   71.142390] systemd-shutdown[1]: All swaps deactivated.
+[   71.145011] systemd-shutdown[1]: Detaching loop devices.
+[   71.147773] systemd-shutdown[1]: All loop devices detached.
+[   71.149930] systemd-shutdown[1]: Detaching DM devices.
+[   71.152146] systemd-shutdown[1]: All DM devices detached.
+[   71.154221] systemd-shutdown[1]: Cannot finalize remaining file systems, continuing.
+[   71.161990] + echo 'Script args: reboot'
+
+after patch:
+[  293.983108] systemd[1]: Shutting down.
+[  294.017966] systemd-shutdown[1]: Syncing filesystems and block devices.
+[  294.148453] systemd-shutdown[1]: Sending SIGTERM to remaining processes...
+[  294.154747] systemd-journald[212]: Received SIGTERM from PID 1 (systemd-shutdow).
+[  294.192200] systemd-shutdown[1]: Sending SIGKILL to remaining processes...
+[  294.198533] systemd-shutdown[1]: Unmounting file systems.
+[  294.202594] [29660]: Remounting '/' read-only in with options 'lazytime,compress-force=lzo,ssd,discard,space_cache,autodefrag,commit=300,subvolid=5,subvol=/'.
+[  294.342552] BTRFS info (device sda1): disk space caching is enabled
+[  294.446869] systemd-shutdown[1]: All filesystems unmounted.
+[  294.449103] systemd-shutdown[1]: Deactivating swaps.
+[  294.451767] systemd-shutdown[1]: All swaps deactivated.
+[  294.454429] systemd-shutdown[1]: Detaching loop devices.
+[  294.457199] systemd-shutdown[1]: All loop devices detached.
+[  294.459298] systemd-shutdown[1]: Detaching DM devices.
+[  294.461520] systemd-shutdown[1]: All DM devices detached.
+[  294.468678] + echo 'Script args: reboot'
+
+diff --git a/src/core/umount.c b/src/core/umount.c
+index de826edd4..b8d82d57d 100644
+--- a/src/core/umount.c
++++ b/src/core/umount.c
+@@ -396,13 +396,22 @@ static int remount_with_timeout(MountPoint *m, char *options, int *n_failed) {
+         if (r < 0)
+                 return r;
+         if (r == 0) {
++          char *opts = NULL;
++          unsigned long mount_flags;
++          r = mount_option_mangle(options, MS_RDONLY | MS_REMOUNT, &mount_flags, &opts);
++          if (r < 0)
++            log_error_errno(errno,
++                "Failed to mangle mount options %s: %m",
++                strempty(options));
++
+                 log_info("Remounting '%s' read-only in with options '%s'.", m->path, options);
+ 
+                 /* Start the mount operation here in the child */
+-                r = mount(NULL, m->path, NULL, MS_REMOUNT|MS_RDONLY, options);
++                r = mount(NULL, m->path, NULL, mount_flags, opts);
+                 if (r < 0)
+                         log_error_errno(errno, "Failed to remount '%s' read-only: %m", m->path);
+ 
++                opts = mfree(opts);
+                 _exit(r < 0 ? EXIT_FAILURE : EXIT_SUCCESS);
+         }
+ 

@@ -1,0 +1,49 @@
+ignore /dev/null when debug is used
+i don't remember how, maybe by setting a log file via CCACHE_LOGFILE= env. var
+and also enabling CCACHE_DEBUG=1
+this would create multiple files based on the name of the log file, i think
+which would be bad if CCACHE_LOGFILE=/dev/null
+
+Index: /var/tmp/portage/dev-util/ccache-4.1/work/ccache-4.1/src/ccache.cpp
+===================================================================
+#--- .orig/var/tmp/portage/dev-util/ccache-4.1/work/ccache-4.1/src/ccache.cpp
+#+++ /var/tmp/portage/dev-util/ccache-4.1/work/ccache-4.1/src/ccache.cpp
+--- a/src/ccache.cpp
++++ b/src/ccache.cpp
+@@ -239,7 +239,7 @@ init_hash_debug(Context& ctx,
+                 string_view section_name,
+                 FILE* debug_text_file)
+ {
+-  if (!ctx.config.debug()) {
++  if ((!ctx.config.debug()) || (std::string("/dev/null").compare(ctx.args_info.output_obj) == 0)) {
+     return;
+   }
+ 
+@@ -2169,6 +2169,9 @@ finalize_at_exit(Context& ctx)
+   }
+ 
+   // Dump log buffer last to not lose any logs.
++  if ((!ctx.config.debug()) || (std::string("/dev/null").compare(ctx.args_info.output_obj) == 0)) {
++    return;
++  } else
+   if (ctx.config.debug() && !ctx.args_info.output_obj.empty()) {
+     const auto path = FMT("{}.ccache-log", ctx.args_info.output_obj);
+     Logging::dump_log(path);
+@@ -2252,7 +2255,7 @@ do_cache_compilation(Context& ctx, const
+   }
+   MTR_END("main", "clean_up_internal_tempdir");
+ 
+-  if (!ctx.config.log_file().empty() || ctx.config.debug()) {
++  if (!ctx.config.log_file().empty() || (ctx.config.debug()&&(std::string("/dev/null").compare(ctx.args_info.output_obj) != 0))) {
+     ctx.config.visit_items(configuration_logger);
+   }
+ 
+@@ -2318,7 +2321,7 @@ do_cache_compilation(Context& ctx, const
+   LOG("Object file: {}", ctx.args_info.output_obj);
+   MTR_META_THREAD_NAME(ctx.args_info.output_obj.c_str());
+ 
+-  if (ctx.config.debug()) {
++  if ((ctx.config.debug())&&(std::string("/dev/null").compare(ctx.args_info.output_obj) != 0)) {
+     std::string path = FMT("{}.ccache-input-text", ctx.args_info.output_obj);
+     File debug_text_file(path, "w");
+     if (debug_text_file) {

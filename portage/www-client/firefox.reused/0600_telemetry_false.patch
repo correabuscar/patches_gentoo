@@ -1,0 +1,19 @@
+diff -r 85d3d2603b8f modules/libpref/Preferences.cpp
+--- a/modules/libpref/Preferences.cpp	Wed Mar 13 23:43:54 2019 +0200
++++ b/modules/libpref/Preferences.cpp	Wed Mar 13 23:59:10 2019 +0100
+@@ -3338,6 +3338,7 @@
+ #ifdef MOZ_WIDGET_ANDROID
+ 
+ static Maybe<bool> TelemetryPrefValue() {
++  return Some(false);//added by je
+   // Leave it unchanged if it's already set.
+   // XXX: how could it already be set?
+   if (Preferences::GetType(kTelemetryPref) != nsIPrefBranch::PREF_INVALID) {
+@@ -3372,6 +3373,7 @@
+ #else  // !MOZ_WIDGET_ANDROID
+ 
+ static bool TelemetryPrefValue() {
++  return false;//added by je
+   // For platforms with Unified Telemetry (here meaning not-Android),
+   // toolkit.telemetry.enabled determines whether we send "extended" data.
+   // We only want extended data from pre-release channels due to size.

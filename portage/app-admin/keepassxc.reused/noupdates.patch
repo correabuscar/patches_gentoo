@@ -1,0 +1,42 @@
+now using, instead of this patch, cmake arg -DWITH_XC_UPDATECHECK=OFF
+as per info from INSTALL.md
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index c5fa3a1a..11576aab 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -225,7 +225,7 @@ add_feature_info(KeePassXC-Browser WITH_XC_BROWSER "Browser integration with Kee
+ add_feature_info(SSHAgent WITH_XC_SSHAGENT "SSH agent integration compatible with KeeAgent")
+ add_feature_info(KeeShare WITH_XC_KEESHARE "Sharing integration with KeeShare (requires quazip5 for secure containers)")
+ add_feature_info(YubiKey WITH_XC_YUBIKEY "YubiKey HMAC-SHA1 challenge-response")
+-add_feature_info(UpdateCheck WITH_XC_UPDATECHECK "Automatic update checking")
++#add_feature_info(UpdateCheck WITH_XC_UPDATECHECK "Automatic update checking")
+ if(UNIX AND NOT APPLE)
+     add_feature_info(FdoSecrets WITH_XC_FDOSECRETS "Implement freedesktop.org Secret Storage Spec server side API.")
+ endif()
+diff --git a/src/config-keepassx.h.cmake b/src/config-keepassx.h.cmake
+index 6aceaa2a..89f0b170 100644
+--- a/src/config-keepassx.h.cmake
++++ b/src/config-keepassx.h.cmake
+@@ -20,7 +20,7 @@
+ #cmakedefine WITH_XC_KEESHARE
+ #cmakedefine WITH_XC_KEESHARE_INSECURE
+ #cmakedefine WITH_XC_KEESHARE_SECURE
+-#cmakedefine WITH_XC_UPDATECHECK
++// #cmakedefine WITH_XC_UPDATECHECK
+ #cmakedefine WITH_XC_TOUCHID
+ #cmakedefine WITH_XC_FDOSECRETS
+ 
+diff --git a/src/core/Config.cpp b/src/core/Config.cpp
+index 0a4e88b7..78c7799b 100644
+--- a/src/core/Config.cpp
++++ b/src/core/Config.cpp
+@@ -101,7 +101,7 @@ static const QHash<Config::ConfigKey, ConfigDirective> configStrings = {
+     {Config::GUI_AdvancedSettings, {QS("GUI/AdvancedSettings"), Roaming, false}},
+     {Config::GUI_MonospaceNotes, {QS("GUI/MonospaceNotes"), Roaming, false}},
+     {Config::GUI_ApplicationTheme, {QS("GUI/ApplicationTheme"), Roaming, QS("auto")}},
+-    {Config::GUI_CheckForUpdates, {QS("GUI/CheckForUpdates"), Roaming, true}},
++    {Config::GUI_CheckForUpdates, {QS("GUI/CheckForUpdates"), Roaming, false}},
+     {Config::GUI_CheckForUpdatesIncludeBetas, {QS("GUI/CheckForUpdatesIncludeBetas"), Roaming, false}},
+ 
+     {Config::GUI_MainWindowGeometry, {QS("GUI/MainWindowGeometry"), Local, {}}},

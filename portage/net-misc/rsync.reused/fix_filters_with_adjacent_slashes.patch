@@ -1,0 +1,73 @@
+ie. this exclude filter: "//sourcedir//a//////file2" becomes this: "/sourcedir/a/file2"
+diff --git a/exclude.c b/exclude.c
+index a0090b29..e3a1b089 100644
+--- a/exclude.c
++++ b/exclude.c
+@@ -772,7 +772,9 @@ int check_filter(filter_rule_list *listp, enum logcode code,
+ 		if (rule_matches(name, ent, name_flags)) {
+ 			report_filter_result(code, name, ent, name_flags, listp->debug_type);
+ 			return ent->rflags & FILTRULE_INCLUDE ? 1 : -1;
+-		}
++//		}else{
++//			report_filter_result(code, name, ent, name_flags, listp->debug_type);
++    }
+ 	}
+ 
+ 	return 0;
+@@ -805,7 +807,9 @@ static const uchar *rule_strcmp(const uchar *str, const char *rule, int rule_len
+  * template rflags and the xflags additionally affect parsing. */
+ static filter_rule *parse_rule_tok(const char **rulestr_ptr,
+ 				   const filter_rule *template, int xflags,
+-				   const char **pat_ptr, unsigned int *pat_len_ptr)
++				   //const char **pat_ptr,
++				   char **pat_ptr,
++           unsigned int *pat_len_ptr)
+ {
+ 	const uchar *s = (const uchar *)*rulestr_ptr;
+ 	filter_rule *rule;
+@@ -1045,7 +1049,8 @@ static filter_rule *parse_rule_tok(const char **rulestr_ptr,
+ 	 && !(rule->rflags & (FILTRULES_SIDES|FILTRULE_MERGE_FILE|FILTRULE_PERDIR_MERGE)))
+ 		rule->rflags |= FILTRULE_SENDER_SIDE;
+ 
+-	*pat_ptr = (const char *)s;
++	//*pat_ptr = (const char *)s;
++	*pat_ptr = (char *)s;
+ 	*pat_len_ptr = len;
+ 	*rulestr_ptr = *pat_ptr + len;
+ 	return rule;
+@@ -1092,7 +1097,8 @@ void parse_filter_str(filter_rule_list *listp, const char *rulestr,
+ 		     const filter_rule *template, int xflags)
+ {
+ 	filter_rule *rule;
+-	const char *pat;
++	//const char *pat;
++	char *pat;
+ 	unsigned int pat_len;
+ 
+ 	if (!rulestr)
+@@ -1105,6 +1111,25 @@ void parse_filter_str(filter_rule_list *listp, const char *rulestr,
+ 		if (!(rule = parse_rule_tok(&rulestr, template, xflags, &pat, &pat_len)))
+ 			break;
+ 
++    //rprintf(FERROR, "!! got filter(len=%d): %.*s\n", //FIXME: the filter pattern here has the adjacent slashes! but it's a pointer not malloc-ed! so not sure if I should modify it? hmm; commented out to avoid spam(but this means you don't get to see the initial filter string, eg. before being fixed)
++        //(int)pat_len,(int)pat_len, pat);
++
++    if (pat_len>1) {
++      unsigned int curpos=1;
++      for (unsigned int i=1; i<pat_len; i++) {
++        if (('/' == pat[i-1]) && ('/' == pat[i])) { //FIXME: is string containing 1 char-wide chars? or is it i dno, utf-8/unicode or whatnot? in other words, is a char 1 byte long? is '/' 1 byte long? because the 1 and ++ assume so!
++          continue;
++        } else {
++          pat[curpos]=pat[i];
++          curpos++;
++        }
++      }
++      if (curpos <pat_len) {
++        pat_len=curpos;//curpos is already +1 btw! due to curpos++ above
++        rprintf(FERROR, "!! fixed filter(len=%d): %.*s\n",
++            (int)pat_len,(int)pat_len, pat);
++      }
++    }
+ 		if (pat_len >= MAXPATHLEN) {
+ 			rprintf(FERROR, "discarding over-long filter: %.*s\n",
+ 				(int)pat_len, pat);

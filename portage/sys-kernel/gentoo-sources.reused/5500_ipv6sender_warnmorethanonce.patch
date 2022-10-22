@@ -1,0 +1,42 @@
+this is gone in at most v5.3-rc3 commit ecb095bff5d4b8711a81968625b3b4a235d3e477 or earlier.
+but I'm keeping the warning because it could be anything else(not just ipv6) and the stacktrace will show which process did it
+
+https://bugzilla.kernel.org/show_bug.cgi?id=202249
+
+it's `ss -w`(raw, display RAW sockets) that's causing it
+
+for linux-stable 5.2.8:
+#diff --git a/net/ipv4/raw_diag.c b/net/ipv4/raw_diag.c
+#index c200065ef9a5..eece57141fa7 100644
+#--- a/net/ipv4/raw_diag.c
+#+++ b/net/ipv4/raw_diag.c
+#@@ -23,9 +23,11 @@ raw_get_hashinfo(const struct inet_diag_req_v2 *r)
+# 		return &raw_v6_hashinfo;
+# #endif
+# 	} else {
+#-		pr_warn_once("Unexpected inet family %d\n",
+#+		//pr_warn_once("Unexpected inet family %d\n",
+#+		pr_warn("Unexpected inet family %d\n",
+# 			     r->sdiag_family);
+#-		WARN_ON_ONCE(1);
+#+		//WARN_ON_ONCE(1);
+#+		WARN_ON(1);
+# 		return ERR_PTR(-EINVAL);
+# 	}
+# }
+
+for linuxgit:
+diff --git a/net/ipv4/raw_diag.c b/net/ipv4/raw_diag.c
+index e35736b99300..b22f9c38214e 100644
+--- a/net/ipv4/raw_diag.c
++++ b/net/ipv4/raw_diag.c
+@@ -24,6 +24,9 @@ raw_get_hashinfo(const struct inet_diag_req_v2 *r)
+ 		return &raw_v6_hashinfo;
+ #endif
+ 	} else {
++    pr_warn("Unexpected inet family %d\n",
++                   r->sdiag_family);
++    WARN_ON(1);  //if stacktrace is wanted (or just process name revealed)
+ 		return ERR_PTR(-EINVAL);
+ 	}
+ }

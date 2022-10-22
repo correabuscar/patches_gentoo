@@ -1,0 +1,96 @@
+LM: 13 May 2021, to work on bash-9999 aka 'master' branch
+LM: 07 May 2021, worked on bash-99999::localrepo aka 'devel' branch (but this is too volatile, can easily introduce showstopper bash-breaking bugs!)
+LM=last modified
+
+You might also want to apply: get_exitcode_130_on_sigint_read.patch
+
+This patch makes bash act like `bash --posix` for eg. 'read -p' (shouldn't affect 'read -e' aka readline)
+ie.
+$ ./sigintread.bash
+Press C-c here...^Cinterrupted sees exit code '0'
+
+Normal exit sees ec=130
+(exit code 130 here)
+
+instead of:
+$ ./sigintread.bash 
+Press C-c here...^Cinterrupted sees exit code '0'
+^C
+(exit code 130 here)
+
+Thanks to Chet Ramey for info: https://lists.gnu.org/archive/html/bug-bash/2020-04/msg00117.html
+
+./sigintread.bash is:
+#!/bin/bash
+#XXX: it acts ok with this ^ --posix, thanks to Chet Ramey here: https://lists.gnu.org/archive/html/bug-bash/2020-04/msg00110.html  so it also needs the exit and it is exit code 0 still hmm
+
+#C-c won't break the builtin read unless default SIGINT trap is restored, thus needing two C-c to exit
+
+interrupted() {
+	local ec="$?"
+	trap - SIGINT  #this restores prev. behaviour, so now another C-c will stop 'read -rp'
+  echo "interrupted sees exit code '$ec'"
+  #exit "$ec"  #this is needed ONLY for when 'sleep' or 'ping' is used and interrupted, or else it will continue running and hit 'Normal exit', if used with 'read' then it will exit without breaking 'read' thus exit code is 0 instead of 130 (128+2 aka SIGINT==2)
+}
+
+trap interrupted SIGINT
+#builtin read -e  #damn, that bash_event_hook() in bashline.c really is reached only on 'read -e' not 'read -p'
+builtin read -rp "Press C-c here..."  #can use 'sleep 100' instead of this 'read...' here, for testing how the behaviour is different with an external command instead of a builtin one.
+#sleep 100
+#ping 127.0.0.1  #ping will ec=0 on C-c, thanks to: Greg Wooledge https://lists.gnu.org/archive/html/bug-bash/2020-04/msg00096.html
+ec="$?"
+echo
+echo "Normal exit sees ec=$ec"
+exit "$ec"
+
+#diff --git a/builtins/read.def b/builtins/read.def
+#index 39e16e84..f38706c3 100644
+#--- a/builtins/read.def
+#+++ b/builtins/read.def
+#@@ -606,11 +606,20 @@ read_builtin (list)
+#       CHECK_ALRM;
+#       errno = 0;
+#       if (unbuffered_read == 2)
+#-	retval = posixly_correct ? zreadintr (fd, &c, 1) : zreadn (fd, &c, nchars - nr);
+#+	retval = //posixly_correct ?
+#+        zreadintr (fd, &c, 1)
+#+        // : zreadn (fd, &c, nchars - nr)
+#+        ;
+#       else if (unbuffered_read)
+#-	retval = posixly_correct ? zreadintr (fd, &c, 1) : zread (fd, &c, 1);
+#+	retval = //posixly_correct ?
+#+        zreadintr (fd, &c, 1)
+#+        //: zread (fd, &c, 1)
+#+        ;
+#       else
+#-	retval = posixly_correct ? zreadcintr (fd, &c) : zreadc (fd, &c);
+#+	retval = //posixly_correct ?
+#+        zreadcintr (fd, &c)
+#+        //: zreadc (fd, &c)
+#+        ;
+#       reading = 0;
+# 
+#       if (retval <= 0)
+
+Index: /var/tmp/portage/app-shells/bash-9999/work/bash-9999/builtins/read.def
+===================================================================
+--- bash-9999/builtins/read.def
++++ bash-9999/builtins/read.def
+@@ -673,11 +673,14 @@ read_builtin (list)
+ 	sigprocmask (SIG_SETMASK, &chldset, &prevset);
+ #endif
+       if (unbuffered_read == 2)
+-	retval = posixly_correct ? zreadintr (fd, &c, 1) : zreadn (fd, &c, nchars - nr);
++	retval = //posixly_correct ? 
++          zreadintr (fd, &c, 1) ;//: zreadn (fd, &c, nchars - nr);
+       else if (unbuffered_read)
+-	retval = posixly_correct ? zreadintr (fd, &c, 1) : zread (fd, &c, 1);
++	retval = //posixly_correct ? 
++          zreadintr (fd, &c, 1) ;//: zread (fd, &c, 1);
+       else
+-	retval = posixly_correct ? zreadcintr (fd, &c) : zreadc (fd, &c);
++	retval = //posixly_correct ? 
++          zreadcintr (fd, &c) ;//: zreadc (fd, &c);
+ #if defined (SIGCHLD)
+       if (tmsec > 0 || tmusec > 0)
+ 	sigprocmask (SIG_SETMASK, &prevset, (sigset_t *)0);

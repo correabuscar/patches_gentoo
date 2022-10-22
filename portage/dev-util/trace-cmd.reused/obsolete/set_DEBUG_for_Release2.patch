@@ -1,0 +1,24 @@
+this isn't enough to remove -DQT_NO_DEBUG that BUILD_TYPE=Release adds! (also hacked cmake to not add it, but it's still somehow being added!)
+
+but can manually remove it https://bugzilla.kernel.org/show_bug.cgi?id=204277#c10
+
+diff --git a/kernel-shark/CMakeLists.txt b/kernel-shark/CMakeLists.txt
+index 45c6f23..4c5c428 100644
+--- a/kernel-shark/CMakeLists.txt
++++ b/kernel-shark/CMakeLists.txt
+@@ -42,6 +42,15 @@ endif (NOT CMAKE_BUILD_TYPE)
+ 
+ message("\n Build type: ${CMAKE_BUILD_TYPE}")
+ 
++set(CMAKE_C_FLAGS_RELEASE "-O0 -ggdb -DDEBUG")
++set(CMAKE_CXX_FLAGS_RELEASE "-O0 -ggdb -DDEBUG")
++set(CMAKE_TARGET_DEFINITIONS_CXX
++  "QT_CORE_LIB"
++  "QT_GUI_LIB"
++  "QT_NETWORK_LIB"
++  "QT_WIDGETS_LIB"
++  )
++
+ if (NOT CMAKE_C_FLAGS_PACKAGE)
+     set(CMAKE_C_FLAGS_PACKAGE "-O3")
+ endif (NOT CMAKE_C_FLAGS_PACKAGE)

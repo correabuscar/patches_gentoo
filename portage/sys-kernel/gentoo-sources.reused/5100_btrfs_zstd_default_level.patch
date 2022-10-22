@@ -1,0 +1,24 @@
+was using zstd:5 but as seen with zstd:15 there's a lot of stuttering even the mouse cursor! ergo moving to zstd:1 for absolutely no lag!
+
+diff --git a/fs/btrfs/zstd.c b/fs/btrfs/zstd.c
+index 6b9e29d050f3..02ffdb27c360 100644
+--- a/fs/btrfs/zstd.c
++++ b/fs/btrfs/zstd.c
+#@@ -22,7 +22,7 @@
+# 
+# #define ZSTD_BTRFS_MAX_WINDOWLOG 17
+# #define ZSTD_BTRFS_MAX_INPUT (1 << ZSTD_BTRFS_MAX_WINDOWLOG)
+#-#define ZSTD_BTRFS_DEFAULT_LEVEL 3
+#+#define ZSTD_BTRFS_DEFAULT_LEVEL 5
+# #define ZSTD_BTRFS_MAX_LEVEL 15
+# /* 307s to avoid pathologically clashing with transaction commit */
+# #define ZSTD_BTRFS_RECLAIM_JIFFIES (307 * HZ)
+@@ -22,7 +22,7 @@
+ 
+ #define ZSTD_BTRFS_MAX_WINDOWLOG 17
+ #define ZSTD_BTRFS_MAX_INPUT (1 << ZSTD_BTRFS_MAX_WINDOWLOG)
+-#define ZSTD_BTRFS_DEFAULT_LEVEL 3
++#define ZSTD_BTRFS_DEFAULT_LEVEL 1
+ #define ZSTD_BTRFS_MAX_LEVEL 15
+ /* 307s to avoid pathologically clashing with transaction commit */
+ #define ZSTD_BTRFS_RECLAIM_JIFFIES (307 * HZ)

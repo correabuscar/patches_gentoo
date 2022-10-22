@@ -1,0 +1,39 @@
+well this (patch) is a fail:
+
+mm/oom_kill.c: In function ‘dump_tasks’:
+mm/oom_kill.c:425:47: error: ‘struct signal_struct’ has no member named ‘oom_score’; did you mean ‘oom_score_adj’?
+    task->signal->oom_score_adj, task->signal->oom_score, task->comm);
+                                               ^~~~~~~~~
+./include/linux/printk.h:315:34: note: in definition of macro ‘pr_info’
+  printk(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__)
+                                  ^~~~~~~~~~~
+make[1]: *** [scripts/Makefile.build:305: mm/oom_kill.o] Error 1
+
+diff --git a/mm/oom_kill.c b/mm/oom_kill.c
+index f10aa5360616..40967b04dbce 100644
+--- a/mm/oom_kill.c
++++ b/mm/oom_kill.c
+@@ -401,7 +401,7 @@ static void dump_tasks(struct mem_cgroup *memcg, const nodemask_t *nodemask)
+ 	struct task_struct *task;
+ 
+ 	pr_info("Tasks state (memory values in pages):\n");
+-	pr_info("[  pid  ]   uid  tgid total_vm      rss pgtables_bytes swapents oom_score_adj name\n");
++	pr_info("[  pid  ]   uid  tgid total_vm      rss pgtables_bytes swapents oom_score_adj oom_score name\n");
+ 	rcu_read_lock();
+ 	for_each_process(p) {
+ 		if (oom_unkillable_task(p, memcg, nodemask))
+@@ -417,12 +417,12 @@ static void dump_tasks(struct mem_cgroup *memcg, const nodemask_t *nodemask)
+ 			continue;
+ 		}
+ 
+-		pr_info("[%7d] %5d %5d %8lu %8lu %8ld %8lu         %5hd %s\n",
++		pr_info("[%7d] %5d %5d %8lu %8lu %8ld %8lu         %5hd %5hd %s\n",
+ 			task->pid, from_kuid(&init_user_ns, task_uid(task)),
+ 			task->tgid, task->mm->total_vm, get_mm_rss(task->mm),
+ 			mm_pgtables_bytes(task->mm),
+ 			get_mm_counter(task->mm, MM_SWAPENTS),
+-			task->signal->oom_score_adj, task->comm);
++			task->signal->oom_score_adj, task->signal->oom_score, task->comm);
+ 		task_unlock(task);
+ 	}
+ 	rcu_read_unlock();

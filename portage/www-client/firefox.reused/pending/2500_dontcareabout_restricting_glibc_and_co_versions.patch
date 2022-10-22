@@ -1,0 +1,51 @@
+I forgot why I needed this, some error during compilation?
+
+#diff -r 078326f48100 python/mozbuild/mozbuild/action/check_binary.py
+#--- a/python/mozbuild/mozbuild/action/check_binary.py	Tue Apr 14 06:41:42 2020 +0000
+#+++ b/python/mozbuild/mozbuild/action/check_binary.py	Wed Apr 15 20:04:39 2020 +0200
+#@@ -22,8 +22,10 @@
+# )
+# 
+# 
+#-STDCXX_MAX_VERSION = Version('3.4.17')
+#-GLIBC_MAX_VERSION = Version('2.12')
+#+#STDCXX_MAX_VERSION = Version('3.4.17')
+#+STDCXX_MAX_VERSION = Version('3.4.26')
+#+#GLIBC_MAX_VERSION = Version('2.12')
+#+GLIBC_MAX_VERSION = Version('2.31')
+# LIBGCC_MAX_VERSION = Version('4.8')
+# 
+# HOST = {
+#diff -r 8f68705097b4 python/mozbuild/mozbuild/action/check_binary.py
+#--- a/python/mozbuild/mozbuild/action/check_binary.py	Tue May 19 13:19:39 2020 +0300
+#+++ b/python/mozbuild/mozbuild/action/check_binary.py	Wed May 20 04:22:09 2020 +0200
+#@@ -22,8 +22,10 @@
+# )
+# 
+# 
+#-STDCXX_MAX_VERSION = Version('3.4.19')
+#-GLIBC_MAX_VERSION = Version('2.17')
+#+#STDCXX_MAX_VERSION = Version('3.4.19')
+#+STDCXX_MAX_VERSION = Version('3.4.26')
+#+#GLIBC_MAX_VERSION = Version('2.17')
+#+GLIBC_MAX_VERSION = Version('2.32')
+# LIBGCC_MAX_VERSION = Version('4.8')
+# 
+# HOST = {
+diff -r b1146cce5053 python/mozbuild/mozbuild/action/check_binary.py
+--- a/python/mozbuild/mozbuild/action/check_binary.py	Tue Jun 23 02:23:48 2020 +0300
++++ b/python/mozbuild/mozbuild/action/check_binary.py	Tue Jun 23 07:39:18 2020 +0200
+@@ -22,9 +22,11 @@
+ )
+ 
+ 
+-STDCXX_MAX_VERSION = Version('3.4.19')
++#STDCXX_MAX_VERSION = Version('3.4.19')
++STDCXX_MAX_VERSION = Version('3.4.26')
+ CXXABI_MAX_VERSION = Version('1.3.7')
+-GLIBC_MAX_VERSION = Version('2.17')
++#GLIBC_MAX_VERSION = Version('2.17')
++GLIBC_MAX_VERSION = Version('2.32')
+ LIBGCC_MAX_VERSION = Version('4.8')
+ 
+ HOST = {

@@ -1,0 +1,12 @@
+diff --git a/src/fe-gtk/fe-gtk.c b/src/fe-gtk/fe-gtk.c
+index ee3e847c..c388636a 100644
+--- a/src/fe-gtk/fe-gtk.c
++++ b/src/fe-gtk/fe-gtk.c
+@@ -1071,6 +1071,7 @@ fe_open_url_inner (const char *url)
+ #elif defined(__APPLE__)
+     osx_show_uri (url);
+ #else
++    fprintf (stderr, "About to open via gtk_show_uri the following uri:\n'%s'\n", url);
+ 	gtk_show_uri (NULL, url, GDK_CURRENT_TIME, NULL);
+ #endif
+ }

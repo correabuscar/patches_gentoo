@@ -1,0 +1,41 @@
+currently no longer needed for chromium because they've done something in chromium to work around it!
+
+either way this patch is for/affecting dri2 only! ie. when dri3 is disabled, else dri3 is unaffected!
+#see: https://bugs.chromium.org/p/chromium/issues/detail?id=442111#c118
+
+#doneFIXME: re-add this, temp removed for now: - ok the flicker during compile times seems to be unrelated to this patch! however, this patch seems unnecessary for chromium anymore (likely due to that update made to bug 442111 which I ignored) so, opting for not including this anymore; re-added (07 may 2018) to see if it fixes some systray background icon's (eg. vlc's) messed up graphics:
+'chromiumbug442111.patch' #see: https://bugs.chromium.org/p/chromium/issues/detail?id=442111#c118
+#//^this is unrelated to mouse flickering in chromium while positioned on tooltips and some kind of loading happens in the background(even if in other tabs!) https://bugs.chromium.org/p/chromium/issues/detail?id=718630
+
+diff -upr mesa-17.0.4.orig/src/glx/dri2_glx.c mesa-17.0.4/src/glx/dri2_glx.c
+--- mesa-17.0.4.orig/src/glx/dri2_glx.c	2017-04-17 15:38:57.016936032 +0200
++++ mesa-17.0.4/src/glx/dri2_glx.c	2017-04-19 22:15:23.094547639 +0200
+@@ -635,6 +635,12 @@ dri2_copy_drawable(struct dri2_drawable
+ static void
+ dri2_wait_x(struct glx_context *gc)
+ {
++   // src: https://bugs.freedesktop.org/show_bug.cgi?id=90264#c45
++   if (gc->currentDpy != NULL) {
++     //dri2InvalidateBuffers(gc->currentDpy, gc->currentDrawable); // doesn't work with only this!
++     XSync(gc->currentDpy, False);//works with only this, when dri3 is disabled!
++   }
++
+    struct dri2_drawable *priv = (struct dri2_drawable *)
+       GetGLXDRIDrawable(gc->currentDpy, gc->currentDrawable);
+ 
+diff -upr mesa-17.0.4.orig/src/glx/dri3_glx.c mesa-17.0.4/src/glx/dri3_glx.c
+--- mesa-17.0.4.orig/src/glx/dri3_glx.c	2017-04-17 15:38:57.016936032 +0200
++++ mesa-17.0.4/src/glx/dri3_glx.c	2017-04-19 22:22:34.822120088 +0200
+@@ -453,6 +453,12 @@ dri3_copy_sub_buffer(__GLXDRIdrawable *p
+ static void
+ dri3_wait_x(struct glx_context *gc)
+ {
++   // src: https://bugs.freedesktop.org/show_bug.cgi?id=90264#c50
++   if (gc->currentDpy != NULL) {
++     //dri2InvalidateBuffers(gc->currentDpy, gc->currentDrawable); //can't find equivalent of this for dri3, doesn't matter anyway since the dri2 one doesn't even work for dri2!
++     //XSync(gc->currentDpy, False);//no effect when dri3 is enabled
++   }
++
+    struct dri3_drawable *priv = (struct dri3_drawable *)
+       GetGLXDRIDrawable(gc->currentDpy, gc->currentDrawable);
+ 

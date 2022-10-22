@@ -1,0 +1,13 @@
+diff -r 7c987c3a5840 js/src/vm/TraceLogging.h
+--- a/js/src/vm/TraceLogging.h	Wed Mar 13 21:15:26 2019 +0200
++++ b/js/src/vm/TraceLogging.h	Wed Mar 13 20:43:24 2019 +0100
+@@ -191,7 +191,8 @@
+         col_(mozilla::Nothing()),
+         uses_(0) {}
+ 
+-  ~TraceLoggerEventPayload() { MOZ_ASSERT(uses_ == 0); }
++  ~TraceLoggerEventPayload() { //MOZ_ASSERT(uses_ == 0); 
++  }
+ 
+   void setLine(uint32_t line) { line_ = mozilla::Some(line); }
+   void setColumn(uint32_t col) { col_ = mozilla::Some(col); }

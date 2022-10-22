@@ -1,0 +1,20 @@
+avoid bc 1.07 hanging!
+see: https://bugs.archlinux.org/task/53546
+
+diff --git a/Kbuild b/Kbuild
+index 3d0ae152af7c..c7daf52cc421 100644
+--- a/Kbuild
++++ b/Kbuild
+@@ -57,10 +57,10 @@ targets += $(timeconst-file)
+ 
+ quiet_cmd_gentimeconst = GEN     $@
+ define cmd_gentimeconst
+-	(echo $(CONFIG_HZ) | bc -q $< ) > $@
++	(echo "$(CONFIG_HZ);" | bc -q $< ) > $@
+ endef
+ define filechk_gentimeconst
+-	(echo $(CONFIG_HZ) | bc -q $< )
++	(echo "$(CONFIG_HZ);" | bc -q $< )
+ endef
+ 
+ $(obj)/$(timeconst-file): kernel/time/timeconst.bc FORCE

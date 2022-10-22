@@ -1,0 +1,24 @@
+note: if these are uncommented, then recompiling glibc with a glibc with these uncommented will fail - so you need to install a normal ie. sudo pacman -S glibc lib32-glibc  AND you have to ensure /etc/locale.gen is set to something like en_US.UTF-8 UTF-8 (then run: sudo locale-gen)
+
+fixed in chromium in patch /home/user/build/1packages/4used/chro2/chromium-dev/40_chromium-dev/__progname_fix.patch
+
+diff -upr glibc-2.27.orig/misc/init-misc.c glibc-2.27/misc/init-misc.c
+--- glibc-2.27.orig/misc/init-misc.c	2018-02-01 17:17:18.000000000 +0100
++++ glibc-2.27/misc/init-misc.c	2018-04-23 16:58:35.028101910 +0200
+@@ -19,6 +19,8 @@
+ #include <string.h>
+ #include <libc-internal.h>
+ 
++//#include <stdio.h> //needed for fprintf
++
+ char *__progname_full = (char *) "";
+ char *__progname = (char *) "";
+ weak_alias (__progname_full, program_invocation_name)
+@@ -36,5 +38,6 @@ __init_misc (int argc, char **argv, char
+       else
+ 	__progname = p + 1;
+       __progname_full = argv[0];
++      //fprintf(stderr,"!! __init_misc argv[0]==%s\n", argv[0]);//this was to debug an issue with chromium, but turns out it is using setproctitle in services/service_manager/embedder/set_process_title.cc to overwrite argv[0] with all args in one long string! (lame-o !) thus __progname shows all args in one long string!!! instead of program name! https://cs.chromium.org/chromium/src/services/service_manager/embedder/set_process_title.cc?q=services/service_manager/embedder/set_process_title.cc&sq=package:chromium&g=0&l=1 https://cs.chromium.org/chromium/src/services/service_manager/embedder/set_process_title_linux.cc?sq=package:chromium&g=0&l=54  ok so now it shows 'romium/chromium --type=utility ...' because chromium replaced '/proc/self/exe' with '/usr/lib/chromium/chromium --type=utility ...' but __progname remained pointing at the char after the last '/' in '/proc/self/exe' which is now exactly at 'r' in 'romium/chromium ...' of '/usr/lib/chromium/chromium --type=utility ...' aka in the newly overwritten, by chromium, argv[0] !
+     }
+ }
+

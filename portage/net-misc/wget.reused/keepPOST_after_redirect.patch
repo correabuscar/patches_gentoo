@@ -1,0 +1,21 @@
+bug #60617: POST not continued after 301, 302
+src: https://savannah.gnu.org/bugs/?60617
+--- src/http.c
++++ src/http.c
+@@ -3856,14 +3856,14 @@
+               retval = NEWLOCATION_KEEP_POST;
+               goto cleanup;
+             case HTTP_STATUS_MOVED_PERMANENTLY:
+-              if (opt.method && c_strcasecmp (opt.method, "post") != 0)
++              if (opt.method && c_strcasecmp (opt.method, "post") == 0)
+                 {
+                   retval = NEWLOCATION_KEEP_POST;
+                   goto cleanup;
+                 }
+               break;
+             case HTTP_STATUS_MOVED_TEMPORARILY:
+-              if (opt.method && c_strcasecmp (opt.method, "post") != 0)
++              if (opt.method && c_strcasecmp (opt.method, "post") == 0)
+                 {
+                   retval = NEWLOCATION_KEEP_POST;
+                   goto cleanup;

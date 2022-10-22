@@ -1,0 +1,69 @@
+diff -r 5fb87d2312ea browser/components/sessionstore/ContentSessionStore.jsm
+--- a/browser/components/sessionstore/ContentSessionStore.jsm	Fri Nov 02 15:28:17 2018 -0400
++++ b/browser/components/sessionstore/ContentSessionStore.jsm	Wed Nov 07 12:35:35 2018 +0100
+@@ -770,19 +770,19 @@
+     this.cleanupTimers();
+ 
+     let flushID = (options && options.flushID) || 0;
+-    let histID = "FX_SESSION_RESTORE_CONTENT_COLLECT_DATA_MS";
++    //let histID = "FX_SESSION_RESTORE_CONTENT_COLLECT_DATA_MS";
+ 
+     let data = {};
+     for (let [key, func] of this._data) {
+-      if (key != "isPrivate") {
+-        TelemetryStopwatch.startKeyed(histID, key);
+-      }
++      //if (key != "isPrivate") {
++      //  TelemetryStopwatch.startKeyed(histID, key);
++      //}
+ 
+       let value = func();
+ 
+-      if (key != "isPrivate") {
+-        TelemetryStopwatch.finishKeyed(histID, key);
+-      }
++      //if (key != "isPrivate") {
++      //  TelemetryStopwatch.finishKeyed(histID, key);
++      //}
+ 
+       if (value || (key != "storagechange" && key != "historychange")) {
+         data[key] = value;
+#@@ -800,7 +800,7 @@
+#       });
+#     } catch (ex) {
+#       if (ex && ex.result == Cr.NS_ERROR_OUT_OF_MEMORY) {
+#-        Services.telemetry.getHistogramById("FX_SESSION_RESTORE_SEND_UPDATE_CAUSED_OOM").add(1);
+#+        //Services.telemetry.getHistogramById("FX_SESSION_RESTORE_SEND_UPDATE_CAUSED_OOM").add(1);
+#         this.mm.sendAsyncMessage("SessionStore:error");
+#       }
+#     }
+@@ -720,9 +720,9 @@
+       });
+     } catch (ex) {
+       if (ex && ex.result == Cr.NS_ERROR_OUT_OF_MEMORY) {
+-        Services.telemetry
+-          .getHistogramById("FX_SESSION_RESTORE_SEND_UPDATE_CAUSED_OOM")
+-          .add(1);
++//        Services.telemetry
++//          .getHistogramById("FX_SESSION_RESTORE_SEND_UPDATE_CAUSED_OOM")
++//          .add(1);
+         this.mm.sendAsyncMessage("SessionStore:error");
+       }
+     }
+#@@ -874,11 +874,11 @@
+#         this.restoreHistory(data);
+#         break;
+#       case "SessionStore:restoreTabContent":
+#-        if (data.isRemotenessUpdate) {
+#-          let histogram = Services.telemetry.getKeyedHistogramById("FX_TAB_REMOTE_NAVIGATION_DELAY_MS");
+#-          histogram.add("SessionStore:restoreTabContent",
+#-                        Services.telemetry.msSystemNow() - data.requestTime);
+#-        }
+#+        //if (data.isRemotenessUpdate) {
+#+        //  let histogram = Services.telemetry.getKeyedHistogramById("FX_TAB_REMOTE_NAVIGATION_DELAY_MS");
+#+        //  histogram.add("SessionStore:restoreTabContent",
+#+        //                Services.telemetry.msSystemNow() - data.requestTime);
+#+        //}
+#         this.restoreTabContent(data);
+#         break;
+#       case "SessionStore:resetRestore":

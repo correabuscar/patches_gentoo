@@ -1,0 +1,34 @@
+patch for https://github.com/libcheck/check/issues/188
+
+diff --git a/src/check_log.c b/src/check_log.c
+index c785b33..a10efb2 100644
+--- a/src/check_log.c
++++ b/src/check_log.c
+@@ -34,6 +34,8 @@
+ #include "check_print.h"
+ #include "check_str.h"
+ 
++#include <stdio.h> // for fdopen()
++#include <fcntl.h> // for O_APPEND | O_WRONLY | O_CREAT | O_TRUNC
+ /*
+  * If a log file is specified to be "-", then instead of
+  * opening a file the log output is printed to stdout.
+@@ -457,7 +461,17 @@ static FILE *srunner_open_file(const char *filename)
+     }
+     else
+     {
+-        f = fopen(filename, "w");
++        int fd = open(filename, O_APPEND | O_WRONLY | O_CREAT | O_TRUNC, S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
++        if(fd != -1) {
++            f = fdopen(fd, "a"); // XXX implicit declaration of function 'fdopen' is invalid in C99 [-Wimplicit-function-declaration], wtf shellcheck?!
++            //note: "Modes "w" or "w+" do not cause truncation of the file."  (man 3 fdopen)
++            //note: 'The file descriptor is not dup'ed, and will  be  closed  when the stream created by fdopen() is closed.'
++        } else {
++            eprintf("Error in call to open while opening file %s (but we'll retry the normal way - overwrites can ensue)):", __FILE__,
++                    __LINE__ - 2, filename);
++            /* one last try the normal, overwrity, way - https://github.com/libcheck/check/issues/188 */
++            f = fopen(filename, "w");
++        }
+         if(f == NULL)
+         {
+             eprintf("Error in call to fopen while opening file %s:", __FILE__,

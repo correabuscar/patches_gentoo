@@ -1,0 +1,19 @@
+--- a/net/socket/socket_posix.cc	2019-09-07 09:30:37.356299989 +0200
++++ b/net/socket/socket_posix.cc	2019-09-07 14:47:30.632270740 +0200
+@@ -24,6 +24,8 @@
+ #include "net/base/trace_constants.h"
+ #include "net/traffic_annotation/network_traffic_annotation.h"
+ 
++#include "base/debug/stack_trace.h" //for base::debug::StackTrace().Print();
++
+ #if defined(OS_FUCHSIA)
+ #include <poll.h>
+ #include <sys/ioctl.h>
+@@ -96,6 +98,7 @@ int SocketPosix::Open(int address_family
+       address_family == AF_UNIX ? 0 : IPPROTO_TCP);
+   if (socket_fd_ < 0) {
+     PLOG(ERROR) << "CreatePlatformSocket() failed";
++    base::debug::StackTrace().Print();
+     return MapSystemError(errno);
+   }
+ 

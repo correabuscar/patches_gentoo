@@ -1,0 +1,37 @@
+prevents removal of /dev/null if used as -o
+or creating a ${dir}.new file if arg to -o is a ${dir}
+
+$ colordiff -up5 /tmp/grub-mkconfig `which grub-mkconfig`
+--- grub-2.05_alpha20200110/util/grub-mkconfig.in  2018-11-23 21:42:03.000000000 +0100
++++ fixed/util/grub-mkconfig.in  2019-05-12 00:48:30.239956619 +0200
+@@ -100,10 +100,30 @@ do
+  ;;
+     # Explicitly ignore non-option arguments, for compatibility.
+     esac
+ done
+ 
++if test -n "$grub_cfg" -a -e "$grub_cfg" -a 1 -eq 1; then
++  #file already exists
++  if ! test -f "$grub_cfg"; then
++    #but not a regular file, eg. /dev/null  (ie. this will avoid removing /dev/null via a later 'mv')
++    echo -n "Destination file '$grub_cfg' already exists but it's not a regular file!" >&2
++    if test -c "$grub_cfg"; then
++      echo " It's a character device!" >&2
++    elif test -d "$grub_cfg"; then
++      echo " It's a directory! So unpatched 'grub-mkconfig' will put inside it a file named '${grub_cfg##*/}.new'" >&2
++    else
++      echo
++    fi
++    if test "$grub_cfg" == "/dev/null" -o -c "$grub_cfg" -o -b "$grub_cfg"; then
++      echo "Don't use '-o /dev/null' but instead just '>/dev/null' with an optionally appended ' 2>&1'" >&2
++      echo "Otherwise non-patched 'grub-mkconfig' will remove&replace /dev/null (via 'mv') with valid grub.cfg contents so you'll have to remove /dev/null and recreate it via 'mknod -m 666 /dev/null c 1 3' (see 'man 4 null')" #thanks to <nicolas17> on #systemd channel on freenode irc for the mknod&man info!
++    fi
++    exit 1
++  fi
++fi
++
+ if [ "x$EUID" = "x" ] ; then
+   EUID=`id -u`
+ fi
+ 
+ if [ "$EUID" != 0 ] ; then

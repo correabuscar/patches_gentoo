@@ -1,0 +1,49 @@
+$ cd /tmp
+
+$ sudo trace-cmd record -e compaction:* sleep 10
+CPU0 data recorded at offset=0x5bd000
+    0 bytes in size
+CPU1 data recorded at offset=0x5bd000
+    0 bytes in size
+CPU2 data recorded at offset=0x5bd000
+    0 bytes in size
+CPU3 data recorded at offset=0x5bd000
+    0 bytes in size
+CPU4 data recorded at offset=0x5bd000
+    0 bytes in size
+CPU5 data recorded at offset=0x5bd000
+    0 bytes in size
+CPU6 data recorded at offset=0x5bd000
+    0 bytes in size
+CPU7 data recorded at offset=0x5bd000
+    0 bytes in size
+CPU8 data recorded at offset=0x5bd000
+    0 bytes in size
+CPU9 data recorded at offset=0x5bd000
+    0 bytes in size
+CPU10 data recorded at offset=0x5bd000
+    0 bytes in size
+CPU11 data recorded at offset=0x5bd000
+    0 bytes in size
+
+$ trace-cmd report
+  could not load plugin '/usr/lib/trace-cmd/plugins/plugin_python.so'
+  /usr/lib/trace-cmd/plugins/plugin_python.so: undefined symbol: PyString_FromString
+
+  CPU 0 is empty
+  CPU 1 is empty
+  CPU 2 is empty
+  CPU 3 is empty
+  CPU 4 is empty
+  CPU 5 is empty
+  CPU 6 is empty
+  CPU 7 is empty
+  CPU 8 is empty
+  CPU 9 is empty
+  CPU 10 is empty
+  CPU 11 is empty
+  cpus=12
+
+$ LD_PRELOAD=/usr/lib/trace-cmd/python/ctracecmd.so trace-cmd report
+trace-cmd: symbol lookup error: /usr/lib/trace-cmd/python/ctracecmd.so: undefined symbol: PyExc_SystemError
+

@@ -1,0 +1,18 @@
+after Ctrl+V aka paste password into last active non-keepassx window, re-show the keepass window so that an alt+tab would focus it, rather than (w/o this patch) having to find it in taskbar and clicking on it to unminimize it!
+
+doc: https://doc.qt.io/qt-5/qwidget.html
+
+diff --git a/src/autotype/AutoType.cpp b/src/autotype/AutoType.cpp
+index 8032c27..b15d4bc 100644
+--- a/src/autotype/AutoType.cpp
++++ b/src/autotype/AutoType.cpp
+@@ -167,6 +167,9 @@ void AutoType::performAutoType(const Entry* entry, QWidget* hideWindow, const QS
+         QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
+     }
+ 
++    if (hideWindow) {
++        hideWindow->showNormal();
++    }
+     m_inAutoType = false;
+ }
+ 

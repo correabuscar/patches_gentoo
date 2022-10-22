@@ -1,0 +1,35 @@
+diff --git a/gdb/cp-valprint.c b/gdb/cp-valprint.c
+index 5781d7ab56..0311d97bcf 100644
+--- a/gdb/cp-valprint.c
++++ b/gdb/cp-valprint.c
+@@ -300,6 +300,7 @@ cp_print_value_fields (struct type *type, struct type *real_type,
+ 		    {
+ 		      struct value *v = value_static_field (type, i);
+ 
++          gdb_assert (NULL != v); //not hit in gdb git commit 0ed4690a67e2c4703d9088312de652d0d5f1aaaf (HEAD -> master, origin/master, origin/HEAD) Date:   Tue Jun 18 19:03:38 2019 +0200 because already fixed by commit 4330d61dfb05d77fd925efdca45091f12e3a6266 Date:   Wed May 29 09:34:50 2019 -0600
+ 		      cp_print_static_field (TYPE_FIELD_TYPE (type, i),
+ 					     v, stream, recurse + 1,
+ 					     options);
+#diff -upr gdb-8.3/gdb/cp-valprint.c /home/user/build/1packages/4used/gdb/makepkg_pacman/gdb/src/gdb-8.3/gdb/cp-valprint.c
+#--- a/gdb/cp-valprint.c	2019-05-11 20:19:02.000000000 +0200
+#+++ b/gdb/cp-valprint.c	2019-06-18 18:20:01.944957232 +0200
+#@@ -329,6 +329,7 @@ cp_print_value_fields (struct type *type
+# 		    }
+# 		  END_CATCH
+# 
+#+                    gdb_assert (NULL != v); //hit
+# 		  cp_print_static_field (TYPE_FIELD_TYPE (type, i),
+# 					 v, stream, recurse + 1,
+# 					 options);
+diff -upr gdb-8.3/gdb/value.c /home/user/build/1packages/4used/gdb/makepkg_pacman/gdb/src/gdb-8.3/gdb/value.c
+--- a/gdb/value.c	2019-05-11 20:19:03.000000000 +0200
++++ b/gdb/value.c	2019-06-18 18:16:58.804958979 +0200
+@@ -2856,6 +2856,7 @@ value_static_field (struct type *type, i
+       gdb_assert_not_reached ("unexpected field location kind");
+     }
+ 
++  gdb_assert (NULL != retval); //not hit!
+   return retval;
+ }
+ 
+

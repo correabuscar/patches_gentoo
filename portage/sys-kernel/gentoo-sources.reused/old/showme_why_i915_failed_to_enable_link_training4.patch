@@ -1,0 +1,66 @@
+diff --git a/drivers/gpu/drm/drm_dp_helper.c b/drivers/gpu/drm/drm_dp_helper.c
+index 54a6414c5d96..f844f1e8a9a3 100644
+--- a/drivers/gpu/drm/drm_dp_helper.c
++++ b/drivers/gpu/drm/drm_dp_helper.c
+@@ -220,6 +220,8 @@ static int drm_dp_dpcd_access(struct drm_dp_aux *aux, u8 request,
+ 	unsigned int retry, native_reply;
+ 	int err = 0, ret = 0;
+ 
++  static unsigned int retries=32;
++
+ 	memset(&msg, 0, sizeof(msg));
+ 	msg.address = offset;
+ 	msg.request = request;
+@@ -234,7 +236,8 @@ static int drm_dp_dpcd_access(struct drm_dp_aux *aux, u8 request,
+ 	 * aux i2c transactions but real world devices this wasn't
+ 	 * sufficient, bump to 32 which makes Dell 4k monitors happier.
+ 	 */
+-	for (retry = 0; retry < 32; retry++) {
++  DRM_ERROR("drm_dp_dpcd_access starting\n");
++	for (retry = 0; retry < retries; retry++) {
+ 		if (ret != 0 && ret != -ETIMEDOUT) {
+ 			usleep_range(AUX_RETRY_INTERVAL,
+ 				     AUX_RETRY_INTERVAL + 100);
+@@ -260,13 +263,21 @@ static int drm_dp_dpcd_access(struct drm_dp_aux *aux, u8 request,
+ 		 */
+ 		if (!err)
+ 			err = ret;
++    //DRM_ERROR("drm_dp_dpcd_access ended retry=%u ret=%d\n", retry, ret);
+ 	}
+ 
+-	DRM_DEBUG_KMS("Too many retries, giving up. First error: %d\n", err);
++	DRM_ERROR("Too many retries(%u), giving up. First error: '%d'. Stack:\n", retry, err);
++  dump_stack();
+ 	ret = err;
+ 
+ unlock:
++	DRM_ERROR("%s ret='%d' after %u retries\n", (ret == err ? "Failed":"Success"), ret, retry);
+ 	mutex_unlock(&aux->hw_mutex);
++  if (32 == retries) {
++    //retries=2000; // only needed the default of 32 the first time(on system startup/boot), to avoid a startup delay for '[    5.908212] [drm] failed to retrieve link info, disabling eDP'
++    retries=32;
++    // now using 5000 to avoid that '[drm:intel_dp_start_link_train [i915]] *ERROR* failed to enable link training' https://bugs.freedesktop.org/show_bug.cgi?id=109522
++  }
+ 	return ret;
+ }
+ 
+diff --git a/drivers/gpu/drm/i915/intel_dp_link_training.c b/drivers/gpu/drm/i915/intel_dp_link_training.c
+index b59c87daa4f7..ebbcb58f61b4 100644
+--- a/drivers/gpu/drm/i915/intel_dp_link_training.c
++++ b/drivers/gpu/drm/i915/intel_dp_link_training.c
+@@ -70,6 +70,7 @@ intel_dp_set_link_train(struct intel_dp *intel_dp,
+ {
+ 	u8 buf[sizeof(intel_dp->train_set) + 1];
+ 	int ret, len;
++  DRM_ERROR("starting intel_dp_set_link_train\n");
+ 
+ 	intel_dp_program_link_training_pattern(intel_dp, dp_train_pat);
+ 
+@@ -87,6 +88,7 @@ intel_dp_set_link_train(struct intel_dp *intel_dp,
+ 	ret = drm_dp_dpcd_write(&intel_dp->aux, DP_TRAINING_PATTERN_SET,
+ 				buf, len);
+ 
++  DRM_ERROR("ret=%d len=%d\n", ret, len);
+ 	return ret == len;
+ }
+ 

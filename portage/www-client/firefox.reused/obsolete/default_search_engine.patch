@@ -1,0 +1,26 @@
+the similar contents are gone now, testing without the need to apply these...
+so this patch is not applied, currently
+
+nevrmind, re-applying (testing...)
+ok this has no effect, it's the browser/locales/search/list.json PROBABLY which is cause Google to always be it! so ignore this whole patch for now!
+
+diff -r dfb15917c057 browser/locales/en-US/chrome/browser-region/region.properties
+--- a/browser/locales/en-US/chrome/browser-region/region.properties	Mon Apr 23 12:59:31 2018 +0300
++++ b/browser/locales/en-US/chrome/browser-region/region.properties	Tue Apr 24 01:36:41 2018 +0200
+@@ -3,11 +3,12 @@
+ # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ 
+ # Default search engine
+-browser.search.defaultenginename=Google
++browser.search.defaultenginename=Searx
+ 
+ # Search engine order (order displayed in the search bar dropdown)s
+-browser.search.order.1=Google
+-browser.search.order.2=Bing
++browser.search.order.1=Searx
++browser.search.order.2=DuckDuckGo
++browser.search.order.3=Google
+ 
+ # This is the default set of web based feed handlers shown in the reader
+
+# selection UI

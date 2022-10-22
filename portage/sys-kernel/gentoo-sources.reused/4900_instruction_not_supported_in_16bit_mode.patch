@@ -1,0 +1,46 @@
+avoids these errors:
+  Building modules, stage 2.
+  CC      arch/x86/boot/cpucheck.o
+  CC      arch/x86/boot/string.o
+  CC      arch/x86/boot/tty.o
+  CC      arch/x86/boot/version.o
+/tmp/ccQ78qI9.s: Assembler messages:
+/tmp/ccQ78qI9.s:31: Error: instruction `shrx' isn't supported in 16-bit mode.
+make[1]: *** [scripts/Makefile.build:275: arch/x86/boot/tty.o] Error 1
+make[1]: *** Waiting for unfinished jobs....
+  VOFFSET arch/x86/boot/compressed/../voffset.h
+/tmp/ccrq1I79.s: Assembler messages:
+/tmp/ccrq1I79.s:110: Error: instruction `andn' isn't supported in 16-bit mode.
+/tmp/ccrq1I79.s:116: Error: instruction `shlx' isn't supported in 16-bit mode.
+/tmp/ccrq1I79.s:360: Error: instruction `andn' isn't supported in 16-bit mode.
+/tmp/ccrq1I79.s:366: Error: instruction `shlx' isn't supported in 16-bit mode.
+/tmp/ccrq1I79.s:487: Error: instruction `andn' isn't supported in 16-bit mode.
+/tmp/ccrq1I79.s:493: Error: instruction `shlx' isn't supported in 16-bit mode.
+/tmp/ccrq1I79.s:594: Error: instruction `andn' isn't supported in 16-bit mode.
+/tmp/ccrq1I79.s:600: Error: instruction `shlx' isn't supported in 16-bit mode.
+/tmp/ccrq1I79.s:708: Error: instruction `andn' isn't supported in 16-bit mode.
+/tmp/ccrq1I79.s:714: Error: instruction `shlx' isn't supported in 16-bit mode.
+make[1]: *** [scripts/Makefile.build:275: arch/x86/boot/cpucheck.o] Error 1
+  OBJCOPY arch/x86/boot/compressed/vmlinux.bin
+  RELOCS  arch/x86/boot/compressed/vmlinux.relocs
+  CC      arch/x86/boot/compressed/kaslr.o
+/tmp/cc5EYUQ9.s: Assembler messages:
+/tmp/cc5EYUQ9.s:510: Error: instruction `mulx' isn't supported in 16-bit mode.
+/tmp/cc5EYUQ9.s:1140: Error: instruction `mulx' isn't supported in 16-bit mode.
+make[1]: *** [scripts/Makefile.build:275: arch/x86/boot/string.o] Error 1
+
+it was only possible thanks to abulhair.saparov for the info provided in https://bugzilla.kernel.org/show_bug.cgi?id=200471
+
+diff --git a/arch/x86/Makefile b/arch/x86/Makefile
+index a587805c6687..c0607da211ae 100644
+--- a/arch/x86/Makefile
++++ b/arch/x86/Makefile
+@@ -34,7 +34,7 @@ M16_CFLAGS	 := $(call cc-option, -m16, $(CODE16GCC_CFLAGS))
+ REALMODE_CFLAGS	:= $(M16_CFLAGS) -g -Os -DDISABLE_BRANCH_PROFILING \
+ 		   -Wall -Wstrict-prototypes -march=i386 -mregparm=3 \
+ 		   -fno-strict-aliasing -fomit-frame-pointer -fno-pic \
+-		   -mno-mmx -mno-sse
++		   -mno-mmx -mno-sse -mno-bmi -mno-bmi2
+ 
+ REALMODE_CFLAGS += $(call __cc-option, $(CC), $(REALMODE_CFLAGS), -ffreestanding)
+ REALMODE_CFLAGS += $(call __cc-option, $(CC), $(REALMODE_CFLAGS), -fno-stack-protector)

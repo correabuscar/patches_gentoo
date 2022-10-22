@@ -1,0 +1,15 @@
+fixed somewhere in https://git.videolan.org/?p=vlc/vlc-3.0.git;a=summary
+
+diff --git a/src/config/core.c b/src/config/core.c
+index 430aadf9cf..5eea6cc3be 100644
+--- a/src/config/core.c
++++ b/src/config/core.c
+@@ -118,7 +118,7 @@ char *config_GetPsz(const char *psz_name)
+     p_config = config_FindConfig( psz_name );
+ 
+     /* sanity checks */
+-    assert(p_config != NULL);
++    assert(p_config != NULL); //FIXME: hitting this when pressing Ctrl+D with a playlist full of audio files(tho i doubt this is relevant) - ctrl+d is Open Disk from File menu!
+     assert(IsConfigStringType (p_config->i_type));
+ 
+     /* return a copy of the string */

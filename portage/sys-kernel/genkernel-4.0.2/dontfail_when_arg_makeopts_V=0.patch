@@ -1,0 +1,443 @@
+##--- /var/tmp/portage/sys-kernel/genkernel-3.5.3.3/work/genkernel-3.5.3.3/gen_cmdline.sh	2018-05-08 02:22:32.000000000 +0200
+##+++ /usr/share/genkernel/gen_cmdline.sh	2019-06-30 20:30:36.693226171 +0200
+#--- genkernel-3.5.3.3/gen_cmdline.sh	2018-05-08 02:22:32.000000000 +0200
+#+++ fixed/gen_cmdline.sh	2019-06-30 20:30:36.693226171 +0200
+#@@ -279,7 +279,11 @@ parse_cmdline() {
+# 			print_info 2 "CMD_UTILS_ARCH: ${CMD_ARCHOVERRIDE}"
+# 			;;
+# 		--makeopts=*)
+#-			CMD_MAKEOPTS="${*#*=}"
+#+			#echo "CMD_MAKEOPTS: $# $*" > /tmp/moo.log
+#+      #workaround for --makeopts="-j4 V=0" else it's seen as "-j4 0"
+#+      local moo="$*"
+#+			CMD_MAKEOPTS="${moo#*=}"
+#+			#echo "CMD_MAKEOPTS: ${CMD_MAKEOPTS}" >> /tmp/moo.log
+# 			print_info 2 "CMD_MAKEOPTS: ${CMD_MAKEOPTS}"
+# 			;;
+# 		--mountboot|--no-mountboot)
+#--- genkernel-4.0.2/gen_cmdline.sh	2020-01-15 00:21:56.000000000 +0100
+#+++ fixed/gen_cmdline.sh	2020-01-18 21:42:27.329878832 +0100
+#@@ -337,7 +337,12 @@ parse_cmdline() {
+# 			print_info 3 "CMD_UTILS_MAKE: ${CMD_UTILS_MAKE}"
+# 			;;
+# 		--makeopts=*)
+#-			CMD_MAKEOPTS="${*#*=}"
+#+			#orig line: CMD_MAKEOPTS="${*#*=}"
+#+			#echo "CMD_MAKEOPTS: $# $*" > /tmp/moo.log
+#+			#workaround for --makeopts="-j4 V=0" else it's seen as "-j4 0"
+#+			local moo="$*"
+#+			CMD_MAKEOPTS="${moo#*=}"
+#+			#echo "CMD_MAKEOPTS: ${CMD_MAKEOPTS}" >> /tmp/moo.log
+# 			print_info 3 "CMD_MAKEOPTS: ${CMD_MAKEOPTS}"
+# 			;;
+# 		--mountboot|--no-mountboot)
+--- genkernel-4.0.2/genkernel	2020-01-15 00:21:56.000000000 +0100
++++ fixed/genkernel	2020-01-18 22:29:39.609851821 +0100
+@@ -90,7 +90,7 @@ GK_OPTIONS=$* # Save for later
+ while [ $# -gt 0 ]
+ do
+ 	GK_OPTION=$1; shift
+-	parse_cmdline ${GK_OPTION}
++	parse_cmdline "${GK_OPTION}"
+ done
+ unset GK_OPTION
+ 
+--- genkernel-4.0.2/gen_cmdline.sh	2020-01-15 00:21:56.000000000 +0100
++++ fixed/gen_cmdline.sh	2020-01-18 22:33:34.159849584 +0100
+@@ -279,65 +279,77 @@ parse_optbool() {
+ }
+ 
+ parse_cmdline() {
+-	case "$*" in
++	if test "$#" -ne "1"; then
++		echo "Unexpected situation, $# args passed to parse_cmdline() function: '$*'" >&2
++		echo "forcing exit" >&2
++		exit 1
++	fi
++  local got="$*"
++	case "$got" in
+ 		--cross-compile=*)
+-			CMD_CROSS_COMPILE="${*#*=}"
++			CMD_CROSS_COMPILE="${got#*=}"
+ 			print_info 3 "CMD_CROSS_COMPILE: ${CMD_CROSS_COMPILE}"
+ 			;;
+ 		--kernel-cc=*)
+-			CMD_KERNEL_CC="${*#*=}"
++			CMD_KERNEL_CC="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_CC: ${CMD_KERNEL_CC}"
+ 			;;
+ 		--kernel-ld=*)
+-			CMD_KERNEL_LD="${*#*=}"
++			CMD_KERNEL_LD="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_LD: ${CMD_KERNEL_LD}"
+ 			;;
+ 		--kernel-as=*)
+-			CMD_KERNEL_AS="${*#*=}"
++			CMD_KERNEL_AS="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_AS: ${CMD_KERNEL_AS}"
+ 			;;
+ 		--kernel-make=*)
+-			CMD_KERNEL_MAKE="${*#*=}"
++			CMD_KERNEL_MAKE="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_MAKE: ${CMD_KERNEL_MAKE}"
+ 			;;
+ 		--kernel-target=*)
+-			KERNEL_MAKE_DIRECTIVE_OVERRIDE="${*#*=}"
++			KERNEL_MAKE_DIRECTIVE_OVERRIDE="${got#*=}"
+ 			print_info 3 "KERNEL_MAKE_DIRECTIVE_OVERRIDE: ${KERNEL_MAKE_DIRECTIVE_OVERRIDE}"
+ 			;;
+ 		--kernel-binary=*)
+-			KERNEL_BINARY_OVERRIDE="${*#*=}"
++			KERNEL_BINARY_OVERRIDE="${got#*=}"
+ 			print_info 3 "KERNEL_BINARY_OVERRIDE: ${KERNEL_BINARY_OVERRIDE}"
+ 			;;
+ 		--kernel-outputdir=*)
+-			CMD_KERNEL_OUTPUTDIR="${*#*=}"
++			CMD_KERNEL_OUTPUTDIR="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_OUTPUTDIR: ${CMD_KERNEL_OUTPUTDIR}"
+ 			;;
+ 		--utils-cc=*)
+-			CMD_UTILS_CC="${*#*=}"
++			CMD_UTILS_CC="${got#*=}"
+ 			print_info 3 "CMD_UTILS_CC: ${CMD_UTILS_CC}"
+ 			;;
+ 		--utils-cxx=*)
+-			CMD_UTILS_CXX="${*#*=}"
++			CMD_UTILS_CXX="${got#*=}"
+ 			print_info 3 "CMD_UTILS_CXX: ${CMD_UTILS_CXX}"
+ 			;;
+ 		--utils-cflags=*)
+-			CMD_UTILS_CFLAGS="${*#*=}"
++			CMD_UTILS_CFLAGS="${got#*=}"
+ 			print_info 3 "CMD_UTILS_CFLAGS: ${CMD_UTILS_CFLAGS}"
+ 			;;
+ 		--utils-ld=*)
+-			CMD_UTILS_LD="${*#*=}"
++			CMD_UTILS_LD="${got#*=}"
+ 			print_info 3 "CMD_UTILS_LD: ${CMD_UTILS_LD}"
+ 			;;
+ 		--utils-as=*)
+-			CMD_UTILS_AS="${*#*=}"
++			CMD_UTILS_AS="${got#*=}"
+ 			print_info 3 "CMD_UTILS_AS: ${CMD_UTILS_AS}"
+ 			;;
+ 		--utils-make=*)
+-			CMD_UTILS_MAKE="${*#*=}"
++			CMD_UTILS_MAKE="${got#*=}"
+ 			print_info 3 "CMD_UTILS_MAKE: ${CMD_UTILS_MAKE}"
+ 			;;
+ 		--makeopts=*)
+-			CMD_MAKEOPTS="${*#*=}"
++			#orig line: CMD_MAKEOPTS="${*#*=}"
++			#echo "CMD_MAKEOPTS: $# $*" > /tmp/moo.log
++			#workaround for --makeopts="-j4 V=0" else it's seen as "-j4 0"
++			#local moo="$*"
++			#CMD_MAKEOPTS="${moo#*=}"
++			CMD_MAKEOPTS="${got#*=}"
++			#echo "CMD_MAKEOPTS: ${CMD_MAKEOPTS}" >> /tmp/moo.log
+ 			print_info 3 "CMD_MAKEOPTS: ${CMD_MAKEOPTS}"
+ 			;;
+ 		--mountboot|--no-mountboot)
+@@ -345,11 +357,11 @@ parse_cmdline() {
+ 			print_info 3 "CMD_MOUNTBOOT: ${CMD_MOUNTBOOT}"
+ 			;;
+ 		--bootdir=*)
+-			CMD_BOOTDIR="${*#*=}"
++			CMD_BOOTDIR="${got#*=}"
+ 			print_info 3 "CMD_BOOTDIR: ${CMD_BOOTDIR}"
+ 			;;
+ 		--modprobedir=*)
+-			CMD_MODPROBEDIR="${*#*=}"
++			CMD_MODPROBEDIR="${got#*=}"
+ 			print_info 3 "CMD_MODPROBEDIR: ${CMD_MODPROBEDIR}"
+ 			;;
+ 		--do-keymap-auto)
+@@ -380,7 +392,7 @@ parse_cmdline() {
+ 			print_info 3 "CMD_MDADM: ${CMD_MDADM}"
+ 			;;
+ 		--mdadm-config=*)
+-			CMD_MDADM_CONFIG="${*#*=}"
++			CMD_MDADM_CONFIG="${got#*=}"
+ 			print_info 3 "CMD_MDADM_CONFIG: ${CMD_MDADM_CONFIG}"
+ 			;;
+ 		--busybox|--no-busybox)
+@@ -395,7 +407,7 @@ parse_cmdline() {
+ 			print_info 3 "CMD_MICROCODE: ${CMD_MICROCODE}"
+ 			;;
+ 		--microcode=*)
+-			CMD_MICROCODE="${*#*=}"
++			CMD_MICROCODE="${got#*=}"
+ 			print_info 3 "CMD_MICROCODE: ${CMD_MICROCODE}"
+ 			;;
+ 		--microcode-initramfs|--no-microcode-initramfs)
+@@ -415,7 +427,7 @@ parse_cmdline() {
+ 			print_info 3 "CMD_NETBOOT: ${CMD_NETBOOT}"
+ 			;;
+ 		--real-root=*)
+-			CMD_REAL_ROOT="${*#*=}"
++			CMD_REAL_ROOT="${got#*=}"
+ 			print_info 3 "CMD_REAL_ROOT: ${CMD_REAL_ROOT}"
+ 			;;
+ 		--dmraid|--no-dmraid)
+@@ -447,12 +459,12 @@ parse_cmdline() {
+ 			print_info 3 "CMD_MULTIPATH: ${CMD_MULTIPATH}"
+ 			;;
+ 		--boot-font=*)
+-			CMD_BOOTFONT="${*#*=}"
++			CMD_BOOTFONT="${got#*=}"
+ 			[ -z "${CMD_BOOTFONT}" ] && CMD_BOOTFONT="none"
+ 			print_info 3 "CMD_BOOTFONT: ${CMD_BOOTFONT}"
+ 			;;
+ 		--bootloader=*)
+-			CMD_BOOTLOADER="${*#*=}"
++			CMD_BOOTLOADER="${got#*=}"
+ 			[ -z "${CMD_BOOTLOADER}" ] && CMD_BOOTLOADER="no"
+ 			print_info 3 "CMD_BOOTLOADER: ${CMD_BOOTLOADER}"
+ 			;;
+@@ -477,11 +489,11 @@ parse_cmdline() {
+ 			print_info 3 "CMD_SSH: ${CMD_SSH}"
+ 			;;
+ 		--ssh-authorized-keys-file=*)
+-			CMD_SSH_AUTHORIZED_KEYS_FILE="${*#*=}"
++			CMD_SSH_AUTHORIZED_KEYS_FILE="${got#*=}"
+ 			print_info 3 "CMD_SSH_AUTHORIZED_KEYS_FILE: ${CMD_SSH_AUTHORIZED_KEYS_FILE}"
+ 			;;
+ 		--ssh-host-keys=*)
+-			CMD_SSH_HOST_KEYS="${*#*=}"
++			CMD_SSH_HOST_KEYS="${got#*=}"
+ 			if ! isTrue "$(is_valid_ssh_host_keys_parameter_value "${CMD_SSH_HOST_KEYS}")"
+ 			then
+ 				echo "Error: --ssh-host-keys value '${CMD_SSH_HOST_KEYS}' is unsupported."
+@@ -494,7 +506,7 @@ parse_cmdline() {
+ 			print_info 3 "CMD_STRACE: ${CMD_STRACE}"
+ 			;;
+ 		--loglevel=*)
+-			CMD_LOGLEVEL="${*#*=}"
++			CMD_LOGLEVEL="${got#*=}"
+ 			LOGLEVEL="${CMD_LOGLEVEL}"
+ 			print_info 3 "CMD_LOGLEVEL: ${CMD_LOGLEVEL}"
+ 			;;
+@@ -558,7 +570,7 @@ parse_cmdline() {
+ 			;;
+ 		--gensplash=*)
+ 			CMD_SPLASH="yes"
+-			SPLASH_THEME="${*#*=}"
++			SPLASH_THEME="${got#*=}"
+ 			print_info 3 "CMD_SPLASH: ${CMD_SPLASH}"
+ 			print_info 3 "SPLASH_THEME: ${SPLASH_THEME}"
+ 			echo
+@@ -573,7 +585,7 @@ parse_cmdline() {
+ 			;;
+ 		--splash=*)
+ 			CMD_SPLASH="yes"
+-			SPLASH_THEME="${*#*=}"
++			SPLASH_THEME="${got#*=}"
+ 			print_info 3 "CMD_SPLASH: ${CMD_SPLASH}"
+ 			print_info 3 "SPLASH_THEME: ${SPLASH_THEME}"
+ 			;;
+@@ -583,13 +595,13 @@ parse_cmdline() {
+ 			print_info 3 "CMD_SPLASH: ${CMD_SPLASH}"
+ 			;;
+ 		--gensplash-res=*)
+-			SPLASH_RES="${*#*=}"
++			SPLASH_RES="${got#*=}"
+ 			print_info 3 "SPLASH_RES: ${SPLASH_RES}"
+ 			echo
+ 			print_warning 1 "Please use --splash-res, as --gensplash-res is deprecated."
+ 			;;
+ 		--splash-res=*)
+-			SPLASH_RES="${*#*=}"
++			SPLASH_RES="${got#*=}"
+ 			print_info 3 "SPLASH_RES: ${SPLASH_RES}"
+ 			;;
+ 		--install|--no-install)
+@@ -609,11 +621,11 @@ parse_cmdline() {
+ 			print_info 3 "CMD_MODULEREBUILD: ${CMD_MODULEREBUILD}"
+ 			;;
+ 		--module-rebuild-cmd=*)
+-			CMD_MODULEREBUILD_CMD="${*#--module-rebuild-cmd=}"
++			CMD_MODULEREBUILD_CMD="${got#--module-rebuild-cmd=}"
+ 			print_info 3 "CMD_MODULEREBUILD_CMD: ${CMD_MODULEREBUILD_CMD}"
+ 			;;
+ 		--callback=*)
+-			CMD_CALLBACK="${*#--callback=}"
++			CMD_CALLBACK="${got#--callback=}"
+ 			print_info 3 "CMD_CALLBACK: ${CMD_CALLBACK}"
+ 			;;
+ 		--static|--no-static)
+@@ -621,7 +633,7 @@ parse_cmdline() {
+ 			print_info 3 "CMD_STATIC: ${CMD_STATIC}"
+ 			;;
+ 		--tmpdir=*)
+-			CMD_TMPDIR="${*#*=}"
++			CMD_TMPDIR="${got#*=}"
+ 			print_info 3 "CMD_TMPDIR: ${CMD_TMPDIR}"
+ 			;;
+ 		--postclear|--no-postclear)
+@@ -629,11 +641,11 @@ parse_cmdline() {
+ 			print_info 3 "CMD_POSTCLEAR: ${CMD_POSTCLEAR}"
+ 			;;
+ 		--check-free-disk-space-bootdir=*)
+-			CMD_CHECK_FREE_DISK_SPACE_BOOTDIR="${*#*=}"
++			CMD_CHECK_FREE_DISK_SPACE_BOOTDIR="${got#*=}"
+ 			print_info 3 "CMD_CHECK_FREE_DISK_SPACE_BOOTDIR: ${CMD_CHECK_FREE_DISK_SPACE_BOOTDIR}"
+ 			;;
+ 		--check-free-disk-space-kerneloutputdir=*)
+-			CMD_CHECK_FREE_DISK_SPACE_KERNELOUTPUTDIR="${*#*=}"
++			CMD_CHECK_FREE_DISK_SPACE_KERNELOUTPUTDIR="${got#*=}"
+ 			print_info 3 "CMD_CHECK_FREE_DISK_SPACE_KERNELOUTPUTDIR: ${CMD_CHECK_FREE_DISK_SPACE_KERNELOUTPUTDIR}"
+ 			;;
+ 		--color|--no-color)
+@@ -652,31 +664,31 @@ parse_cmdline() {
+ 			print_info 3 "CMD_CLEANUP: ${CMD_CLEANUP}"
+ 			;;
+ 		--logfile=*)
+-			CMD_LOGFILE="${*#*=}"
++			CMD_LOGFILE="${got#*=}"
+ 			print_info 3 "CMD_LOGFILE: ${CMD_LOGFILE}"
+ 			;;
+ 		--kerneldir=*)
+-			CMD_KERNEL_DIR="${*#*=}"
++			CMD_KERNEL_DIR="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_DIR: ${CMD_KERNEL_DIR}"
+ 			;;
+ 		--kernel-append-localversion=*)
+-			CMD_KERNEL_APPEND_LOCALVERSION="${*#*=}"
++			CMD_KERNEL_APPEND_LOCALVERSION="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_APPEND_LOCALVERSION: ${CMD_KERNEL_APPEND_LOCALVERSION}"
+ 			;;
+ 		--kernel-config=*)
+-			CMD_KERNEL_CONFIG="${*#*=}"
++			CMD_KERNEL_CONFIG="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_CONFIG: ${CMD_KERNEL_CONFIG}"
+ 			;;
+ 		--kernel-localversion=*)
+-			CMD_KERNEL_LOCALVERSION="${*#*=}"
++			CMD_KERNEL_LOCALVERSION="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_LOCALVERSION: ${CMD_KERNEL_LOCALVERSION}"
+ 			;;
+ 		--module-prefix=*)
+-			CMD_INSTALL_MOD_PATH="${*#*=}"
++			CMD_INSTALL_MOD_PATH="${got#*=}"
+ 			print_info 3 "CMD_INSTALL_MOD_PATH: ${CMD_INSTALL_MOD_PATH}"
+ 			;;
+ 		--cachedir=*)
+-			CACHE_DIR="${*#*=}"
++			CACHE_DIR="${got#*=}"
+ 			print_info 3 "CACHE_DIR: ${CACHE_DIR}"
+ 			;;
+ 		--clear-cachedir|--no-clear-cachedir)
+@@ -684,23 +696,23 @@ parse_cmdline() {
+ 			print_info 3 "CMD_CLEAR_CACHEDIR: ${CMD_CLEAR_CACHEDIR}"
+ 			;;
+ 		--minkernpackage=*)
+-			CMD_MINKERNPACKAGE="${*#*=}"
++			CMD_MINKERNPACKAGE="${got#*=}"
+ 			print_info 3 "MINKERNPACKAGE: ${CMD_MINKERNPACKAGE}"
+ 			;;
+ 		--modulespackage=*)
+-			CMD_MODULESPACKAGE="${*#*=}"
++			CMD_MODULESPACKAGE="${got#*=}"
+ 			print_info 3 "MODULESPACKAGE: ${CMD_MODULESPACKAGE}"
+ 			;;
+ 		--kerncache=*)
+-			CMD_KERNCACHE="${*#*=}"
++			CMD_KERNCACHE="${got#*=}"
+ 			print_info 3 "KERNCACHE: ${CMD_KERNCACHE}"
+ 			;;
+ 		--kernel-filename=*)
+-			CMD_KERNEL_FILENAME="${*#*=}"
++			CMD_KERNEL_FILENAME="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_FILENAME: ${CMD_KERNEL_FILENAME}"
+ 			;;
+ 		--kernel-symlink-name=*)
+-			CMD_KERNEL_SYMLINK_NAME="${*#*=}"
++			CMD_KERNEL_SYMLINK_NAME="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_SYMLINK_NAME: ${CMD_KERNEL_SYMLINK_NAME}"
+ 			;;
+ 		--symlink|--no-symlink)
+@@ -712,31 +724,31 @@ parse_cmdline() {
+ 			print_info 3 "CMD_KERNEL_SOURCES: ${CMD_KERNEL_SOURCES}"
+ 			;;
+ 		--initramfs-filename=*)
+-			CMD_INITRAMFS_FILENAME="${*#*=}"
++			CMD_INITRAMFS_FILENAME="${got#*=}"
+ 			print_info 3 "CMD_INITRAMFS_FILENAME: ${CMD_INITRAMFS_FILENAME}"
+ 			;;
+ 		--initramfs-overlay=*)
+-			CMD_INITRAMFS_OVERLAY="${*#*=}"
++			CMD_INITRAMFS_OVERLAY="${got#*=}"
+ 			print_info 3 "CMD_INITRAMFS_OVERLAY: ${CMD_INITRAMFS_OVERLAY}"
+ 			;;
+ 		--initramfs-symlink-name=*)
+-			CMD_INITRAMFS_SYMLINK_NAME="${*#*=}"
++			CMD_INITRAMFS_SYMLINK_NAME="${got#*=}"
+ 			print_info 3 "CMD_INITRAMFS_SYMLINK_NAME: ${CMD_INITRAMFS_SYMLINK_NAME}"
+ 			;;
+ 		--systemmap-filename=*)
+-			CMD_SYSTEMMAP_FILENAME="${*#*=}"
++			CMD_SYSTEMMAP_FILENAME="${got#*=}"
+ 			print_info 3 "CMD_SYSTEMMAP_FILENAME: ${CMD_SYSTEMMAP_FILENAME}"
+ 			;;
+ 		--systemmap-symlink-name=*)
+-			CMD_SYSTEMMAP_SYMLINK_NAME="${*#*=}"
++			CMD_SYSTEMMAP_SYMLINK_NAME="${got#*=}"
+ 			print_info 3 "CMD_SYSTEMMAP_SYMLINK_NAME: ${CMD_SYSTEMMAP_SYMLINK_NAME}"
+ 			;;
+ 		--linuxrc=*)
+-			CMD_LINUXRC="${*#*=}"
++			CMD_LINUXRC="${got#*=}"
+ 			print_info 3 "CMD_LINUXRC: ${CMD_LINUXRC}"
+ 			;;
+ 		--busybox-config=*)
+-			CMD_BUSYBOX_CONFIG="${*#*=}"
++			CMD_BUSYBOX_CONFIG="${got#*=}"
+ 			print_info 3 "CMD_BUSYBOX_CONFIG: ${CMD_BUSYBOX_CONFIG}"
+ 			;;
+ 		--genzimage)
+@@ -764,12 +776,12 @@ parse_cmdline() {
+ 			print_info 3 "CMD_FIRMWARE: ${CMD_FIRMWARE}"
+ 			;;
+ 		--firmware-dir=*)
+-			CMD_FIRMWARE_DIR="${*#*=}"
++			CMD_FIRMWARE_DIR="${got#*=}"
+ 			CMD_FIRMWARE="yes"
+ 			print_info 3 "CMD_FIRMWARE_DIR: ${CMD_FIRMWARE_DIR}"
+ 			;;
+ 		--firmware-files=*)
+-			CMD_FIRMWARE_FILES="${*#*=}"
++			CMD_FIRMWARE_FILES="${got#*=}"
+ 			CMD_FIRMWARE="yes"
+ 			print_info 3 "CMD_FIRMWARE_FILES: ${CMD_FIRMWARE_FILES}"
+ 			;;
+@@ -796,18 +808,18 @@ parse_cmdline() {
+ 			print_warning 1 "Please use --[no-]compress-initramfs, as --[no-]compress-initrd is deprecated."
+ 			;;
+ 		--compress-initramfs-type=*|--compress-initrd-type=*)
+-			CMD_COMPRESS_INITRD_TYPE="${*#*=}"
++			CMD_COMPRESS_INITRD_TYPE="${got#*=}"
+ 			print_info 3 "CMD_COMPRESS_INITRD_TYPE: ${CMD_COMPRESS_INITRD_TYPE}"
+ 			;;
+ 		--config=*)
+-			print_info 3 "CMD_GK_CONFIG: "${*#*=}""
++			print_info 3 "CMD_GK_CONFIG: "${got#*=}""
+ 			;;
+ 		--nice)
+ 			CMD_NICE=10
+ 			print_info 3 "CMD_NICE: ${CMD_NICE}"
+ 			;;
+ 		--nice=*)
+-			CMD_NICE="${*#*=}"
++			CMD_NICE="${got#*=}"
+ 			if [ ${CMD_NICE} -lt 0 -o ${CMD_NICE} -gt 19 ]
+ 			then
+ 				echo 'Error:  Illegal value specified for --nice= parameter.'
+@@ -820,7 +832,7 @@ parse_cmdline() {
+ 			print_info 3 "CMD_NICE: ${CMD_NICE}"
+ 			;;
+ 		--strip=*)
+-			CMD_STRIP_TYPE="${*#*=}"
++			CMD_STRIP_TYPE="${got#*=}"
+ 			print_info 3 "CMD_STRIP_TYPE: ${CMD_STRIP_TYPE}"
+ 			;;
+ 		--no-strip)

@@ -1,0 +1,337 @@
+gave up on trying this one because it got complicated and likely user would be confused about so many options/special cases(like 0 meaning 3% of RAM) and also not sure about that "free" number, it might actually return current free memory which isn't what I want! I want available mem(which is total minus the reserved for internal gfx for example)
+
+anyway, keeping this for historical reasons! but I must retry le9h.patch in a simpler non-3% way instead!
+
+
+diff --git a/Documentation/admin-guide/sysctl/vm.rst b/Documentation/admin-guide/sysctl/vm.rst
+index 64aeee1009ca..d0f3f7080f03 100644
+--- a/Documentation/admin-guide/sysctl/vm.rst
++++ b/Documentation/admin-guide/sysctl/vm.rst
+@@ -68,6 +68,7 @@ Currently, these files are in /proc/sys/vm:
+ - numa_stat
+ - swappiness
+ - unprivileged_userfaultfd
++- unevictable_activefile_kbytes
+ - user_reserve_kbytes
+ - vfs_cache_pressure
+ - watermark_boost_factor
+@@ -848,6 +849,69 @@ privileged users (with SYS_CAP_PTRACE capability).
+ The default value is 1.
+ 
+ 
++unevictable_activefile_kbytes
++=============================
++
++How many kilobytes of `Active(file)` to never evict during high-pressure
++low-memory situations. ie. never evict active file pages if under this value.
++This will help prevent disk thrashing caused by Active(file) being close to zero
++in such situations, especially when no swap is used.
++
++As 'nivedita' (phoronix user) put it:
++"Executables and shared libraries are paged into memory, and can be paged out
++even with no swap. [...] The kernel is dumping those pages and [...] immediately
++reading them back in when execution continues."
++^ and that's what's causing the disk thrashing during memory pressure.
++
++unevictable_activefile_kbytes=X will prevent X kbytes of those pages from being
++evicted.
++
++The default value is 65536.
++
++Set it to 0 to keep the default behaviour, as if this option was never
++implemented, so you can see the disk thrashing as usual.
++
++To get an idea what value to use here for your workload(eg. xfce4 with idle
++terminals) to not disk thrash at all, run this::
++
++	$ echo 1 | sudo tee /proc/sys/vm/drop_caches; grep -F 'Active(file)' /proc/meminfo
++	1
++	Active(file):     203444 kB
++
++so, using vm.unevictable_activefile_kbytes=203444 would be a good idea here.
++(you can even add a `sleep` before the grep to get a slightly increased value,
++which might be useful if something is compiling in the background and you want
++to account for that too)
++
++But you can probably go with the default value of just 65536 (aka 64 MiB)
++as this will eliminate most disk thrashing anyway, unless you're not using
++an SSD, in which case it might still be noticeable (I'm guessing?).
++
++Note that `echo 1 | sudo tee /proc/sys/vm/drop_caches` can still cause
++Active(file) to go a under the vm.unevictable_activefile_kbytes value.
++It's not an issue and this is how you know how much the value for
++vm.unevictable_activefile_kbytes should be, at the time/workload when you ran it.
++
++The value of `Active(file)` can be gotten in two ways::
++
++	$ grep -F 'Active(file)' /proc/meminfo
++	Active(file):    2712004 kB
++
++and::
++
++	$ grep nr_active_file /proc/vmstat
++	nr_active_file 678001
++
++and multiply that with MAX_NR_ZONES (which is 4), ie. `nr_active_file * MAX_NR_ZONES`
++so 678001*4=2712004  kB
++
++MAX_NR_ZONES is 4 as per:
++`include/generated/bounds.h:10:#define MAX_NR_ZONES 4 /* __MAX_NR_ZONES */`
++and is unlikely the change in the future.
++
++The hub of disk thrashing tests/explanations is here:
++https://gist.github.com/constantoverride/84eba764f487049ed642eb2111a20830
++
+ user_reserve_kbytes
+ ===================
+ 
+diff --git a/kernel/sysctl.c b/kernel/sysctl.c
+index 078950d9605b..b7abd02a0e9a 100644
+--- a/kernel/sysctl.c
++++ b/kernel/sysctl.c
+@@ -115,6 +115,9 @@ extern int pid_max_min, pid_max_max;
+ extern int percpu_pagelist_fraction;
+ extern int latencytop_enabled;
+ extern unsigned int sysctl_nr_open_min, sysctl_nr_open_max;
++#if defined(CONFIG_RESERVE_ACTIVEFILE_TO_PREVENT_DISK_THRASHING)
++extern unsigned int sysctl_unevictable_activefile_kbytes_max;
++#endif
+ #ifndef CONFIG_MMU
+ extern int sysctl_nr_trim_pages;
+ #endif
+@@ -127,6 +130,7 @@ static int sixty = 60;
+ static int __maybe_unused neg_one = -1;
+ static int __maybe_unused two = 2;
+ static int __maybe_unused four = 4;
++static int __maybe_unused seven = 7;
+ static unsigned long zero_ul;
+ static unsigned long one_ul = 1;
+ static unsigned long long_max = LONG_MAX;
+@@ -214,6 +218,11 @@ static int proc_taint(struct ctl_table *table, int write,
+ 			       void __user *buffer, size_t *lenp, loff_t *ppos);
+ #endif
+ 
++#if defined(CONFIG_RESERVE_ACTIVEFILE_TO_PREVENT_DISK_THRASHING) && defined(CONFIG_RESERVE_ACTIVEFILE_KBYTES)
++static int proc_unevictable_activefile_kbytes(struct ctl_table *table, int write,
++			       void __user *buffer, size_t *lenp, loff_t *ppos);
++#endif
++
+ #ifdef CONFIG_PRINTK
+ static int proc_dointvec_minmax_sysadmin(struct ctl_table *table, int write,
+ 				void __user *buffer, size_t *lenp, loff_t *ppos);
+@@ -1468,7 +1477,7 @@ static struct ctl_table vm_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= drop_caches_sysctl_handler,
+ 		.extra1		= SYSCTL_ONE,
+-		.extra2		= &four,
++    .extra2   = &seven, // aka &4
+ 	},
+ #ifdef CONFIG_COMPACTION
+ 	{
+@@ -1691,6 +1700,18 @@ static struct ctl_table vm_table[] = {
+ 		.extra1		= SYSCTL_ZERO,
+ 		.extra2		= SYSCTL_ONE,
+ 	},
++#endif
++#if defined(CONFIG_RESERVE_ACTIVEFILE_TO_PREVENT_DISK_THRASHING)
++	{
++		.procname	= "unevictable_activefile_kbytes",
++		.data		= &sysctl_unevictable_activefile_kbytes,
++		.maxlen		= sizeof(sysctl_unevictable_activefile_kbytes),
++		.mode		= 0644,
++		.proc_handler	= proc_unevictable_activefile_kbytes,
++		.extra1		= SYSCTL_ZERO, // minimum value 0, defined in include/linux/sysctl.h  actually no need, it's obvious 0 is default when using proc_doulongvec_minmax
++    //doneTODO: .extra2 here might be able to be set to 90% of free RAM every time that MEM_OFFLINE thing happens in mm/mmap.c ?
++    .extra2 = &sysctl_unevictable_activefile_kbytes_max;
++	},
+ #endif
+ 	{
+ 		.procname	= "user_reserve_kbytes",
+@@ -2634,6 +2655,41 @@ static int proc_taint(struct ctl_table *table, int write,
+ 	return err;
+ }
+ 
++#if defined(CONFIG_RESERVE_ACTIVEFILE_TO_PREVENT_DISK_THRASHING)
++static int unevictable_activefile_kbytes_was_user_modified=0;
++//0=not modified yet or it failed to be modified
++//1=about to be modified
++//2=succes in being modified
++static int proc_unevictable_activefile_kbytes(struct ctl_table *table, int write,
++			       void __user *buffer, size_t *lenp, loff_t *ppos)
++{
++  // TODO: ok this whole function is useless now, can be replaced by proc_doulongvec_minmax
++
++	if (write) {
++    if (!capable(CAP_SYS_ADMIN)) {
++        return -EPERM;
++    }
++    if (0 == unevictable_activefile_kbytes_was_user_modified) {
++      unevictable_activefile_kbytes_was_user_modified=1; //about to be modified
++    }
++  }
++
++	int err;
++  //if (NULL != table)
++	err = proc_doulongvec_minmax(&t, write, buffer, lenp, ppos);
++	if (err < 0) {
++    if (1 == unevictable_activefile_kbytes_was_user_modified) {
++      unevictable_activefile_kbytes_was_user_modified=0; // failed to modify, return to not being modified state!
++    }
++		return err;
++  }
++  if (1 == unevictable_activefile_kbytes_was_user_modified) {
++    unevictable_activefile_kbytes_was_user_modified=2; // succeeded in being modified!
++  }
++	return err;
++}
++#endif
++
+ #ifdef CONFIG_PRINTK
+ static int proc_dointvec_minmax_sysadmin(struct ctl_table *table, int write,
+ 				void __user *buffer, size_t *lenp, loff_t *ppos)
+diff --git a/mm/Kconfig b/mm/Kconfig
+index 56cec636a1fc..96b69754b120 100644
+--- a/mm/Kconfig
++++ b/mm/Kconfig
+@@ -63,6 +63,46 @@ config SPARSEMEM_MANUAL
+ 
+ endchoice
+ 
++config RESERVE_ACTIVEFILE_TO_PREVENT_DISK_THRASHING
++	depends on IKCONFIG_PROC
++	def_bool y
++	help
++	  Keep `Active(file)`(/proc/meminfo) pages in RAM so as to avoid system freeze
++	  due to the disk thrashing(disk reading only) that occurrs because the running
++	  executables's code is being evicted during low-mem conditions which is
++	  why it also prevents oom-killer from triggering until 10s of minutes later
++	  on some systems.
++	  
++	  Please see the value of CONFIG_RESERVE_ACTIVEFILE_KBYTES to set how many
++	  KiloBytes of Active(file) to keep by default in the sysctl setting
++	  vm.unevictable_activefile_kbytes
++	  see Documentation/admin-guide/sysctl/vm.rst for more info
++
++config RESERVE_ACTIVEFILE_KBYTES
++	int
++  depends on RESERVE_ACTIVEFILE_TO_PREVENT_DISK_THRASHING
++	default "0"
++	help
++	  This is the default value(in KiB) that vm.unevictable_activefile_kbytes gets.
++	  If you use the (default) special value 0 here, then the value of
++	  vm.unevictable_activefile_kbytes will be set to 3% of free RAM(similar to
++	  when/how admin_reserve is set, ie. when memory online/offline)
++	  so 3% is eg. 8M for 256M RAM, or 512M for 16G RAM
++	  
++	  A manual value of at least 65536 or at most 262144 is recommended for users
++	  of xfce4 to avoid disk thrashing on low-memory/memory-pressure conditions,
++	  ie. mouse freeze with constant disk activity (but you can still sysrq+f to
++	  trigger oom-killer though, even without this mitigation)
++	  
++	  This value will be auto-capped to 90% of free RAM and re-evaluated when mem
++	  online/offline eg. MemTotal increases/descreases under QubesOS AppVMs
++	  (dmesg will show a message if/when this value is reset)
++	  
++	  You can still sysctl set vm.unevictable_activefile_kbytes to a value of 0
++	  to disable this 3% and actually disable this whole feature at runtime.
++	  see Documentation/admin-guide/sysctl/vm.rst for more info
++	  see also CONFIG_RESERVE_ACTIVEFILE_TO_PREVENT_DISK_THRASHING
++
+ config DISCONTIGMEM
+ 	def_bool y
+ 	depends on (!SELECT_MEMORY_MODEL && ARCH_DISCONTIGMEM_ENABLE) || DISCONTIGMEM_MANUAL
+diff --git a/mm/mmap.c b/mm/mmap.c
+index 7e8c3e8ae75f..f397b150b1b1 100644
+--- a/mm/mmap.c
++++ b/mm/mmap.c
+@@ -3690,6 +3690,40 @@ static int init_admin_reserve(void)
+ }
+ subsys_initcall(init_admin_reserve);
+ 
++#if defined(CONFIG_RESERVE_ACTIVEFILE_TO_PREVENT_DISK_THRASHING) && defined(CONFIG_RESERVE_ACTIVEFILE_KBYTES)
++
++#define __const_min(x, y) ((x) < (y) ? (x) : (y))
++unsigned int sysctl_unevictable_activefile_kbytes_max=
++  __const_min(INT_MAX, ~(size_t)0/sizeof(void *)) & -BITS_PER_LONG;
++//^ some sane initial value, while unset.
++
++static int init_unevictable_activefile_kbytes(void)
++{
++	unsigned long free_kbytes;
++
++	free_kbytes = global_zone_page_state(NR_FREE_PAGES) << (PAGE_SHIFT - 10);
++
++  static unsigned long config_min=
++#if CONFIG_RESERVE_ACTIVEFILE_KBYTES == 0
++    free_kbytes / 32 // aka 3% of free RAM (in kilobytes) eg. 512M on 16G RAM (actually less, due to internal graphics card having reserved at least 512M of the 16G)
++#elif CONFIG_RESERVE_ACTIVEFILE_KBYTES > 0
++    CONFIG_RESERVE_ACTIVEFILE_KBYTES
++#else
++  #error "CONFIG_RESERVE_ACTIVEFILE_KBYTES should be >= 0"
++#endif
++    ;
++  //set to the minimum between vm.unevictable_activefile_kbytes and 90% of free RAM(presumably this isn't varying depending on workload! unless on QubesOS where total RAM can be plugged/unplugged aka onlined/offlined depending on how much the programs request, which is ok/handled in this case))
++  prev = sysctl_unevictable_activefile_kbytes;
++  sysctl_unevictable_activefile_kbytes_max = free_kbytes * 0.90; //the real max!
++  //TODO: check if that ^ is really not the current free kbytes, because that would be bad!
++	sysctl_unevictable_activefile_kbytes = min(free_kbytes * 0.90, config_min);
++  pr_info("vm.unevictable_activefile_kbytes is being changed from %lu to %lu\n",
++      prev, sysctl_unevictable_activefile_kbytes);
++	return 0;
++}
++subsys_initcall(init_unevictable_activefile_kbytes);
++#endif
++
+ /*
+  * Reinititalise user and admin reserves if memory is added or removed.
+  *
+@@ -3725,6 +3759,14 @@ static int reserve_mem_notifier(struct notifier_block *nb,
+ 		if (0 < tmp && tmp < (1UL << 13))
+ 			init_admin_reserve();
+ 
++#if defined(CONFIG_RESERVE_ACTIVEFILE_TO_PREVENT_DISK_THRASHING)
++		//if (0 == sysctl_unevictable_activefile_kbytes) { //ie. first time or user had it set to 0(doneFIXME for this latter case!)
++    if (0 == unevictable_activefile_kbytes_was_user_modified) {
++      //if it was not user-modified, we can init it with the defaults
++			init_unevictable_activefile_kbytes();
++		}
++#endif
++
+ 		break;
+ 	case MEM_OFFLINE:
+ 		free_kbytes = global_zone_page_state(NR_FREE_PAGES) << (PAGE_SHIFT - 10);
+@@ -3740,6 +3782,16 @@ static int reserve_mem_notifier(struct notifier_block *nb,
+ 			pr_info("vm.admin_reserve_kbytes reset to %lu\n",
+ 				sysctl_admin_reserve_kbytes);
+ 		}
++
++#if defined(CONFIG_RESERVE_ACTIVEFILE_TO_PREVENT_DISK_THRASHING)
++		if (sysctl_unevictable_activefile_kbytes > free_kbytes*0.90) {
++      // memory decreased, must update vm.unevictable_activefile_kbytes, whenther or not it was user-set already!
++			tmp=sysctl_unevictable_activefile_kbytes;
++			init_unevictable_activefile_kbytes();
++			pr_info("vm.unevictable_activefile_kbytes was over 90%% of free memory and was thus reset from %lu to %lu\n",
++				tmp, sysctl_unevictable_activefile_kbytes);
++		}
++#endif
+ 		break;
+ 	default:
+ 		break;
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index dbdc46a84f63..f3ac0c718ac1 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -2445,6 +2445,13 @@ static void get_scan_count(struct lruvec *lruvec, struct mem_cgroup *memcg,
+ 			BUG();
+ 		}
+ 
++    if (NR_ACTIVE_FILE == lru) {
++      long long kib_active_file_now=global_node_page_state(NR_ACTIVE_FILE) * MAX_NR_ZONES;
++      if (kib_active_file_now <= sysctl_unevictable_activefile_kbytes) {
++        nr[lru] = 0; //ie. don't reclaim any Active(file) (see /proc/meminfo) if they are under sysctl_unevictable_activefile_kbytes see Documentation/admin-guide/sysctl/vm.rst and CONFIG_RESERVE_ACTIVEFILE_TO_PREVENT_DISK_THRASHING and CONFIG_RESERVE_ACTIVEFILE_KBYTES
++        continue;
++      }
++    }
+ 		*lru_pages += size;
+ 		nr[lru] = scan;
+ 	}

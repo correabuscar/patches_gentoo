@@ -1,0 +1,14 @@
+Patch for pacman to not err on warnings
+diff --git a/configure.ac b/configure.ac
+index 2f345b5d..81f684e1 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -445,7 +445,7 @@ if test "x$debug" = "xyes" ; then
+ 	GCC_STACK_PROTECT_CC
+ 	GCC_STACK_CLASH_PROTECTION
+ 	GCC_FORTIFY_SOURCE_CC
+-	WARNING_CFLAGS="-g -Wall -Werror"
++	WARNING_CFLAGS="-g -Wall"
+ else
+ 	AC_MSG_RESULT(no)
+ 	WARNING_CFLAGS="-Wall"

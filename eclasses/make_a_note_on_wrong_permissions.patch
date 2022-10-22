@@ -1,0 +1,30 @@
+Index: /var/db/repos/gentoo/eclass/flag-o-matic.eclass
+===================================================================
+--- .orig/var/db/repos/gentoo/eclass/flag-o-matic.eclass
++++ /var/db/repos/gentoo/eclass/flag-o-matic.eclass
+# for at most(?) sys-apps/portage-2.3.94::gentoo
+#@@ -477,6 +477,11 @@ test-flag-PROG() {
+# 	local test_in=${T}/test-flag.${in_ext}
+# 	local test_out=${T}/test-flag.exe
+# 
+#+	if test -r "${test_in}" -a ! -w "${test_in}"; then
+#+		die "File '${test_in}' is not writable. Did you ebuild prepare with USE=-userpriv aka as root, and now trying to ebuild compile with USE=userpriv aka as portage?!! user now is '$(id -nu)', File is '$(stat "--format=%A %U %G" -- "${test_in}")'"
+#+		#thanks to slyfox on #gentoo-toolchain freenode irc for the time/help to discover this!
+#+		#updated to be in line with this commit: https://gitweb.gentoo.org/repo/gentoo.git/commit/eclass/flag-o-matic.eclass?id=9544a17f23043191f8cac9d99cc221758d68b08a
+#+	fi
+# 	printf "%s\n" "${in_src}" > "${test_in}" || die "Failed to create '${test_in}'"
+# 
+# 	local cmdline=(
+#for portage sys-apps/portage-2.3.96-r1::gentoo
+@@ -477,6 +477,11 @@ test-flag-PROG() {
+ 	local test_in=${T}/test-flag.${in_ext}
+ 	local test_out=${T}/test-flag.exe
+ 
++	if test -r "${test_in}" -a ! -w "${test_in}"; then
++		die "File '${test_in}' is not writable. Did you ebuild prepare with USE=-userpriv aka as root, and now trying to ebuild compile with USE=userpriv aka as portage?!! user now is '$(id -nu)', File is '$(stat "--format=%A %U %G" -- "${test_in}")'"
++		#thanks to slyfox on #gentoo-toolchain freenode irc for the time/help to discover this!
++		#updated to be in line with this commit: https://gitweb.gentoo.org/repo/gentoo.git/commit/eclass/flag-o-matic.eclass?id=9544a17f23043191f8cac9d99cc221758d68b08a
++	fi
+ 	printf "%s\n" "${in_src}" > "${test_in}" || die "Failed to create '${test_in}'"
+ 
+ 	# Currently we rely on warning-free output of a compiler

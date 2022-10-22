@@ -1,0 +1,30 @@
+debugging info for: https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/issues/1194
+(gst-plugin-scanner:4487): GLib-GObject-CRITICAL **: 16:34:13.309: g_param_spec_int: assertion 'default_value >= minimum && default_value <= maximum' failed
+
+(gst-plugin-scanner:4487): GLib-GObject-CRITICAL **: 16:34:13.310: validate_pspec_to_install: assertion 'G_IS_PARAM_SPEC (pspec)' failed
+
+try with:
+rm ~/.cache/gstreamer-1.0/registry*; GST_DEBUG=ladspa*:0 gst-inspect-1.0 ladspa >/tmp/dbg.log 2>&1
+less -R /tmp/dbg.log
+
+
+diff --git a/gobject/gparamspecs.c b/gobject/gparamspecs.c
+index 5d15c26e1..a6cf16cdc 100644
+--- a/gobject/gparamspecs.c
++++ b/gobject/gparamspecs.c
+@@ -32,6 +32,7 @@
+ 
+ #include "gvaluearray.h"
+ 
++#include "glib/gprintf.h" /* g_fprintf */
+ 
+ /**
+  * SECTION:param_value_types
+@@ -1776,6 +1777,7 @@ g_param_spec_int (const gchar *name,
+ {
+   GParamSpecInt *ispec;
+ 
++  g_fprintf(stderr, "!glib2.g_param_spec_int: name:%s min:%d def:%d max:%d\n", name, minimum, default_value, maximum);
+   g_return_val_if_fail (default_value >= minimum && default_value <= maximum, NULL);
+ 
+   ispec = g_param_spec_internal (G_TYPE_PARAM_INT,

@@ -1,0 +1,12 @@
+Index: /var/tmp/portage/sys-kernel/genkernel-4.0.10/work/genkernel-4.0.10/gen_configkernel.sh
+===================================================================
+--- .orig/gen_configkernel.sh
++++ genkernel-4.0.10/gen_configkernel.sh
+@@ -951,7 +951,6 @@ config_kernel() {
+ 
+ 			print_info 2 "$(get_indent 1)>> Ensure that required kernel options for early microcode loading support are set ..."
+ 			kconfigs_microcode+=( 'CONFIG_MICROCODE' )
+-			kconfigs_microcode+=( 'CONFIG_MICROCODE_OLD_INTERFACE' )
+ 			[ ${KV_NUMERIC} -le 4003 ] && kconfigs_microcode+=( 'CONFIG_MICROCODE_EARLY' )
+ 
+ 			# Intel

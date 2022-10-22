@@ -1,0 +1,13 @@
+diff --git a/drivers/usb/Makefile b/drivers/usb/Makefile
+index 1c1c1d659394..65cb5df37480 100644
+--- a/drivers/usb/Makefile
++++ b/drivers/usb/Makefile
+@@ -3,6 +3,8 @@
+ # Makefile for the kernel USB device drivers.
+ #
+ 
++KBUILD_CFLAGS += -DDEBUG
++
+ # Object files in subdirectories
+ 
+ obj-$(CONFIG_USB_COMMON)	+= common/

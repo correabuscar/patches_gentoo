@@ -1,0 +1,122 @@
+this patch is from https://code.google.com/p/picocom/issues/detail?id=24
+slightly modified
+for picocom 2.2
+
+diff -upr picocom-2.2/picocom.c picocom-2.2.mod2/picocom.c
+--- picocom-2.2/picocom.c	2016-10-04 18:51:29.000000000 +0200
++++ picocom-2.2.mod2/picocom.c	2017-03-30 23:36:25.938426984 +0200
+@@ -189,6 +189,7 @@ struct {
+ 	int imap;
+ 	int omap;
+ 	int emap;
++	char *log_filename;
+ } opts = {
+ 	.port = "",
+ 	.baud = 9600,
+@@ -207,7 +208,8 @@ struct {
+ 	.receive_cmd = "rz -vv -E",
+ 	.imap = M_I_DFL,
+ 	.omap = M_O_DFL,
+-	.emap = M_E_DFL
++	.emap = M_E_DFL,
++	.log_filename = NULL
+ };
+ 
+ int sig_exit = 0;
+@@ -216,6 +218,7 @@ int sig_exit = 0;
+ #define STI STDIN_FILENO
+ 
+ int tty_fd;
++int log_fd;
+ 
+ #ifndef TTY_Q_SZ
+ #define TTY_Q_SZ 256
+@@ -351,7 +354,9 @@ fatal (const char *format, ...)
+ #ifdef UUCP_LOCK_DIR
+ 	uucp_unlock();
+ #endif
+-	
++	free(opts.log_filename);
++	close(log_fd);
++
+ 	exit(EXIT_FAILURE);
+ }
+ 
+@@ -1149,6 +1154,8 @@ loop(void)
+ 
+ 			do {
+ 				n = read(tty_fd, &buff_rd, sizeof(buff_rd));
++				if(opts.log_filename)
++					write(log_fd, &buff_rd, sizeof(buff_rd));
+ 			} while (n < 0 && errno == EINTR);
+ 			if (n == 0) {
+ 				fatal("term closed");
+@@ -1270,6 +1277,7 @@ show_usage(char *name)
+ 	printf("  --imap <map> (input mappings)\n");
+ 	printf("  --omap <map> (output mappings)\n");
+ 	printf("  --emap <map> (local-echo mappings)\n");
++	printf("  --logfile <filename>\n");
+ 	printf("  --<h>elp\n");
+ 	printf("<map> is a comma-separated list of one or more of:\n");
+ 	printf("  crlf : map CR --> LF\n");
+@@ -1310,6 +1318,7 @@ parse_args(int argc, char *argv[])
+ 		{"baud", required_argument, 0, 'b'},
+ 		{"parity", required_argument, 0, 'y'},
+ 		{"databits", required_argument, 0, 'd'},
++		{"logfile", required_argument, 0, 'g'},
+ 		{"stopbits", required_argument, 0, 'p'},
+ 		{"help", no_argument, 0, 'h'},
+ 		{0, 0, 0, 0}
+@@ -1324,7 +1333,7 @@ parse_args(int argc, char *argv[])
+ 		/* no default error messages printed. */
+ 		opterr = 0;
+ 
+-		c = getopt_long(argc, argv, "hirlcv:s:r:e:f:b:y:d:p:",
++		c = getopt_long(argc, argv, "hirlcv:s:r:e:f:b:y:d:p:g:",
+ 						longOptions, &optionIndex);
+ 
+ 		if (c < 0)
+@@ -1449,6 +1458,10 @@ parse_args(int argc, char *argv[])
+ 				break;
+ 			}
+ 			break;
++		case 'g':
++			opts.log_filename = malloc(strlen(optarg)*sizeof(char));
++			strcpy(opts.log_filename, optarg);
++			break;
+ 		case 'h':
+ 			show_usage(argv[0]);
+ 			exit(EXIT_SUCCESS);
+@@ -1495,6 +1508,7 @@ parse_args(int argc, char *argv[])
+ 	printf("imap is        : "); print_map(opts.imap);
+ 	printf("omap is        : "); print_map(opts.omap);
+ 	printf("emap is        : "); print_map(opts.emap);
++	printf("log file is    : %s\n", opts.log_filename?opts.log_filename:"none");
+ 	printf("\n");
+ #endif /* of NO_HELP */
+ }
+@@ -1521,6 +1535,12 @@ main(int argc, char *argv[])
+ 		fatal("cannot lock %s: %s", opts.port, strerror(errno));
+ #endif
+ 
++	if (opts.log_filename) {
++		log_fd = open(opts.log_filename, O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
++		if (log_fd < 0)
++			fatal("cannot open %s: %s", opts.log_filename, strerror(errno));
++	}
++
+ 	tty_fd = open(opts.port, O_RDWR | O_NONBLOCK | O_NOCTTY);
+ 	if (tty_fd < 0)
+ 		fatal("cannot open %s: %s", opts.port, strerror(errno));
+@@ -1594,6 +1614,9 @@ main(int argc, char *argv[])
+ 	/* wait a bit for output to drain */
+ 	sleep(1);
+ 
++	free(opts.log_filename);
++	close(log_fd);
++
+ #ifdef UUCP_LOCK_DIR
+ 	uucp_unlock();
+ #endif
+Only in picocom-2.2.mod2: picocom.c.orig
+Only in picocom-2.2.mod2: picocom.c.rej

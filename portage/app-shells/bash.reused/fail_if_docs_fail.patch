@@ -1,0 +1,38 @@
+but don't fail on the @MKINSTALLDIRS@ error!
+
+elibrokeit> howaboutsynergy: commit be4078d25ff3af268a6ef7ab56c8121f9a8dfb36 removed it from aclocal.m4 is why
+
+
+diff --git a/Makefile.in b/Makefile.in
+index 4615ed43..9f399c3a 100644
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -794,10 +794,10 @@ loadables:
+ #	$(MAKE) -f $(srcdir)/Makefile $(MFLAGS) srcdir=$(srcdir)
+ 
+ doc documentation:  force
+-	@(cd $(DOCDIR) ; $(MAKE) $(MFLAGS) )
++	@(cd $(DOCDIR) && $(MAKE) $(MFLAGS) )
+ 
+ info dvi ps: force
+-	@(cd $(DOCDIR) ; $(MAKE) $(MFLAGS) CFLAGS='$(CCFLAGS)' $@ )
++	@(cd $(DOCDIR) && $(MAKE) $(MFLAGS) CFLAGS='$(CCFLAGS)' $@ )
+ 
+ force:
+ 
+@@ -821,12 +821,12 @@ install:	.made installdirs
+ 	$(INSTALL_PROGRAM) $(INSTALLMODE) $(Program) $(DESTDIR)$(bindir)/$(Program)
+ 	$(INSTALL_SCRIPT) $(INSTALLMODE2) bashbug $(DESTDIR)$(bindir)/bashbug
+ 	$(INSTALL_DATA) $(OTHER_DOCS) $(DESTDIR)$(docdir)
+-	-( cd $(DOCDIR) ; $(MAKE) $(MFLAGS) \
++	@( cd $(DOCDIR) && $(MAKE) $(MFLAGS) \
+ 		man1dir=$(man1dir) man1ext=$(man1ext) \
+ 		man3dir=$(man3dir) man3ext=$(man3ext) \
+ 		infodir=$(infodir) htmldir=$(htmldir) DESTDIR=$(DESTDIR) $@ )
+-	-( cd $(DEFDIR) ; $(MAKE) $(MFLAGS) DESTDIR=$(DESTDIR) $@ )
+-	-( cd $(PO_DIR) ; $(MAKE) $(MFLAGS) DESTDIR=$(DESTDIR) $@ )
++	@( cd $(DEFDIR) && $(MAKE) $(MFLAGS) DESTDIR=$(DESTDIR) $@ )
++	-( cd $(PO_DIR) && $(MAKE) $(MFLAGS) DESTDIR=$(DESTDIR) $@ )
+ 	-( cd $(LOADABLES_DIR) && $(MAKE) $(MFLAGS) DESTDIR=$(DESTDIR) $@ )
+ 
+ install-strip:

@@ -1,0 +1,68 @@
+diff --git a/src/filemanager/cmd.c b/src/filemanager/cmd.c
+index 9fe726705..4c7e05b73 100644
+--- a/src/filemanager/cmd.c
++++ b/src/filemanager/cmd.c
+@@ -214,15 +214,21 @@ compare_files (const vfs_path_t * vpath1, const vfs_path_t * vpath2, off_t size)
+     if (size == 0)
+         return 0;
+ 
+-    file1 = open (vfs_path_as_str (vpath1), O_RDONLY);
++    // https://midnight-commander.org/ticket/3983#comment:7
++    file1 = open (vfs_path_as_str (vpath1), O_RDONLY 
++//| O_NOFOLLOW  //FIXME: comparing symlinks is broken as it compares only size-of-symlink bytes of the contents of the file that the symlink points to! Also SIGBUS error if pointee file is 0 bytes. So with O_NOFOLLOW all symlinks will show as different (even if same dir in both panels and same symlink compared to itself!)
++        );
+     if (file1 >= 0)
+     {
+         int file2;
+ 
+-        file2 = open (vfs_path_as_str (vpath2), O_RDONLY);
++        file2 = open (vfs_path_as_str (vpath2), O_RDONLY
++//            | O_NOFOLLOW //FIXME: same as above.
++            );
+         if (file2 >= 0)
+         {
+-#ifdef HAVE_MMAP
++//#ifdef HAVE_MMAP
++#if 0
+             char *data1;
+ 
+             /* Ugly if jungle */
+@@ -235,6 +241,7 @@ compare_files (const vfs_path_t * vpath1, const vfs_path_t * vpath2, off_t size)
+                 if (data2 != (char *) -1)
+                 {
+                     rotate_dash (TRUE);
++                    //printf("!! size=%jd vpath1=%s vpath2=%s\n",size, vfs_path_as_str(vpath1), vfs_path_as_str(vpath2));
+                     result = memcmp (data1, data2, size);
+                     munmap (data2, size);
+                 }
+@@ -249,11 +256,14 @@ compare_files (const vfs_path_t * vpath1, const vfs_path_t * vpath2, off_t size)
+             {
+                 while ((n1 = read (file1, buf1, sizeof (buf1))) == -1 && errno == EINTR)
+                     ;
++                //fprintf(stderr, "n1=%d\n",n1);
+                 while ((n2 = read (file2, buf2, sizeof (buf2))) == -1 && errno == EINTR)
+                     ;
++                //fprintf(stderr, "n2=%d\n",n2);
+             }
+             while (n1 == n2 && n1 == sizeof (buf1) && memcmp (buf1, buf2, sizeof (buf1)) == 0);
+             result = (n1 != n2) || memcmp (buf1, buf2, n1);
++            //fprintf(stderr, "result=%d\n", result);
+ #endif /* !HAVE_MMAP */
+             close (file2);
+         }
+#@@ -309,6 +319,7 @@ compare_dir (WPanel * panel, WPanel * other, enum CompareMode mode)
+#                     continue;
+#             }
+# 
+#+            //fprintf(stderr, "!! srcsize=%jd tarsize=%jd\n", source->st.st_size, target->st.st_size); // run with 'mc 2>/tmp/se' and in another terminal: 'tail -F /tmp/se'
+#             /* Newer version with different size is marked */
+#             if (source->st.st_size != target->st.st_size)
+#             {
+@@ -305,6 +315,7 @@ compare_dir (WPanel * panel, WPanel * other, enum CompareMode mode)
+                 if (source->st.st_mtime < target->st.st_mtime)
+                     continue;
+ 
++            //fprintf(stderr, "!! srcsize=%jd tarsize=%jd\n", source->st.st_size, target->st.st_size); // run with 'mc 2>/tmp/se' and in another terminal: 'tail -F /tmp/se'
+             /* Newer version with different size is marked */
+             if (source->st.st_size != target->st.st_size)
+             {

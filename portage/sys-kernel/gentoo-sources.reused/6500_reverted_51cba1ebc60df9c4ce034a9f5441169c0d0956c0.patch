@@ -1,0 +1,83 @@
+see: https://bugzilla.kernel.org/show_bug.cgi?id=206963
+
+this patch is reverting commit 51cba1ebc60df9c4ce034a9f5441169c0d0956c0
+Date:   Thu Apr 1 16:23:43 2021 -0700
+init_on_alloc: Optimize static branches
+on top of 5.13.1 which would otherwise spam dmesg when page_poison=1
+
+quick links to that commit:
+
+https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?h=linux-5.13.y&id=51cba1ebc60df9c4ce034a9f5441169c0d0956c0
+
+https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=51cba1ebc60df9c4ce034a9f5441169c0d0956c0
+
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index 8ae31622de..af16c3f008 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -2947,20 +2947,18 @@ static inline void kernel_poison_pages(struct page *page, int numpages) { }
+ static inline void kernel_unpoison_pages(struct page *page, int numpages) { }
+ #endif
+ 
+-DECLARE_STATIC_KEY_MAYBE(CONFIG_INIT_ON_ALLOC_DEFAULT_ON, init_on_alloc);
++DECLARE_STATIC_KEY_FALSE(init_on_alloc);
+ static inline bool want_init_on_alloc(gfp_t flags)
+ {
+-	if (static_branch_maybe(CONFIG_INIT_ON_ALLOC_DEFAULT_ON,
+-				&init_on_alloc))
++	if (static_branch_unlikely(&init_on_alloc))
+ 		return true;
+ 	return flags & __GFP_ZERO;
+ }
+ 
+-DECLARE_STATIC_KEY_MAYBE(CONFIG_INIT_ON_FREE_DEFAULT_ON, init_on_free);
++DECLARE_STATIC_KEY_FALSE(init_on_free);
+ static inline bool want_init_on_free(void)
+ {
+-	return static_branch_maybe(CONFIG_INIT_ON_FREE_DEFAULT_ON,
+-				   &init_on_free);
++	return static_branch_unlikely(&init_on_free);
+ }
+ 
+ extern bool _debug_pagealloc_enabled_early;
+diff --git a/mm/page_alloc.c b/mm/page_alloc.c
+index ef2265f86b..6da05e1cb8 100644
+--- a/mm/page_alloc.c
++++ b/mm/page_alloc.c
+@@ -177,10 +177,10 @@ unsigned long totalcma_pages __read_mostly;
+ 
+ int percpu_pagelist_fraction;
+ gfp_t gfp_allowed_mask __read_mostly = GFP_BOOT_MASK;
+-DEFINE_STATIC_KEY_MAYBE(CONFIG_INIT_ON_ALLOC_DEFAULT_ON, init_on_alloc);
++DEFINE_STATIC_KEY_FALSE(init_on_alloc);
+ EXPORT_SYMBOL(init_on_alloc);
+ 
+-DEFINE_STATIC_KEY_MAYBE(CONFIG_INIT_ON_FREE_DEFAULT_ON, init_on_free);
++DEFINE_STATIC_KEY_FALSE(init_on_free);
+ EXPORT_SYMBOL(init_on_free);
+ 
+ static bool _init_on_alloc_enabled_early __read_mostly
+diff --git a/mm/slab.h b/mm/slab.h
+index 18c1927cd1..69130ca3e8 100644
+--- a/mm/slab.h
++++ b/mm/slab.h
+@@ -610,8 +610,7 @@ static inline void cache_random_seq_destroy(struct kmem_cache *cachep) { }
+ 
+ static inline bool slab_want_init_on_alloc(gfp_t flags, struct kmem_cache *c)
+ {
+-	if (static_branch_maybe(CONFIG_INIT_ON_ALLOC_DEFAULT_ON,
+-				&init_on_alloc)) {
++	if (static_branch_unlikely(&init_on_alloc)) {
+ 		if (c->ctor)
+ 			return false;
+ 		if (c->flags & (SLAB_TYPESAFE_BY_RCU | SLAB_POISON))
+@@ -623,8 +622,7 @@ static inline bool slab_want_init_on_alloc(gfp_t flags, struct kmem_cache *c)
+ 
+ static inline bool slab_want_init_on_free(struct kmem_cache *c)
+ {
+-	if (static_branch_maybe(CONFIG_INIT_ON_FREE_DEFAULT_ON,
+-				&init_on_free))
++	if (static_branch_unlikely(&init_on_free))
+ 		return !(c->ctor ||
+ 			 (c->flags & (SLAB_TYPESAFE_BY_RCU | SLAB_POISON)));
+ 	return false;

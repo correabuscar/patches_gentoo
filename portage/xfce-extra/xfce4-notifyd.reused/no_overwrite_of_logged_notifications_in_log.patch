@@ -1,0 +1,34 @@
+https://bugzilla.xfce.org/show_bug.cgi?id=15167
+
+you need to $ pkill xfce4-notifyd
+then test with:
+$ rm ~/.cache/xfce4/notifyd/log; notify-send c; notify-send d ; cat ~/.cache/xfce4/notifyd/log 
+
+should be two entries with the patch, only one(last one) without!
+
+diff --git a/common/xfce-notify-log.c b/common/xfce-notify-log.c
+index 5c0323c..259f4e8 100644
+--- a/common/xfce-notify-log.c
++++ b/common/xfce-notify-log.c
+@@ -145,6 +145,7 @@ void xfce_notify_log_insert (const gchar *app_name,
+     gint j = 0;
+     GDateTime *now;
+     gchar *timestamp;
++    gint microseconds;
+     GBytes *image_bytes;
+     gchar *icon_name;
+     GdkPixbuf *pixbuf = NULL;
+@@ -165,9 +166,11 @@ void xfce_notify_log_insert (const gchar *app_name,
+         }
+ 
+         now = g_date_time_new_now_local ();
+-        timestamp = g_date_time_format (now, "%FT%T");
++        //timestamp = g_date_time_format (now, "%FT%T%Z");
++        timestamp = g_date_time_format_iso8601 (now);
++        microseconds = g_date_time_get_microsecond (now);
+         g_date_time_unref (now);
+-        group = g_strdup_printf ("%s", timestamp);
++        group = g_strdup_printf ("%s_ms%i", timestamp, microseconds);
+         g_free(timestamp);
+ 
+         g_key_file_set_string (notify_log, group, "app_name", app_name);

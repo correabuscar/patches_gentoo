@@ -1,0 +1,25 @@
+they've fixed this in at least sys-devel/automake-1.16.5
+but unsure if gentoo or automake did it!
+
+///
+This was -rw-r--r-- 1 root root 593 16.05.2019 20:18 /patches/portage/sys-devel/automake.reused/append_mode.patch
+
+use append mode for log file to avoid corrupted output, see:
+https://github.com/libcheck/check/issues/188
+
+tested for automake 1.16.1
+
+create empty file improvements by: https://debbugs.gnu.org/cgi/bugreport.cgi?bug=35762#11
+
+--- orig/lib/test-driver	2018-09-18 15:06:54.000000000 +0200
++++ mod/lib/test-driver	2019-05-16 17:58:09.690988983 +0200
+@@ -104,7 +104,8 @@ trap "st=141; $do_exit" 13
+ trap "st=143; $do_exit" 15
+ 
+ # Test script is run here.
+-"$@" >$log_file 2>&1
++: >"$log_file"
++"$@" >>"$log_file" 2>&1
+ estatus=$?
+ 
+ if test $enable_hard_errors = no && test $estatus -eq 99; then

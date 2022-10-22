@@ -1,0 +1,20 @@
+--- VirtualBox-5.1.18/configure	2017-03-18 12:06:37.730276206 +0100
++++ VirtualBox-5.1.18_mod/configure	2017-03-18 12:10:01.327716640 +0100
+@@ -2542,7 +2542,7 @@ Build type:
+   --build-profile          build with profiling support
+   --build-headless         build headless (without any GUI frontend)
+ EOF
+-  exit 0
++  exit "${1:-0}"
+ }
+ 
+ 
+@@ -2800,7 +2800,7 @@ for option in "$@"; do
+       echo
+       echo "Unrecognized option \"$option\""
+       echo
+-      show_help
++      show_help 1
+       ;;
+   esac
+ done

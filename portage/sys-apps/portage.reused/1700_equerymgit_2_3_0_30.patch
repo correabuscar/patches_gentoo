@@ -1,0 +1,138 @@
+without this patch:
+see https://bugs.gentoo.org/757897
+with this patch:
+# equery m glib
+!!! Ambiguous package name. Choose from:
+  dev-haskell/glib
+  dev-libs/glib
+# equery m git
+!!! Ambiguous package name. Choose from:
+  dev-haskell/git
+  acct-group/git
+  dev-vcs/git
+  acct-user/git
+  dev-ruby/git
+# equery m git
+!!! Ambiguous package name. Choose from:
+  dev-vcs/git
+  acct-group/git
+  acct-user/git
+  dev-ruby/git
+  dev-haskell/git
+
+
+#Index: /var/tmp/portage/sys-apps/portage-3.0.11-r1/work/portage-3.0.11/lib/portage/dbapi/cpv_expand.py
+#===================================================================
+#--- .orig/lib/portage/dbapi/cpv_expand.py
+#+++ mod/lib/portage/dbapi/cpv_expand.py
+#@@ -67,22 +67,23 @@ def cpv_expand(mycpv, mydb=None, use_cac
+# 				if mydb.cp_list(x+"/"+myp,use_cache=use_cache):
+# 					matches.append(x+"/"+myp)
+# 		if len(matches) > 1:
+#-			virtual_name_collision = False
+#-			if len(matches) > 1:
+#-				for x in matches:
+#-					if not x.startswith(("acct-group/", "acct-user/", "virtual/")):
+#-						# Assume that the non-virtual is desired.  This helps
+#-						# avoid the ValueError for invalid deps that come from
+#-						# installed packages (during reverse blocker detection,
+#-						# for example).
+#-						mykey = x
+#-					else:
+#-						virtual_name_collision = True
+#-			if not virtual_name_collision:
+#-				# AmbiguousPackageName inherits from ValueError,
+#-				# for backward compatibility with calling code
+#-				# that already handles ValueError.
+#-				raise AmbiguousPackageName(matches)
+#+			#more than 1 match!
+#+			assert None == mykey
+#+			for x in matches:
+#+				if not x.startswith(("acct-group/", "acct-user/", "virtual/")):
+#+					# Assume that the non-virtual is desired.  This helps
+#+					# avoid the ValueError for invalid deps that come from
+#+					# installed packages (during reverse blocker detection,
+#+					# for example).
+#+					if None != mykey:
+#+						#if more than 1 non-virtuals then collision!
+#+						#eg. try 'equery m git'
+#+						#
+#+						# AmbiguousPackageName inherits from ValueError,
+#+						# for backward compatibility with calling code
+#+						# that already handles ValueError.
+#+						raise AmbiguousPackageName(matches)
+#+					mykey = x
+# 		elif matches:
+# 			mykey=matches[0]
+# 
+
+Index: /var/tmp/portage/sys-apps/portage-3.0.30-r1/work/portage-3.0.30/lib/portage/dbapi/cpv_expand.py
+===================================================================
+--- portage-3.0.30/lib/portage/dbapi/cpv_expand.py
++++ portage-3.0.30/lib/portage/dbapi/cpv_expand.py
+@@ -65,32 +65,49 @@ def cpv_expand(mycpv, mydb=None, use_cac
+             myp = mycpv
+         mykey = None
+         matches = []
+         if mydb and hasattr(mydb, "categories"):
+             for x in mydb.categories:
+                 if mydb.cp_list(x + "/" + myp, use_cache=use_cache):
+                     matches.append(x + "/" + myp)
+         if len(matches) > 1:
+-            virtual_name_collision = False
+-            if len(matches) > 1:
+-                for x in matches:
+-                    if not x.startswith(("acct-group/", "acct-user/", "virtual/")):
+-                        # Assume that the non-virtual is desired.  This helps
+-                        # avoid the ValueError for invalid deps that come from
+-                        # installed packages (during reverse blocker detection,
+-                        # for example).
+-                        mykey = x
+-                    else:
+-                        virtual_name_collision = True
+-            if not virtual_name_collision:
+-                # AmbiguousPackageName inherits from ValueError,
+-                # for backward compatibility with calling code
+-                # that already handles ValueError.
+-                raise AmbiguousPackageName(matches)
++#            virtual_name_collision = False
++#            if len(matches) > 1:
++#                for x in matches:
++#                    if not x.startswith(("acct-group/", "acct-user/", "virtual/")):
++#                        # Assume that the non-virtual is desired.  This helps
++#                        # avoid the ValueError for invalid deps that come from
++#                        # installed packages (during reverse blocker detection,
++#                        # for example).
++#                        mykey = x
++#                    else:
++#                        virtual_name_collision = True
++#            if not virtual_name_collision:
++#                # AmbiguousPackageName inherits from ValueError,
++#                # for backward compatibility with calling code
++#                # that already handles ValueError.
++#                raise AmbiguousPackageName(matches)
++            #more than 1 match!
++            assert None == mykey
++            for x in matches:
++                if not x.startswith(("acct-group/", "acct-user/", "virtual/")):
++                    # Assume that the non-virtual is desired.  This helps
++                    # avoid the ValueError for invalid deps that come from
++                    # installed packages (during reverse blocker detection,
++                    # for example).
++                    if None != mykey:
++                        #if more than 1 non-virtuals then collision!
++                        #eg. try 'equery m git'
++                        #
++                        # AmbiguousPackageName inherits from ValueError,
++                        # for backward compatibility with calling code
++                        # that already handles ValueError.
++                        raise AmbiguousPackageName(matches)
++                    mykey = x
+         elif matches:
+             mykey = matches[0]
+ 
+         if not mykey and not isinstance(mydb, list):
+             if hasattr(mydb, "vartree"):
+                 settings._populate_treeVirtuals_if_needed(mydb.vartree)
+             virts_p = settings.get_virts_p().get(myp)
+             if virts_p:

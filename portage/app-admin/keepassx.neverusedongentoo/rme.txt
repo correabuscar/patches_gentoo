@@ -1,0 +1,4 @@
+git+https://github.com/keepassx/keepassx.git
+#current master is the same as bbcacf4
+pkgver=2.0.3.r80.g1682ab90
+

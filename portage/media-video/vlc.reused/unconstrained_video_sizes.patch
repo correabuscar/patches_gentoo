@@ -1,0 +1,101 @@
+do NOT contrain video (re)size to full screen!
+also de-maximize before resize (eg. Alt+1,2,3 keys)
+
+for old vlc 3:
+diff --git a/modules/gui/qt/main_interface.cpp b/modules/gui/qt/main_interface.cpp
+index 561e502d7b..cc918e51aa 100644
+--- a/modules/gui/qt/main_interface.cpp
++++ b/modules/gui/qt/main_interface.cpp
+@@ -772,17 +772,22 @@ void MainInterface::releaseVideoSlot( void )
+ // The provided size is in physical pixels, coming from the core.
+ void MainInterface::setVideoSize( unsigned int w, unsigned int h )
+ {
+-    if (!isFullScreen() && !isMaximized() )
++    if (!isFullScreen())// && !isMaximized() )
+     {
+         /* Resize video widget to video size, or keep it at the same
+          * size. Call setSize() either way so that vout_window_ReportSize
+          * will always get called.
+          * If the video size is too large for the screen, resize it
+          * to the screen size.
++         * found old commit 7e9d58705c550af692faa646751094a6ae0beaf5
+          */
+         if (b_autoresize)
+         {
+-            QRect screen = QApplication::desktop()->availableGeometry();
++          if (isMaximized()) {
++            //restore first, else resize has no effect!
++            showNormal();
++          }
++/*            QRect screen = QApplication::desktop()->availableGeometry();
+ #if HAS_QT56
+             float factor = videoWidget->devicePixelRatioF();
+ #else
+@@ -813,7 +818,7 @@ void MainInterface::setVideoSize( unsigned int w, unsigned int h )
+                 w = qRound( (float)w / factor );
+                 h = qRound( (float)h / factor );
+                 msg_Dbg( p_intf, "Logical video size: %ux%u", w, h );
+-            }
++            }*/
+             videoWidget->setSize( w, h );
+         }
+         else
+
+
+for latest git vlc 4:
+#diff --git a/modules/gui/qt/main_interface.cpp b/modules/gui/qt/main_interface.cpp
+#index e9bf16938f..1610a2fa63 100644
+#--- a/modules/gui/qt/main_interface.cpp
+#+++ b/modules/gui/qt/main_interface.cpp
+#@@ -708,30 +708,36 @@ void MainInterface::releaseVideoSlot( void )
+# 
+# void MainInterface::setVideoSize(unsigned int w, unsigned int h)
+# {
+#-    if (!isFullScreen() && !isMaximized() )
+#+    if (!isFullScreen())// && !isMaximized() )
+#     {
+#         /* Resize video widget to video size, or keep it at the same
+#          * size. Call setSize() either way so that vout_window_ReportSize
+#          * will always get called.
+#          * If the video size is too large for the screen, resize it
+#          * to the screen size.
+#+         * found old commit 7e9d58705c550af692faa646751094a6ae0beaf5
+#          */
+#         if (b_autoresize)
+#         {
+#-            QRect screen = QApplication::desktop()->availableGeometry();
+#-            float factor = devicePixelRatioF();
+#-            if( (float)h / factor > screen.height() )
+#-            {
+#-                w = screen.width();
+#-                h = screen.height();
+#-            }
+#-            else
+#-            {
+#-                // Convert the size in logical pixels
+#-                w = qRound( (float)w / factor );
+#-                h = qRound( (float)h / factor );
+#-                msg_Dbg( p_intf, "Logical video size: %ux%u", w, h );
+#-            }
+#+          if (isMaximized()) {
+#+            //restore first, else resize has no effect!
+#+            showNormal();
+#+          }
+#+
+#+            //QRect screen = QApplication::desktop()->availableGeometry();
+#+            //float factor = devicePixelRatioF();
+#+            //if( (float)h / factor > screen.height() )
+#+            //{
+#+            //    w = screen.width();
+#+            //    h = screen.height();
+#+            //}
+#+            //else
+#+            //{
+#+            //    // Convert the size in logical pixels
+#+            //    w = qRound( (float)w / factor );
+#+            //    h = qRound( (float)h / factor );
+#+            //    msg_Dbg( p_intf, "Logical video size: %ux%u", w, h );
+#+            //}
+#             resize(w, h);
+#         }
+#     }

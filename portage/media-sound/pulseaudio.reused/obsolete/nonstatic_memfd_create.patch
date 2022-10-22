@@ -1,0 +1,15 @@
+#12jul2019
+#nonstatic_memfd_create.patch #only for commit 10.0+82+g48ba5e495-1 and 46fb1b8c5dfeb9611ba9035ff7a09dbb620c54ea aka 11.0+2+g46fb1b8c5-1
+diff --git a/src/pulsecore/memfd-wrappers.h b/src/pulsecore/memfd-wrappers.h
+index 3bed9b2b1..7cba82d7b 100644
+--- a/src/pulsecore/memfd-wrappers.h
++++ b/src/pulsecore/memfd-wrappers.h
+@@ -33,7 +33,7 @@
+  * a whole conflicts with the original glibc header <fnctl.h>.
+  */
+ 
+-static inline int memfd_create(const char *name, unsigned int flags) {
++inline int memfd_create(const char *name, unsigned int flags) {
+     return syscall(SYS_memfd_create, name, flags);
+ }
+ 

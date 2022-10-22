@@ -1,0 +1,31 @@
+diff --git a/kernel-shark/build/FindTraceCmd.cmake b/kernel-shark/build/FindTraceCmd.cmake
+index 2da4eee..cd9f691 100644
+--- a/kernel-shark/build/FindTraceCmd.cmake
++++ b/kernel-shark/build/FindTraceCmd.cmake
+@@ -12,14 +12,15 @@
+ # MESSAGE(" Looking for trace-cmd ...")
+ 
+ # First search in the user provided paths.
+-if (CMAKE_BUILD_TYPE MATCHES Debug)
++#if (CMAKE_BUILD_TYPE MATCHES Debug)  #this is a bad fix/workaround, here's why: https://bugzilla.kernel.org/show_bug.cgi?id=204259#c4
+ 
+   find_program(TRACECMD_EXECUTABLE   NAMES  trace-cmd
+                                      PATHS  $ENV{TRACE_CMD}/tracecmd/
+                                             ${CMAKE_SOURCE_DIR}/../tracecmd/
+                                      NO_DEFAULT_PATH)
+ 
+-endif (CMAKE_BUILD_TYPE MATCHES Debug)
++                                   #MESSAGE(FATAL_ERROR "\n Shie exe='${TRACECMD_EXECUTABLE}' inc='${TRACECMD_INCLUDE_DIR}' lib='${TRACECMD_LIBRARY}'\n")
++#endif (CMAKE_BUILD_TYPE MATCHES Debug)
+ 
+ find_path(TRACECMD_INCLUDE_DIR  NAMES  trace-cmd/trace-cmd.h
+                                 PATHS  $ENV{TRACE_CMD}/include/
+@@ -55,7 +56,7 @@ IF (TRACECMD_FOUND)
+ 
+ ELSE (TRACECMD_FOUND)
+ 
+-  MESSAGE(FATAL_ERROR "\nCould not find trace-cmd!\n")
++  MESSAGE(FATAL_ERROR "\nCould not find trace-cmd! exe='${TRACECMD_EXECUTABLE}' inc='${TRACECMD_INCLUDE_DIR}' lib='${TRACECMD_LIBRARY}'\n")
+ 
+ ENDIF (TRACECMD_FOUND)
+ 

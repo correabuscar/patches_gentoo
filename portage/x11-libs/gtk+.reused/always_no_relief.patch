@@ -1,0 +1,71 @@
+ok maybe avoid high CPU usage everywhere? not just here: https://bugzilla.xfce.org/show_bug.cgi?id=15730
+
+#diff --git a/gtk/gtkbutton.c b/gtk/gtkbutton.c
+#index 26b7ffba38..31fd115557 100644
+#--- a/gtk/gtkbutton.c
+#+++ b/gtk/gtkbutton.c
+#@@ -1597,10 +1597,10 @@ gtk_button_set_relief (GtkButton      *button,
+#   if (old_relief != relief)
+#     {
+#       context = gtk_widget_get_style_context (GTK_WIDGET (button));
+#-      if (relief == GTK_RELIEF_NONE)
+#+      //if (relief == GTK_RELIEF_NONE)
+#         gtk_style_context_add_class (context, GTK_STYLE_CLASS_FLAT);
+#-      else
+#-        gtk_style_context_remove_class (context, GTK_STYLE_CLASS_FLAT);
+#+//      else
+#+//        gtk_style_context_remove_class (context, GTK_STYLE_CLASS_FLAT);
+# 
+#       g_object_notify_by_pspec (G_OBJECT (button), props[PROP_RELIEF]);
+#     }
+diff --git a/gtk/gtkbutton.c b/gtk/gtkbutton.c
+index 26b7ffba38..2af2e29447 100644
+--- a/gtk/gtkbutton.c
++++ b/gtk/gtkbutton.c
+@@ -1589,21 +1589,21 @@ gtk_button_set_relief (GtkButton      *button,
+ 		       GtkReliefStyle  relief)
+ {
+   GtkStyleContext *context;
+-  GtkReliefStyle old_relief;
++//  GtkReliefStyle old_relief;
+ 
+   g_return_if_fail (GTK_IS_BUTTON (button));
+ 
+-  old_relief = gtk_button_get_relief (button);
+-  if (old_relief != relief)
+-    {
++//  old_relief = gtk_button_get_relief (button);
++//  if (old_relief != relief) // we can ignore this because gtk_entry_set_has_frame() also ignores it and always adds flat class to context if the setting is true, ergo it can't hurt re-adding it multiple times! This 'if' was added in 2002 in commit e2b730ac43a27e91217a0d5602eff948f29533f5 for no apparent reason. ("General property notification cleanup.")
++//    {
+       context = gtk_widget_get_style_context (GTK_WIDGET (button));
+-      if (relief == GTK_RELIEF_NONE)
++      //if (relief == GTK_RELIEF_NONE)
+         gtk_style_context_add_class (context, GTK_STYLE_CLASS_FLAT);
+-      else
+-        gtk_style_context_remove_class (context, GTK_STYLE_CLASS_FLAT);
++//      else
++//        gtk_style_context_remove_class (context, GTK_STYLE_CLASS_FLAT);
+ 
+       g_object_notify_by_pspec (G_OBJECT (button), props[PROP_RELIEF]);
+-    }
++//    }
+ }
+ 
+ /**
+diff --git a/gtk/gtkentry.c b/gtk/gtkentry.c
+index 54a8bcd3ff..5ff8e5ca0b 100644
+--- a/gtk/gtkentry.c
++++ b/gtk/gtkentry.c
+@@ -8170,9 +8170,9 @@ gtk_entry_set_has_frame (GtkEntry *entry,
+     return;
+ 
+   context = gtk_widget_get_style_context (GTK_WIDGET (entry));
+-  if (setting)
+-    gtk_style_context_remove_class (context, GTK_STYLE_CLASS_FLAT);
+-  else
++//  if (setting)
++//    gtk_style_context_remove_class (context, GTK_STYLE_CLASS_FLAT);
++//  else
+     gtk_style_context_add_class (context, GTK_STYLE_CLASS_FLAT);
+   gtk_widget_queue_draw (GTK_WIDGET (entry));
+   g_object_notify_by_pspec (G_OBJECT (entry), entry_props[PROP_HAS_FRAME]);

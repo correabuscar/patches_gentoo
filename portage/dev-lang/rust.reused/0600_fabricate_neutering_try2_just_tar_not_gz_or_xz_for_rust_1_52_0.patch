@@ -1,0 +1,220 @@
+see also:  https://github.com/rust-lang/rust-installer/issues/110
+with this patch:
+real    43m32.147s
+user    349m54.882s
+sys     4m55.782s
+
+without it's like 56mins.
+
+Index: /var/tmp/portage/dev-lang/rust-1.52.0/work/rustc-1.52.0-src/src/tools/rust-installer/src/tarballer.rs
+===================================================================
+--- rustc-1.52.0-src/src/tools/rust-installer/src/tarballer.rs
++++ rustc-1.52.0-src/src/tools/rust-installer/src/tarballer.rs
+@@ -6,7 +6,7 @@ use tar::{Builder, Header};
+ use walkdir::WalkDir;
+ 
+ use crate::{
+-    compression::{CombinedEncoder, CompressionFormats},
++    //compression::{CombinedEncoder, CompressionFormats},
+     util::*,
+ };
+ 
+@@ -22,8 +22,8 @@ actor! {
+         /// The folder in which the input is to be found.
+         work_dir: String = "./workdir",
+ 
+-        /// The formats used to compress the tarball.
+-        compression_formats: CompressionFormats = CompressionFormats::default(),
++        ///// The formats used to compress the tarball.
++        //compression_formats: CompressionFormats = CompressionFormats::default(),
+     }
+ }
+ 
+@@ -31,12 +31,13 @@ impl Tarballer {
+     /// Generates the actual tarballs
+     pub fn run(self) -> Result<()> {
+         let tarball_name = self.output.clone() + ".tar";
+-        let encoder = CombinedEncoder::new(
+-            self.compression_formats
+-                .iter()
+-                .map(|f| f.encode(&tarball_name))
+-                .collect::<Result<Vec<_>>>()?,
+-        );
++        let encoder = ensure_new_file(tarball_name)?;
++        //let encoder = CombinedEncoder::new(
++        //    self.compression_formats
++        //        .iter()
++        //        .map(|f| f.encode(&tarball_name))
++        //        .collect::<Result<Vec<_>>>()?,
++        //);
+ 
+         // Sort files by their suffix, to group files with the same name from
+         // different locations (likely identical) and files with the same
+#@@ -51,7 +52,7 @@ impl Tarballer {
+#         let mut builder = Builder::new(buf);
+# 
+#         let pool = rayon::ThreadPoolBuilder::new()
+#-            .num_threads(2)
+#+            .num_threads(12)
+#             .build()
+#             .unwrap();
+#         pool.install(move || {
+@@ -71,8 +72,8 @@ impl Tarballer {
+                 .context("failed to finish writing .tar stream")?
+                 .into_inner()
+                 .ok()
+-                .unwrap()
+-                .finish()?;
++                .unwrap();
++                //.finish()?;
+ 
+             Ok(())
+         })
+Index: /var/tmp/portage/dev-lang/rust-1.52.0/work/rustc-1.52.0-src/src/tools/rust-installer/src/combiner.rs
+===================================================================
+--- rustc-1.52.0-src/src/tools/rust-installer/src/combiner.rs
++++ rustc-1.52.0-src/src/tools/rust-installer/src/combiner.rs
+@@ -1,7 +1,7 @@
+ use super::Scripter;
+ use super::Tarballer;
+ use crate::{
+-    compression::{CompressionFormat, CompressionFormats},
++    //compression::{CompressionFormat, CompressionFormats},
+     util::*,
+ };
+ use anyhow::{bail, Context, Result};
+@@ -39,8 +39,8 @@ actor! {
+         /// The location to put the final image and tarball.
+         output_dir: String = "./dist",
+ 
+-        /// The formats used to compress the tarball
+-        compression_formats: CompressionFormats = CompressionFormats::default(),
++        // /// The formats used to compress the tarball
++        //compression_formats: CompressionFormats = CompressionFormats::default(),
+     }
+ }
+ 
+@@ -64,11 +64,11 @@ impl Combiner {
+             .filter(|s| !s.is_empty())
+         {
+             // Extract the input tarballs
+-            let compression =
+-                CompressionFormat::detect_from_path(input_tarball).ok_or_else(|| {
+-                    anyhow::anyhow!("couldn't figure out the format of {}", input_tarball)
+-                })?;
+-            Archive::new(compression.decode(input_tarball)?)
++            //let compression =
++            //    CompressionFormat::detect_from_path(input_tarball).ok_or_else(|| {
++            //        anyhow::anyhow!("couldn't figure out the format of {}", input_tarball)
++            /*    })?;*/ let input_tarball=input_tarball.trim_end_matches(".gz").trim_end_matches(".xz");
++            Archive::new(open_file(&input_tarball)?)//compression.decode(input_tarball)?)
+                 .unpack(&self.work_dir)
+                 .with_context(|| {
+                     format!(
+#@@ -68,6 +68,7 @@ impl Combiner {
+#             //    CompressionFormat::detect_from_path(input_tarball).ok_or_else(|| {
+#             //        anyhow::anyhow!("couldn't figure out the format of {}", input_tarball)
+#             //    })?;
+#+            let input_tarball=input_tarball.trim_end_matches(".gz").trim_end_matches(".xz");
+#             Archive::new(open_file(&input_tarball)?)//compression.decode(input_tarball)?)
+#                 .unpack(&self.work_dir)
+#                 .with_context(|| {
+@@ -78,7 +78,8 @@ impl Combiner {
+                 })?;
+ 
+             let pkg_name =
+-                input_tarball.trim_end_matches(&format!(".tar.{}", compression.extension()));
++                input_tarball.trim_end_matches(".tar");
++                //input_tarball.trim_end_matches(&format!(".tar.{}", compression.extension()));
+             let pkg_name = Path::new(pkg_name).file_name().unwrap();
+             let pkg_dir = Path::new(&self.work_dir).join(&pkg_name);
+ 
+@@ -142,8 +143,8 @@ impl Combiner {
+         tarballer
+             .work_dir(self.work_dir)
+             .input(self.package_name)
+-            .output(path_to_str(&output)?.into())
+-            .compression_formats(self.compression_formats.clone());
++            .output(path_to_str(&output)?.into());
++            //.compression_formats(self.compression_formats.clone());
+         tarballer.run()?;
+ 
+         Ok(())
+Index: /var/tmp/portage/dev-lang/rust-1.52.0/work/rustc-1.52.0-src/src/tools/rust-installer/src/generator.rs
+===================================================================
+--- rustc-1.52.0-src/src/tools/rust-installer/src/generator.rs
++++ rustc-1.52.0-src/src/tools/rust-installer/src/generator.rs
+@@ -42,8 +42,8 @@ actor! {
+         /// The location to put the final image and tarball
+         output_dir: String = "./dist",
+ 
+-        /// The formats used to compress the tarball
+-        compression_formats: CompressionFormats = CompressionFormats::default(),
++        // /// The formats used to compress the tarball
++        // compression_formats: CompressionFormats = CompressionFormats::default(),
+     }
+ }
+ 
+@@ -99,8 +99,8 @@ impl Generator {
+         tarballer
+             .work_dir(self.work_dir)
+             .input(self.package_name)
+-            .output(path_to_str(&output)?.into())
+-            .compression_formats(self.compression_formats.clone());
++            .output(path_to_str(&output)?.into());
++            //.compression_formats(self.compression_formats.clone());
+         tarballer.run()?;
+ 
+         Ok(())
+Index: /var/tmp/portage/dev-lang/rust-1.52.0/work/rustc-1.52.0-src/src/tools/rust-installer/src/main.rs
+===================================================================
+--- rustc-1.52.0-src/src/tools/rust-installer/src/main.rs
++++ rustc-1.52.0-src/src/tools/rust-installer/src/main.rs
+@@ -41,7 +41,7 @@ fn combine(matches: &ArgMatches<'_>) ->
+         "non-installed-overlay" => non_installed_overlay,
+         "work-dir" => work_dir,
+         "output-dir" => output_dir,
+-        "compression-formats" => compression_formats,
++        //"compression-formats" => compression_formats,
+     });
+ 
+     combiner.run().context("failed to combine installers")?;
+@@ -61,7 +61,7 @@ fn generate(matches: &ArgMatches<'_>) ->
+         "image-dir" => image_dir,
+         "work-dir" => work_dir,
+         "output-dir" => output_dir,
+-        "compression-formats" => compression_formats,
++        //"compression-formats" => compression_formats,
+     });
+ 
+     generator.run().context("failed to generate installer")?;
+@@ -88,7 +88,7 @@ fn tarball(matches: &ArgMatches<'_>) ->
+         "input" => input,
+         "output" => output,
+         "work-dir" => work_dir,
+-        "compression-formats" => compression_formats,
++        //"compression-formats" => compression_formats,
+     });
+ 
+     tarballer.run().context("failed to generate tarballs")?;
+Index: /var/tmp/portage/dev-lang/rust-1.52.0/work/rustc-1.52.0-src/src/tools/rust-installer/src/util.rs
+===================================================================
+--- rustc-1.52.0-src/src/tools/rust-installer/src/util.rs
++++ rustc-1.52.0-src/src/tools/rust-installer/src/util.rs
+@@ -73,6 +73,16 @@ pub fn create_new_file<P: AsRef<Path>>(p
+     Ok(file)
+ }
+ 
++/// Ensure a new file or truncates existing one
++pub fn ensure_new_file<P: AsRef<Path>>(path: P) -> Result<fs::File> {
++    let file = fs::OpenOptions::new()
++        .write(true)
++        .create(true).truncate(true)
++        .open(&path)
++        .with_context(|| format!("failed to truncate existing or create new  file '{}'", path.as_ref().display()))?;
++    Ok(file)
++}
++
+ /// Wraps `fs::File::open()` with a nicer error message.
+ pub fn open_file<P: AsRef<Path>>(path: P) -> Result<fs::File> {
+     let file = fs::File::open(&path)

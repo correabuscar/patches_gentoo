@@ -1,0 +1,17 @@
+$ sudo kernelshark 
+Unknown error/usr/bin/kshark-su-record: line 3: [: =: unary operator expected
+
+https://bugzilla.kernel.org/show_bug.cgi?id=204261
+
+diff --git a/kernel-shark/bin/kshark-su-record b/kernel-shark/bin/kshark-su-record
+index ee839a2..2477045 100755
+--- a/kernel-shark/bin/kshark-su-record
++++ b/kernel-shark/bin/kshark-su-record
+@@ -1,6 +1,6 @@
+ #!/bin/bash
+ 
+-if [ $XDG_SESSION_TYPE = "wayland" ]
++if [ "$XDG_SESSION_TYPE" = "wayland" ]
+ then
+     xhost +si:localuser:root &>/dev/null
+ fi

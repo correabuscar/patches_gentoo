@@ -1,0 +1,67 @@
+firefox 104.0.1 changed the file location and name and format inside, see: services/sync/tps/extensions/tps/resource/modules/bookmarks.jsm
+so this patch is last good for www-client/firefox-103.0.2::localrepo
+last update 12 july 2019:
+#diff -r d33d48a3998a toolkit/components/places/Bookmarks.jsm
+#--- a/toolkit/components/places/Bookmarks.jsm	Wed Mar 06 08:29:26 2019 +0100
+#+++ b/toolkit/components/places/Bookmarks.jsm	Thu Mar 07 03:52:55 2019 +0100
+#@@ -249,9 +249,10 @@
+#                       // Inserting into the root folder is not allowed.
+#                       validIf: b => b.parentGuid != this.rootGuid },
+#         title: { defaultValue: "",
+#-                 validIf: b => b.type == this.TYPE_BOOKMARK ||
+#-                               b.type == this.TYPE_FOLDER ||
+#-                               b.title === "" },
+#+                 validIf: b => true //b.type == this.TYPE_BOOKMARK ||
+#+                               //b.type == this.TYPE_FOLDER //||
+#+                               //b.title === "" 
+#+                               },
+#         dateAdded: { defaultValue: addedTime },
+#         lastModified: { defaultValue: modTime,
+#                         validIf: b => b.lastModified >= now || (b.dateAdded && b.lastModified >= b.dateAdded) },
+#@@ -425,9 +426,10 @@
+#                  validIf: b => b.type == TYPE_BOOKMARK },
+#           parentGuid: { replaceWith: parentGuid }, // Set the correct parent guid.
+#           title: { defaultValue: "",
+#-                   validIf: b => b.type == TYPE_BOOKMARK ||
+#-                                 b.type == TYPE_FOLDER ||
+#-                                 b.title === "" },
+#+                   validIf: b => true //b.type == TYPE_BOOKMARK ||
+#+                                 //b.type == TYPE_FOLDER //||
+#+                                 //b.title === "" 
+#+                                 },
+#           dateAdded: { defaultValue: time,
+#                        validIf: b => !b.lastModified ||
+#                                      b.dateAdded <= b.lastModified },
+diff -r e704e3565db9 toolkit/components/places/Bookmarks.jsm
+--- a/toolkit/components/places/Bookmarks.jsm	Thu Jul 11 00:49:58 2019 +0300
++++ b/toolkit/components/places/Bookmarks.jsm	Thu Jul 11 03:45:24 2019 +0200
+@@ -277,10 +277,10 @@
+       },
+       title: {
+         defaultValue: "",
+-        validIf: b =>
+-          b.type == this.TYPE_BOOKMARK ||
+-          b.type == this.TYPE_FOLDER ||
+-          b.title === "",
++        validIf: b => true
++//          b.type == this.TYPE_BOOKMARK ||
++//          b.type == this.TYPE_FOLDER ||
++//          b.title === "",
+       },
+       dateAdded: { defaultValue: addedTime },
+       lastModified: {
+@@ -479,10 +479,10 @@
+           parentGuid: { replaceWith: parentGuid }, // Set the correct parent guid.
+           title: {
+             defaultValue: "",
+-            validIf: b =>
+-              b.type == TYPE_BOOKMARK ||
+-              b.type == TYPE_FOLDER ||
+-              b.title === "",
++            validIf: b => true
++//              b.type == TYPE_BOOKMARK ||
++//              b.type == TYPE_FOLDER ||
++//              b.title === "",
+           },
+           dateAdded: {
+             defaultValue: time,

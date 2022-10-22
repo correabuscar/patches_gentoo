@@ -1,0 +1,21 @@
+https://gitlab.freedesktop.org/pulseaudio/pulseaudio/issues/705
+
+volume issue still happens with commit
+73b8a57078b94033edf84de2fc0cfbe344c10dcd
+that's
+local/libpulse 11.0+121+g73b8a5707-1 (builtbydaddy)
+local/pulseaudio 11.0+121+g73b8a5707-1 (builtbydaddy)
+
+commit 48ba5e4957414a2cf9eae23f08988c8fc2f9169a
+doesn't set the volume at all! (after a pulseaudio -k, of course)
+local/pulseaudio 10.0+82+g48ba5e495-1 (builtbydaddy)
+local/libpulse 10.0+82+g48ba5e495-1 (builtbydaddy)
+
+//still happens with commit
+local/libpulse 11.0+2+g46fb1b8c5-1 (builtbydaddy)
+local/pulseaudio 11.0+2+g46fb1b8c5-1 (builtbydaddy)
+oh actually, after another pulseaudio -k
+this doesn't work at all!
+maybe it used prev. pulseaudio version(or what!) when it worked before!
+yeah that must be it, the install (pacman -U file.tar.xz) must've ran the old pulseaudio
+

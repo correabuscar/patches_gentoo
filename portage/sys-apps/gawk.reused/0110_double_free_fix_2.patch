@@ -1,0 +1,69 @@
+WARNING: this isn't good enough, kernel compilation fails, like:
+ CALL    /usr/src/linux-5.18.19-gentoo-r1/scripts/atomic/check-atomics.sh
+  CALL    /usr/src/linux-5.18.19-gentoo-r1/scripts/checksyscalls.sh
+  CC      /tmp/genkernel.outdir/tools/objtool/arch/x86/decode.o
+In file included from arch/x86/../../../arch/x86/lib/inat.c:10,
+                 from arch/x86/decode.c:11:
+/tmp/genkernel.outdir/tools/objtool/arch/x86/lib/inat-tables.c:6:19: error: expected expression before '|' token
+    6 |         [0x00] =  | INAT_MODRM,
+      |                   ^
+/tmp/genkernel.outdir/tools/objtool/arch/x86/lib/inat-tables.c:206:19: error: expected expression before '|' token
+  206 |         [0x00] =  | INAT_MAKE_GROUP(10),
+      |                   ^
+/tmp/genkernel.outdir/tools/objtool/arch/x86/lib/inat-tables.c:423:19: error: expected expression before '|' token
+  423 |         [0x10] =  | INAT_MODRM | INAT_VEXOK,
+      |                   ^
+/tmp/genkernel.outdir/tools/objtool/arch/x86/lib/inat-tables.c:551:19: error: expected expression before '|' token
+  551 |         [0x10] =  | INAT_MODRM | INAT_VEXOK,
+      |                   ^
+
+
+#https://lists.gnu.org/archive/html/bug-gawk/2022-09/msg00057.html
+see: /home/user/sandbox/awk/doublefree
+looks like this wasn't enough and needs another one: https://git.savannah.gnu.org/cgit/gawk.git/commit/?id=3d7178e78e523574649578593192bab2e0d08a2a
+yup that is needed ^ for kernel compilation to not fail! TODO?
+
+diff --git a/interpret.h b/interpret.h
+index 57d060e6..26010ada 100644
+--- a/interpret.h
++++ b/interpret.h
+@@ -213,7 +213,7 @@ top:
+ 			case Node_var_new:
+ uninitialized_scalar:
+ 				if (op != Op_push_arg_untyped) {
+-					/* convert untyped to scalar */
++					/* convert very original untyped to scalar */
+ 					m->type = Node_var;
+ 					m->var_value = dupnode(Nnull_string);
+ 				}
+@@ -222,6 +222,7 @@ uninitialized_scalar:
+ 						_("reference to uninitialized argument `%s'") :
+ 						_("reference to uninitialized variable `%s'"),
+ 								save_symbol->vname);
++				// set up local param by value
+ 				if (op != Op_push_arg_untyped)
+ 					m = dupnode(Nnull_string);
+ 				UPREF(m);
+@@ -230,14 +231,20 @@ uninitialized_scalar:
+ 
+ 			case Node_elem_new:
+ 				if (op != Op_push_arg_untyped) {
+-					/* convert untyped to scalar */
+-					m = elem_new_to_scalar(m);
++					/* convert very original untyped to scalar */
++					m->type = Node_var;
++					m->var_value = dupnode(Nnull_string);
+ 				}
+ 				if (do_lint)
+ 					lintwarn(isparam ?
+ 						_("reference to uninitialized argument `%s'") :
+ 						_("reference to uninitialized variable `%s'"),
+ 								save_symbol->vname);
++				// set up local param by value
++				if (op != Op_push_arg_untyped) {
++					m = elem_new_to_scalar(m);
++				}
++
+ 				PUSH(m);
+ 				break;
+ 

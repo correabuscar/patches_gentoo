@@ -1,0 +1,59 @@
+28jan2021: new issue while using this, in groff, see: /patches/portage/sys-apps/groff.reused/groff_fix_tmac_race.patch or https://savannah.gnu.org/bugs/index.php?59958  basically parallel '>' to the same file caused it to grow and thus became broken.
+ -------
+newer:
+now using kernel patch deny_lseek_past_EOF_when_O_APPEND.patch
+with this bash patch, testing to see how 'dd' reacts... better:
+$ rm /tmp/out;echo abcdefghijklm | dd bs=5 seek=8 oflag=seek_bytes > /tmp/out ; stat --format=%s /tmp/out
+dd: 'standard output': cannot seek: Illegal seek
+0+0 records in
+0+0 records out
+0 bytes copied, 0.000102177 s, 0.0 kB/s
+Actually written to disk: '0' bytes (-nan%).
+0
+
+
+new:
+ok this is bad:
+because it makes this fail:
+$ rm /tmp/out;echo abcdefghijklm | dd bs=5 seek=8 oflag=seek_bytes > /tmp/out ; stat --format=%s /tmp/out
+2+1 records in
+2+1 records out
+14 bytes copied, 0.0001584 s, 88.4 kB/s
+Actually written to disk: '14' bytes (100.00%). 
+14
+
+the normal output should be(ie. file size 22 bytes not 14):
+$ rm /tmp/out;echo abcdefghijklm | dd bs=5 seek=8 oflag=seek_bytes > /tmp/out ; stat --format=%s /tmp/out
+2+1 records in
+2+1 records out
+14 bytes copied, 0.000112444 s, 125 kB/s
+Actually written to disk: '14' bytes (100.00%). 
+22
+
+ok so because it's append only, dd cann't seek past the EOF, and thus lseek won't do it's job of skipping past EOF and the subsequent 'write' won't make those \0-es pop up in that gap! ie. dd assumes outfile is never opened in O_APPEND mode.
+
+meanwhile this will always work(the redirect became of=):
+$ rm /tmp/out;echo abcdefghijklm | dd bs=5 seek=8 oflag=seek_bytes of=/tmp/out ; stat --format=%s /tmp/out
+2+1 records in
+2+1 records out
+14 bytes copied, 0.000137867 s, 102 kB/s
+Actually written to disk: '14' bytes (100.00%).
+22
+
+
+old info:
+https://github.com/libcheck/check/issues/188
+
+diff --git a/make_cmd.c b/make_cmd.c
+index ecbbfd6e..5db799f2 100644
+--- a/make_cmd.c
++++ b/make_cmd.c
+@@ -700,7 +700,7 @@ make_redirection (source, instruction, dest_and_filename, flags)
+     case r_output_direction:		/* >foo */
+     case r_output_force:		/* >| foo */
+     case r_err_and_out:			/* &>filename */
+-      temp->flags = O_TRUNC | O_WRONLY | O_CREAT;
++      temp->flags = O_APPEND | O_TRUNC | O_WRONLY | O_CREAT;
+       break;
+ 
+     case r_appending_to:		/* >>foo */

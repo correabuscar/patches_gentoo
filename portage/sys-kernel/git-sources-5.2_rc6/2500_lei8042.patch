@@ -1,0 +1,562 @@
+this patch includes 2400_i8042_inside_virtualbox.patch
+
+this also handles the reboot when F12 press(from touchpad) during panic!
+though apparently the touchpad F12 press doesn't always trigger(caught a few consecutive reboots!), TODO: find a better way to detect touchpad LMB+RMB maybe, and use that as reboot.
+
+diff --git a/drivers/input/keyboard/atkbd.c b/drivers/input/keyboard/atkbd.c
+index 850bb259c20e..b18874f28f59 100644
+--- a/drivers/input/keyboard/atkbd.c
++++ b/drivers/input/keyboard/atkbd.c
+@@ -379,7 +379,7 @@ static irqreturn_t atkbd_interrupt(struct serio *serio, unsigned char data,
+ 	int value;
+ 	unsigned short keycode;
+ 
+-	dev_dbg(&serio->dev, "Received %02x flags %02x\n", data, flags);
++//	dev_dbg(&serio->dev, "Received %02x flags %02x\n", data, flags);
+ 
+ #if !defined(__i386__) && !defined (__x86_64__)
+ 	if ((flags & (SERIO_FRAME | SERIO_PARITY)) && (~flags & SERIO_TIMEOUT) && !atkbd->resend && atkbd->write) {
+@@ -503,9 +503,10 @@ static irqreturn_t atkbd_interrupt(struct serio *serio, unsigned char data,
+ 			/* Workaround Toshiba laptop multiple keypress */
+ 			value = time_before(jiffies, atkbd->time) && atkbd->last == code ? 1 : 2;
+ 		} else {
+-			value = 1;
+-			atkbd->last = code;
+ 			atkbd->time = jiffies + msecs_to_jiffies(dev->rep[REP_DELAY]) / 2;
++	    dev_dbg(&serio->dev, "Well %02x flags %02x keycode:%02x %02d value:%02d last:%02d time:%lu\n", data, flags, keycode, keycode, value, atkbd->last, atkbd->time);
++			value = 1;
++			atkbd->last = code;//ok so this is only set(to non-zero) if it wasn't already released before the next press happened
+ 		}
+ 
+ 		input_event(dev, EV_KEY, keycode, value);
+@@ -518,6 +519,8 @@ static irqreturn_t atkbd_interrupt(struct serio *serio, unsigned char data,
+ 		}
+ 	}
+ 
++	dev_dbg(&serio->dev, "Received %02x flags %02x keycode: %02x %02d\n", data, flags, keycode, keycode);
++
+ 	if (atkbd->scroll) {
+ 		if (click != -1)
+ 			input_report_key(dev, BTN_MIDDLE, click);
+diff --git a/drivers/input/serio/i8042.c b/drivers/input/serio/i8042.c
+index 95a78ccbd847..313881bda546 100644
+--- a/drivers/input/serio/i8042.c
++++ b/drivers/input/serio/i8042.c
+@@ -257,6 +257,11 @@ static int i8042_wait_write(void)
+ 	return -(i == I8042_CTL_TIMEOUT);
+ }
+ 
++#define udbg(format, arg...)							\
++	do {									\
++			printk(KERN_DEBUG KBUILD_MODNAME ": " format,	\
++			       ##arg);	\
++	} while (0)
+ /*
+  * i8042_flush() flushes all data that may be in the keyboard and mouse buffers
+  * of the i8042 down the toilet.
+@@ -272,10 +277,10 @@ static int i8042_flush(void)
+ 	spin_lock_irqsave(&i8042_lock, flags);
+ 
+ 	while ((str = i8042_read_status()) & I8042_STR_OBF) {
+-		if (count++ < I8042_BUFFER_SIZE) {
++		if (count++ < 66/*I8042_BUFFER_SIZE*/) { // https://bugzilla.kernel.org/show_bug.cgi?id=92881
+ 			udelay(50);
+ 			data = i8042_read_data();
+-			dbg("%02x <- i8042 (flush, %s)\n",
++			udbg("%02x <- i8042 (flush, %s)\n",
+ 			    data, str & I8042_STR_AUXDATA ? "aux" : "kbd");
+ 		} else {
+ 			retval = -EIO;
+@@ -480,13 +485,13 @@ static bool i8042_filter(unsigned char data, unsigned char str,
+ 		if ((~str & I8042_STR_AUXDATA) &&
+ 		    (data == 0xfa || data == 0xfe)) {
+ 			i8042_suppress_kbd_ack--;
+-			dbg("Extra keyboard ACK - filtered out\n");
++			//udbg("Extra keyboard ACK - filtered out\n"); //FIXME hit during kernel panic and it spams (sync-ed with blink?)
+ 			return true;
+ 		}
+ 	}
+ 
+ 	if (i8042_platform_filter && i8042_platform_filter(data, str, serio)) {
+-		dbg("Filtered out by platform filter\n");
++		udbg("Filtered out by platform filter\n");
+ 		return true;
+ 	}
+ 
+@@ -509,6 +514,152 @@ static irqreturn_t i8042_interrupt(int irq, void *dev_id)
+ 	unsigned int port_no;
+ 	bool filtered;
+ 	int ret = 1;
++  static unsigned long lastdoubletime=0;
++	static unsigned long doubletime=0;
++	static unsigned long lastjiffies=0;
++	static unsigned long jiffies_snapshot=0;
++	static unsigned long jdiff=0;
++  static unsigned long skd=0;//same key diff, eg. between last release and this press; or between last press and this release
++	static unsigned long ppdiff=0;//jdiff between key presses (ignoring key releases, but assumed one happens in between!)
++//	static unsigned char olddata=0;
++//store the jiffies of the last time that key was released, to be compared to the next time that key gets pressed:
++//  const static char* release_jiffie[0x80]={ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
++  static unsigned long pr_jiffie[256]={ 
++    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
++    ,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
++  };
++  const static char* named[0x80]={
++  "#000", //0
++  "Esc", //1
++  "1", //2
++  "2", //3
++  "3", //4
++  "4", //5
++  "5", //6
++  "6", //7
++  "7", //8
++  "8", //9
++  "9", //10
++  "0", //11
++  "-", //12
++  "=", //13
++  "Backspace", //14
++  "Tab", //15
++  "q", //16
++  "w", //17
++  "e", //18
++  "r", //19
++  "t", //20
++  "y", //21
++  "u", //22
++  "i", //23
++  "o", //24
++  "p", //25
++  "[", //26
++  "]", //27
++  "Enter", //28 that's normalEnter; keypad Enter is like RightCtrl
++  "Ctrl", //29  the RightCtrl has an extra 0e 224 after the 1d 029, the left doesn't
++  "a", //30
++  "s", //31
++  "d", //32
++  "f", //33
++  "g", //34
++  "h", //35
++  "j", //36
++  "k", //37
++  "l", //38
++  ";", //39
++  "'", //40
++  "`", //41
++  "LeftShift", //42
++  "\\", //43
++  "z", //44
++  "x", //45
++  "c", //46
++  "v", //47
++  "b", //48
++  "n", //49
++  "m", //50
++  ",", //51
++  ".", //52
++  "/", //53 that is the key near RightShift; the keypad/ acts like RightCtrl
++  "RightShift", //54
++  "Keypad*", //55
++  "Alt", //56 RightAlt is same as RightCtrl
++  "Space", //57
++  "CapsLock", //58
++  "F1", //59
++  "F2", //60
++  "F3", //61
++  "F4", //62
++  "F5", //63
++  "F6", //64
++  "F7", //65
++  "F8", //66
++  "F9", //67
++  "F10", //68
++  "NumLock", //69 Fn+Home = Pause also triggers this and more codes
++  "ScrollLock", //70 Fn+End = Break also triggers this and more codes
++  "Home", //71 this is keypad Home, normalHome acts like RightCtrl
++  "UpArrow", //72 this is keypad 8, normal UpArrow acts like RightCtrl
++  "PageUp", //73 this is keypad PgUp, normalPgUp acts like RightCtrl
++  "KeyPad-", //74
++  "LeftArrow", //75 this is keypad 4 , normal LeftArrow acts like RightCtrl
++  "Keypad5", //76
++  "RightArrow", //77 this is keypad 6, normal RightArrow acts like RightCtrl
++  "Keypad+", //78
++  "End", //79 this is keypad End, normalEnd acts like RightCtrl
++  "DownArrow", //80 this is keypad 2, normal DownArrow acts like RightCtrl
++  "PageDown", //81 this is keypad PgDn, normalPgDn acts like RightCtrl
++  "Insert", //82  that's keypad insert; normalInsert is like RightCtrl
++  "Del", //83 that's keypad delete key; normalDelete is like RightCtrl
++  "#084", //84
++  "#085", //85
++  "<>", //86 that weird key near left shift which produces "<" and when shifted: ">"
++  "F11", //87
++  "F12", //88 Fn+PrtSc = SysRq also triggers this and then just PrintScreen (if held)
++  "#089", //89
++  "#090", //90
++  "WinStartL", //91
++  "#092", //92
++  "RightWKey", //93
++  "#094", //94
++  "#095", //95
++  "#096", //96
++  "#097", //97
++  "#098", //98
++  "#099", //99
++  "#100", //100
++  "#101", //101
++  "#102", //102
++  "#103", //103
++  "#104", //104
++  "#105", //105
++  "#106", //106
++  "#107", //107
++  "#108", //108
++  "#109", //109
++  "#110", //110
++  "#111", //111
++  "#112", //112
++  "#113", //113
++  "#114", //114
++  "#115", //115
++  "#116", //116
++  "#117", //117
++  "#118", //118
++  "#119", //119
++  "#120", //120
++  "#121", //121
++  "#122", //122
++  "#123", //123
++  "#124", //124
++  "#125", //125
++  "#126", //126
++  "#127", //127
++//  "128", //128
++  };
++  bool isRepeat;//set later; true if current key(press) is likely physically repeating, so to ignore it.
+ 
+ 	spin_lock_irqsave(&i8042_lock, flags);
+ 
+@@ -516,7 +667,7 @@ static irqreturn_t i8042_interrupt(int irq, void *dev_id)
+ 	if (unlikely(~str & I8042_STR_OBF)) {
+ 		spin_unlock_irqrestore(&i8042_lock, flags);
+ 		if (irq)
+-			dbg("Interrupt %d, without any data\n", irq);
++			udbg("Interrupt %d, without any data\n", irq);
+ 		ret = 0;
+ 		goto out;
+ 	}
+@@ -529,7 +680,7 @@ static irqreturn_t i8042_interrupt(int irq, void *dev_id)
+ 
+ 		dfl = 0;
+ 		if (str & I8042_STR_MUXERR) {
+-			dbg("MUX error, status is %02x, data is %02x\n",
++			udbg("MUX error, status is %02x, data is %02x\n",
+ 			    str, data);
+ /*
+  * When MUXERR condition is signalled the data register can only contain
+@@ -547,6 +698,7 @@ static irqreturn_t i8042_interrupt(int irq, void *dev_id)
+ 			switch (data) {
+ 				default:
+ 					if (time_before(jiffies, last_transmit + HZ/10)) {
++            doubletime++;
+ 						str = last_str;
+ 						break;
+ 					}
+@@ -576,16 +728,168 @@ static irqreturn_t i8042_interrupt(int irq, void *dev_id)
+ 	if (irq && serio)
+ 		pm_wakeup_event(&serio->dev, 0);
+ 
+-	filter_dbg(port->driver_bound, data, "<- i8042 (interrupt, %d, %d%s%s)\n",
++  /*
++	filter_dbg(port->driver_bound, data, " (%02x %02d) <- i8042 (interrupt, %d, %d%s%s)\n",
++       data,data,
+ 		   port_no, irq,
+ 		   dfl & SERIO_PARITY ? ", bad parity" : "",
+ 		   dfl & SERIO_TIMEOUT ? ", timeout" : "");
++       */
++
++  if (data == 0x58) { //this is triggered when certain touch movements happen on touchpad and it's kinda spammy
++    //udbg("------------------------%lu\n",jiffies); //disabling due to spammy
++    //this is hit even during panic! which tells me that if I had the internal keyboard it would also work(eg. sysrq+b) but since I have USB-keyboard it does not (not in i8042 code anyway, I guess)
++    //if ((1 == irq) && (4 == jdiff)) { //jdiff is sometimes 3 and sometimes 5 here, during panic, not during normal system usage(when it's always 4)
++      touchpad_reboot++;
++    //} else { touchpad_reboot=0; } //reset if not the expected touchpad F12 press event! this doesn't work for some reason, it's always 0 if this whole 'if else' block is allowed.
++    //hmm so this weird touchpad motion emulates an F12 press?! worksforme! can use this to reboot from panic! after like 5 presses which would definitely avoid any by-mistakes!
++    //[   83.884388] i8042: j:4294668760 jdiff:   4 '58 088        F12 P' irq:1 skd:4294668760 pp:       0 ipl:0 tpr:11
++    //[  116.686137] i8042: j:4294668760 jdiff:   4 '58 088        F12 P' irq:1 skd:4294668760 pp:       0 ipl:0 tpr:12
++    //[  116.808805] i8042: j:4294668760 jdiff:   4 '58 088        F12 P' irq:1 skd:4294668760 pp:       0 ipl:0 tpr:13
++    //XXX: jdiff isn't inited here, and yet it seems to be 4? or is %4ld showing 4 for a jdiff of 0 ? no, that 4 really is alignment! oh and jdiff being static, it's then the last jdiff from below, from a previous call.
++    udbg("j:%lu jdiff:%4ld '%02x %03d %10s %s' irq:%d skd:%8ld pp:%8ld ipl:%d tpr:%d\n",
++          jiffies_snapshot, jdiff,//this will be 4.2 billion the first time!(= to jiffies)
++          data, data,
++          named[data%0x80],
++          data > 0x80? "r":"P", //in case u can't see colors, also show state as text
++          port_no,// irq, we know irq is always 1 here
++          skd,
++          ppdiff//the diff between the keypresses of the same key
++          ,inside_panic_loop
++          ,touchpad_reboot
++    );
++  }
++
++
++//  if ((data != 0xfa && data != 0xfe)) { //this touchpad spam is crazy though
++//    udbg("j:%lu jdiff:%4ld '%02x %03d %10s %s' irq:%d skd:%8ld pp:%8ld ipl:%d tpr:%d\n",
++//          jiffies_snapshot, jdiff,//this will be 4.2 billion the first time!(= to jiffies)
++//          data, data,
++//          named[data%0x80],
++//          data > 0x80? "r":"P", //in case u can't see colors, also show state as text
++//          port_no,// irq, we know irq is always 1 here
++//          skd,
++//          ppdiff//the diff between the keypresses of the same key
++//          ,inside_panic_loop
++//          ,touchpad_reboot
++//    );
++//  }
++
++  if ((irq == 0) && (data == 0xfa)) {
++    //you're in panic with blinking led mode
++    //
++    //data == 0xfa
++  }
++  //seen irq 0 and 1:
++//  	    udbg("j:%lu jdiff:%4ld '%02x %03d %10s %s' irq:%d skd:%8ld pp:%8ld\n",
++//    	    jiffies_snapshot, jdiff,//this will be 4.2 billion the first time!(= to jiffies)
++//          data, data,
++//          named[data%0x80],
++//          data > 0x80? "r":"P", //in case u can't see colors, also show state as text
++//          port_no,// irq, we know irq is always 1 here
++//          skd,
++//          ppdiff//the diff between the keypresses of the same key
++//        );
++
++  isRepeat=false;
++  if (irq == 1) {//only INTERNAL-keyboard press/release/repeats - not touchpad/mouse events , hmm actually since I'm using an USB keyboard now irq 1 triggers on touchpad events only! and irq 0 spam is during panic()
++    jiffies_snapshot=jiffies;
++    jdiff=jiffies_snapshot-lastjiffies;
++    if (jdiff != 0) {
++      lastjiffies=jiffies_snapshot;
++    }
++    //3,4,5,6,7,8,9,10,11,13,14,15,17
++    //those jdiff can cause unwanted key repeats if that's the jdiff between key release and key press (same key) not necessarily consecutive events! but same key! which means needs array of all keys
++
++    if (data>=256) {
++      udbg("!!!!!!!!!EPIC ERROR!!!!!!!!!!! data is over 255!! data=%d", data);
++    } else {
++      //is it a key press?
++      if (data<0x80) {
++        //key pressed
++        //skd is now the diff between this key press and the last key release (for same key)
++        skd=jiffies_snapshot - pr_jiffie[data+0x80]; //assumed jiffies don't wrap around, or this becomes negative!
++        //XXX: assumed jiffies don't ever wrap around, if they do then this will be negative hmm, maybe should use abs() or whatever it is called in c
++        ppdiff= jiffies_snapshot - pr_jiffie[data];// the diff between the last press and current press (ignoring releases!)
++          //possible key duplication detected
++          //either way, drop a message that we detected this! for now! later TODO: actually drop this keypress! and its next keyrelease!
++      }else{
++        //this is a key release
++        //skd is now the diff between this key release and the last key press (for same key)
++        skd=jiffies_snapshot - pr_jiffie[data % 0x80]; //assumed jiffies don't wrap around, or this becomes negative!
++        ppdiff=0;//because we're in the release key currently, there's no press-press diff
++      }
++  
++      isRepeat=((data<0x80) && (skd <= 14));
++      if ((data<0x80) && (skd <= 20)) {//potential repeats
++  	    udbg("j:%lu jdiff:%4ld '%s%02x %03d %10s %s%s' %d skd:%8ld pp:%8ld%s\n",
++    	    jiffies_snapshot, jdiff,//this will be 4.2 billion the first time!(= to jiffies)
++          data > 0x80? "\x1b[48;5;7m":"\x1b[48;5;2m", //start color (released:pressed); tput setab 7 : tput setab 2  (white:green)
++          data, data, 
++          named[data%0x80],
++          data > 0x80? "r":"P", //in case u can't see colors, also show state as text
++          "\x1b[m\x1b(B", //stop color: tput sgr0
++          port_no,// irq, we know irq is always 1 here
++          skd,
++          ppdiff,//the diff between the keypresses of the same key
++          ( isRepeat ?" \x1b[48;5;1mREPEAT!\x1b[m\x1b(B":"")//actual repeats!
++        );
++      }
++      pr_jiffie[data] = jiffies_snapshot;
++    }//if data <256
++  }
++  if (
++      (irq != 12) //not mouse
++//      (irq == 1) //keyboard only
++//      (olddata == data)||
++//      ((jdiff <= 2)&&(irq!=12)&&(data != 0x5b)&&(data!=0xdb)&&(data != 0x4d)&&(data != 0x4b)&&(data!=0xcb)&&(data != 0xcd)&&(data != 0x48)&&(data!=0xc8)&&(data!=0x50)&&(data!=0xd0))
++      && ((lastdoubletime != doubletime) || (dfl & SERIO_PARITY) || (dfl & SERIO_TIMEOUT))
++      ) {
++//nvm    static char binary [65];//binary src: https://stackoverflow.com/questions/6373093/how-to-print-binary-number-via-printf
++//      itoa (dfl,binary,2); implicit declaration - i didn't include #include <stdio.h> #include <stdlib.h> maybe? don't wanna try
++//        printf ("binary: %s\n",buffer);
++//    jdiff=jiffies-lastjiffies;
++  	udbg("%lu jdiff:%8ld '%s%02x %03d %10s %s%s' %d %d%s%s dfl:%3u %s:%lu\n",
++	    jiffies, jdiff,//this will be 4.2 billion the first time!(= to jiffies)
++      data > 0x80? "\x1b[48;5;7m":"\x1b[48;5;2m", //start color (released:pressed); tput setab 7 : tput setab 2  (white:green)
++      data, data, 
++      named[data%0x80],
++      data > 0x80? "r":"P", //in case u can't see colors, also show state as text
++      "\x1b[m\x1b(B", //stop color: tput sgr0
++      port_no, irq,
++	    dfl & SERIO_PARITY ? ", bad parity" : "",
++	    dfl & SERIO_TIMEOUT ? ", timeout" : "",
++      dfl,//binary, aka %8s
++      lastdoubletime!=doubletime?"doubletime":"no",
++      doubletime
++       );
++
++/*      if (jdiff != 0) {
++        lastjiffies=jiffies;
++      }*/
++  }
++/*  if ((data<0x80) && (olddata != data)) {
++    olddata=data;
++  }*/
++
++  if (lastdoubletime!=doubletime) {
++    lastdoubletime=doubletime;
++  }
+ 
+ 	filtered = i8042_filter(data, str, serio);
+ 
+ 	spin_unlock_irqrestore(&i8042_lock, flags);
+ 
+-	if (likely(serio && !filtered))
++  //FIXME: filter out the released key too(which will happen on next call)
++  //FIXME: what about composite keys (eg. DownArrow)
++  //[20317.161802] i8042: j:4300972445 jdiff:   2 '50 080  DownArrow P' 0 skd:       5 pp:      38 REPEAT!
++  //[20317.463088] atkbd serio0: Unknown key released (translated set 2, code 0xe0 on isa0060/serio0).
++  //[20317.463104] atkbd serio0: Use 'setkeycodes e060 <keycode>' to make it known.
++  //that's in drivers/input/keyboard/atkbd.c +468
++  //that means that DownArrow pressed also generates a #96 key release(aka 96+128=224 aka E0); also downarrow released generates the same extra E0. Actually I stand corrected!!! E0 is first then there's the DownArrow press(or release!)
++  //ok that's "escaped scancodes e0 xx (8+7 bits)" see: man 8 setkeycodes
++  //FIXME: for some reason, Shift+PgUp (L/R Shift) detects the shift as the repeat instead of the PgUp which is odd! and breaks scrolling up (it gets me back to prompt while I was somewhere up scrolling as if I pressed just PgUp) - maybe this only happens because of my failed way of dropping repeats currently, let's stop that until fixed properly:
++	if ((likely(serio && !filtered)) )//&& (!isRepeat))
+ 		serio_interrupt(serio, data, dfl);
+ 
+  out:
+@@ -1115,6 +1419,12 @@ static long i8042_panic_blink(int state)
+ {
+ 	long delay = 0;
+ 	char led;
++//  if (state == 1234567) { //signalled by kernel/panic.c when inside the panic loop
++//    if (!inside_panic_loop) {
++//      inside_panic_loop=true;
++//    }
++//    return 0;
++//  }
+ 
+ 	led = (state) ? 0x01 | 0x04 : 0;
+ 	while (i8042_read_status() & I8042_STR_IBF)
+@@ -1524,7 +1834,9 @@ static int i8042_kbd_bind_notifier(struct notifier_block *nb,
+ 		break;
+ 
+ 	case BUS_NOTIFY_UNBIND_DRIVER:
++    //udbg("!! i8042.c BUS_NOTIFY_UNBIND_DRIVER \n");
+ 		port->driver_bound = false;
++		//port->driver_bound = true;
+ 		break;
+ 	}
+ 
+@@ -1627,6 +1939,8 @@ static int __init i8042_init(void)
+ 
+ 	bus_register_notifier(&serio_bus, &i8042_kbd_bind_notifier_block);
+ 	panic_blink = i8042_panic_blink;
++  touchpad_reboot=0;
++  inside_panic_loop=false;
+ 
+ 	return 0;
+ 
+diff --git a/drivers/input/serio/serio.c b/drivers/input/serio/serio.c
+index 2e1fb0649260..961902c3b858 100644
+--- a/drivers/input/serio/serio.c
++++ b/drivers/input/serio/serio.c
+@@ -1002,6 +1002,12 @@ void serio_close(struct serio *serio)
+ }
+ EXPORT_SYMBOL(serio_close);
+ 
++#define udbg(format, arg...)              \
++  do {                  \
++      printk(KERN_DEBUG KBUILD_MODNAME ": " format, \
++             ##arg);  \
++  } while (0)
++
+ irqreturn_t serio_interrupt(struct serio *serio,
+ 		unsigned char data, unsigned int dfl)
+ {
+@@ -1013,6 +1019,7 @@ irqreturn_t serio_interrupt(struct serio *serio,
+         if (likely(serio->drv)) {
+                 ret = serio->drv->interrupt(serio, data, dfl);
+ 	} else if (!dfl && device_is_registered(&serio->dev)) {
++    udbg("serio_rescan dfl:%u data:%02x %02d %c\n",dfl, data,data,data);
+ 		serio_rescan(serio);
+ 		ret = IRQ_HANDLED;
+ 	}
+diff --git a/include/linux/kernel.h b/include/linux/kernel.h
+index 2d14e21c16c0..a23420c6d483 100644
+--- a/include/linux/kernel.h
++++ b/include/linux/kernel.h
+@@ -304,6 +304,8 @@ static inline void might_fault(void) { }
+ 
+ extern struct atomic_notifier_head panic_notifier_list;
+ extern long (*panic_blink)(int state);
++extern unsigned int touchpad_reboot;
++extern bool inside_panic_loop;
+ __printf(1, 2)
+ void panic(const char *fmt, ...) __noreturn __cold;
+ void nmi_panic(struct pt_regs *regs, const char *msg);
+diff --git a/kernel/panic.c b/kernel/panic.c
+index 0ae0d7332f12..a32efbc5f6f0 100644
+--- a/kernel/panic.c
++++ b/kernel/panic.c
+@@ -66,6 +66,11 @@ static long no_blink(int state)
+ long (*panic_blink)(int state);
+ EXPORT_SYMBOL(panic_blink);
+ 
++unsigned int touchpad_reboot=0; //wait, I can init this here?! I thought it should be 'static' at least!
++bool inside_panic_loop=false;
++EXPORT_SYMBOL(touchpad_reboot);
++EXPORT_SYMBOL(inside_panic_loop);
++
+ /*
+  * Stop ourself in panic -- architecture code may override this
+  */
+@@ -284,7 +289,11 @@ void panic(const char *fmt, ...)
+ 	if (!panic_blink)
+ 		panic_blink = no_blink;
+ 
+-	if (panic_timeout > 0) {
++  inside_panic_loop=true;
++  touchpad_reboot=0;//have to
++  pr_emerg("!! To reboot from panic, press F12 six times using the weird touchpad movements. (tpr>5)\n");
++	//local_irq_enable(); //added, but not needed!
++	if (panic_timeout > 0) { //ie. when panic=N (N=seconds) on /proc/cmdline
+ 		/*
+ 		 * Delay timeout seconds before rebooting the machine.
+ 		 * We can't use the "normal" timers since we just panicked.
+@@ -293,12 +302,17 @@ void panic(const char *fmt, ...)
+ 
+ 		for (i = 0; i < panic_timeout * 1000; i += PANIC_TIMER_STEP) {
+ 			touch_nmi_watchdog();
++      //panic_blink(1234567); //tell /drivers/input/serio/i8042.c that we're inside panic loop so a certain touchpad motion should trigger a reboot!
+ 			if (i >= i_next) {
+ 				i += panic_blink(state ^= 1);
+ 				i_next = i + 3600 / PANIC_BLINK_SPD;
+ 			}
+ 			mdelay(PANIC_TIMER_STEP);
++      if (touchpad_reboot > 5) {
++        emergency_restart();
++      }
+ 		}
++    inside_panic_loop=false;
+ 	}
+ 	if (panic_timeout != 0) {
+ 		/*
+@@ -334,6 +348,9 @@ void panic(const char *fmt, ...)
+ 			i_next = i + 3600 / PANIC_BLINK_SPD;
+ 		}
+ 		mdelay(PANIC_TIMER_STEP);
++    if (touchpad_reboot > 5) { // reached when not using panic=N (N=seconds) or N is 0 on /proc/cmdline
++      emergency_restart();
++    }
+ 	}
+ }
+ 

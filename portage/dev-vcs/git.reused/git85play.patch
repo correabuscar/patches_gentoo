@@ -1,0 +1,108 @@
+'git diff --binary file1 file2' looks nice but I wanted to see then plaintext and of only the diff!
+doneTODO: make another patch that shows this when 'git diff' happens not when 'git apply' happens! it's git85play_git_diff_hexdump.patch
+10 Sept 2022
+
+Index: /var/tmp/portage/dev-vcs/git-2.37.3/work/git-2.37.3/apply.c
+===================================================================
+--- .orig/var/tmp/portage/dev-vcs/git-2.37.3/work/git-2.37.3/apply.c
++++ /var/tmp/portage/dev-vcs/git-2.37.3/work/git-2.37.3/apply.c
+@@ -1919,8 +1919,11 @@ static struct fragment *parse_binary_hun
+ 		patch_method = BINARY_LITERAL_DEFLATED;
+ 		origlen = strtoul(buffer + 8, NULL, 10);
+ 	}
+-	else
++	else {
++    //silence "warning: 'used' may be used uninitialized [-Wmaybe-uninitialized]"
++    *used_p = 0;
+ 		return NULL;
++  }
+ 
+ 	state->linenr++;
+ 	buffer += llen;
+@@ -1968,6 +1971,75 @@ static struct fragment *parse_binary_hun
+ 
+ 	CALLOC_ARRAY(frag, 1);
+ 	frag->patch = inflate_it(data, hunk_size, origlen);
++  //------------------
++  // This will show something like 'hexdump -v -C' but only the binary differences! eg. unlike the diff of two hexdump commands one for each file which shows everything as being different!
++  // no offsets are shown, for they aren't known (to me anyway)
++  // Use like:
++  // $ git diff --binary file1 file2 > some.gitbinpatch
++  // $ /var/tmp/portage/dev-vcs/git-2.37.3/work/git-2.37.3/git apply --check -q some.gitbinpatch |less
++  //   ^ that doesn't apply the patch, just checks it (unless you add --apply) but during the check, the zunpacked debase85 bytes of the patch shows on stdout, for each chunk:
++  // Gentoo compile like:
++  // # rm /var/tmp/portage/dev-vcs/git-2.37.3/.compiled; ebuild `equery w dev-vcs/git` compile && chmod g+rx /var/tmp/portage/dev-vcs/git-2.37.3/{,work,work/git-2.37.3/}
++  //
++#include <assert.h>
++  fflush(stdout);
++  fflush(stderr);
++  printf("!!!%ld bytes bin diff chunk:\n",origlen);
++  const char *fp=frag->patch;
++#define LINELEN 16
++#define LINELENPLUSZERO (LINELEN+1)
++#define UNPRINTABLECHAR '.'
++  char line[LINELENPLUSZERO];
++  memset(line,'\0',LINELENPLUSZERO);
++  //line[LINELEN]=0;
++  assert(0 == line[LINELEN]);
++  int i=0;
++  for (; i<origlen; i++) {
++    const char c=fp[i];
++    const int mod=i%16;
++    //line[i%16]=fp[i] & 0xff;//&0xff shouldn't be needed here, FIXME
++    if (isprint(c)) {
++      line[mod]=c;//&0xff shouldn't be needed here, FIXME
++    } else {
++      line[mod]=UNPRINTABLECHAR;
++    }
++    printf("%02X ", c & 0xff);//fp[i] & 0xff);
++    //if (i % 1) {
++    //  printf(" ");
++    //}
++    if (i>0){
++      if ((i+1) % 8==0) {
++        printf(" ");
++      }
++      if ((i+1) % 16==0) {
++        assert(0 == line[16]);
++        printf(" |%s|\n",line);
++      }
++    }
++  }
++  int weat=i%16;
++  if (weat != 0) {
++    line[weat]=0;
++    if (weat<8){
++      printf(" ");
++    }
++    for (int i=weat;i<16;i++) {
++      printf("   ");
++    }
++    printf(" ");
++    printf(" |%s",line);
++    for (int i=weat;i<16;i++) {
++      printf(" ");
++    }
++    printf("|\n");
++  }
++  //for (int i=0; i<origlen; i++) {
++  //  printf("%02X ",fp[i] & 0xff);
++  //}
++  printf("\n");
++  fflush(stdout);
++  fflush(stderr);
++  //------------------
+ 	frag->free_patch = 1;
+ 	if (!frag->patch)
+ 		goto corrupt;
+@@ -1975,6 +2047,10 @@ static struct fragment *parse_binary_hun
+ 	frag->size = origlen;
+ 	*buf_p = buffer;
+ 	*sz_p = size;
++/*  //printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
++  for (int i=0; i<size; i++) {
++    printf("%c", buffer[i]);
++  }*/
+ 	*used_p = used;
+ 	frag->binary_patch_method = patch_method;
+ 	return frag;

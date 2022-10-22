@@ -1,0 +1,53 @@
+ 0:01.13 make: Entering directory '/home/user/build/1packages/4used/firefox-hg/makepkg_pacman/firefox-hg/src/firefox-hg/obj-x86_64-pc-linux-gnu'
+ 0:01.15 make[1]: Entering directory '/home/user/build/1packages/4used/firefox-hg/makepkg_pacman/firefox-hg/src/firefox-hg/obj-x86_64-pc-linux-gnu/browser/installer'
+ 0:02.62 Failing manifest pathhhh= browser/modules/themes/light/manifest.json
+ 0:02.62 Traceback (most recent call last):
+ 0:02.62   File "/home/user/build/1packages/4used/firefox-hg/makepkg_pacman/firefox-hg/src/firefox-hg/toolkit/mozapps/installer/packager.py", line 250, in <module>
+ 0:02.62     main()
+ 0:02.62   File "/home/user/build/1packages/4used/firefox-hg/makepkg_pacman/firefox-hg/src/firefox-hg/toolkit/mozapps/installer/packager.py", line 199, in main
+ 0:02.62     preprocess_manifest(sink, args.manifest, defines)
+ 0:02.62   File "/home/user/build/1packages/4used/firefox-hg/makepkg_pacman/firefox-hg/src/firefox-hg/python/mozbuild/mozpack/packager/__init__.py", line 216, in preprocess_manifest
+ 0:02.62     preprocess(manifest, PackageManifestParser(sink), defines)
+ 0:02.62   File "/home/user/build/1packages/4used/firefox-hg/makepkg_pacman/firefox-hg/src/firefox-hg/python/mozbuild/mozpack/packager/__init__.py", line 207, in preprocess
+ 0:02.62     pp.do_include(input)
+ 0:02.62   File "/home/user/build/1packages/4used/firefox-hg/makepkg_pacman/firefox-hg/src/firefox-hg/python/mozbuild/mozbuild/preprocessor.py", line 841, in do_include
+ 0:02.62     self.handleLine(l)
+ 0:02.62   File "/home/user/build/1packages/4used/firefox-hg/makepkg_pacman/firefox-hg/src/firefox-hg/python/mozbuild/mozbuild/preprocessor.py", line 601, in handleLine
+ 0:02.62     self.write(aLine)
+ 0:02.62   File "/home/user/build/1packages/4used/firefox-hg/makepkg_pacman/firefox-hg/src/firefox-hg/python/mozbuild/mozbuild/preprocessor.py", line 483, in write
+ 0:02.62     self.out.write(filteredLine)
+ 0:02.62   File "/home/user/build/1packages/4used/firefox-hg/makepkg_pacman/firefox-hg/src/firefox-hg/python/mozbuild/mozpack/packager/__init__.py", line 195, in write
+ 0:02.62     self._parser.handle_line(str)
+ 0:02.62   File "/home/user/build/1packages/4used/firefox-hg/makepkg_pacman/firefox-hg/src/firefox-hg/python/mozbuild/mozpack/packager/__init__.py", line 180, in handle_line
+ 0:02.62     self._sink.add(self._component, str)
+ 0:02.62   File "/home/user/build/1packages/4used/firefox-hg/makepkg_pacman/firefox-hg/src/firefox-hg/python/mozbuild/mozpack/packager/__init__.py", line 428, in add
+ 0:02.62     self.packager.add(dest, f)
+ 0:02.62   File "/home/user/build/1packages/4used/firefox-hg/makepkg_pacman/firefox-hg/src/firefox-hg/python/mozbuild/mozpack/packager/__init__.py", line 292, in add
+ 0:02.62     parsed = json.loads(manifest)
+ 0:02.62   File "/usr/lib64/python3.8/json/__init__.py", line 357, in loads
+ 0:02.62     return _default_decoder.decode(s)
+ 0:02.62   File "/usr/lib64/python3.8/json/decoder.py", line 337, in decode
+ 0:02.62     obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+ 0:02.62   File "/usr/lib64/python3.8/json/decoder.py", line 353, in raw_decode
+ 0:02.63     obj, end = self.scan_once(s, idx)
+ 0:02.63 json.decoder.JSONDecodeError: Expecting property name enclosed in double quotes: line 30 column 7 (char 667)
+ 0:02.67 make[1]: *** [/home/user/build/1packages/4used/firefox-hg/makepkg_pacman/firefox-hg/src/firefox-hg/toolkit/mozapps/installer/packager.mk:25: stage-package] Error 1
+ 0:02.67 make[1]: Leaving directory '/home/user/build/1packages/4used/firefox-hg/makepkg_pacman/firefox-hg/src/firefox-hg/obj-x86_64-pc-linux-gnu/browser/installer'
+ 0:02.67 make: *** [/home/user/build/1packages/4used/firefox-hg/makepkg_pacman/firefox-hg/src/firefox-hg/browser/build.mk:15: install] Error 2
+ 0:02.67 make: Leaving directory '/home/user/build/1packages/4used/firefox-hg/makepkg_pacman/firefox-hg/src/firefox-hg/obj-x86_64-pc-linux-gnu'
+==> ERROR: A failure occurred in package().
+    Aborting...
+
+diff -r 078326f48100 python/mozbuild/mozpack/packager/__init__.py
+--- a/python/mozbuild/mozpack/packager/__init__.py	Tue Apr 14 06:41:42 2020 +0000
++++ b/python/mozbuild/mozpack/packager/__init__.py	Tue Apr 14 23:29:18 2020 +0200
+@@ -291,7 +291,8 @@
+                 try:
+                     parsed = json.loads(manifest)
+                 except ValueError:
+-                    pass
++                    print("Failing manifest pathhhh=",path)
++                    raise
+                 if isinstance(parsed, dict) and 'manifest_version' in parsed:
+                     self._add_addon(mozpath.dirname(path), True)
+ 

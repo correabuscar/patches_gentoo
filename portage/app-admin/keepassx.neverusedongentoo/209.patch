@@ -1,0 +1,31 @@
+From c61fa1ed4de2d8d8e0ab9c6c1878234ec10819f5 Mon Sep 17 00:00:00 2001
+From: Ron Moore <quizno50@gmail.com>
+Date: Wed, 31 Jan 2018 17:05:23 -0800
+Subject: [PATCH] Verify cancel when editing entry.
+
+When a password has been altered and the user cancels the modification, make sure to ask them if they really want to throw away their changes.
+---
+ src/gui/entry/EditEntryWidget.cpp | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/src/gui/entry/EditEntryWidget.cpp b/src/gui/entry/EditEntryWidget.cpp
+index 01de149d..d8f86607 100644
+--- a/src/gui/entry/EditEntryWidget.cpp
++++ b/src/gui/entry/EditEntryWidget.cpp
+@@ -465,6 +465,16 @@ void EditEntryWidget::updateEntryData(Entry* entry) const
+ 
+ void EditEntryWidget::cancel()
+ {
++    if (this->hasBeenModified()) {
++        QMessageBox looseChanges(QMessageBox::Question,
++                "Loose changes?", "This entry has been modified, are you sure "
++                "you wish to cancel and loose all changes?",
++                QMessageBox::Yes | QMessageBox::No);
++        if (looseChanges.exec() == QMessageBox::No) {
++            return;
++        }
++    }
++
+     if (m_history) {
+         clear();
+         Q_EMIT editFinished(false);

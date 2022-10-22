@@ -1,0 +1,32 @@
+from `man 5 limits.conf`:
+     •   an uid range specified as <min_uid>:<max_uid>. If min_uid is
+         omitted, the match is exact for the max_uid. If max_uid is
+         omitted, all uids greater than or equal min_uid match.
+
+without this I get:
+augtool print /augeas//error | grep limits
+/augeas/files/etc/security/limits.d/working.conf/error = "parse_failed"
+/augeas/files/etc/security/limits.d/working.conf/error/pos = "157"
+/augeas/files/etc/security/limits.d/working.conf/error/line = "5"
+/augeas/files/etc/security/limits.d/working.conf/error/char = "1"
+/augeas/files/etc/security/limits.d/working.conf/error/lens = "/usr/share/augeas/lenses/dist/limits.aug:66.17-.40:"
+/augeas/files/etc/security/limits.d/working.conf/error/lens/last_matched = "/usr/share/augeas/lenses/dist/limits.aug:28.34-.65:"
+/augeas/files/etc/security/limits.d/working.conf/error/lens/next_not_matched = "/usr/share/augeas/lenses/dist/util.aug:34.19-.29:"
+/augeas/files/etc/security/limits.d/working.conf/error/message = "Iterated lens matched less than it should"
+
+for actual line in /etc/security/limits.d/working.conf being:
+"0:               soft    core            unlimited                              " (no quotes)
+
+Index: /var/tmp/portage/app-admin/augeas-1.12.0/work/augeas-1.12.0/lenses/limits.aug
+===================================================================
+--- augeas-1.12.0/lenses/limits.aug
++++ augeas-1.12.0/lenses/limits.aug
+@@ -25,7 +25,7 @@ let sto_to_eol = store /([^ \t\n].*[^ \t
+  *                               ENTRIES
+  *************************************************************************)
+ 
+-let domain     = label "domain" . store /[%@]?[A-Za-z0-9_.-]+|\*/
++let domain     = label "domain" . store /[%@]?[A-Za-z0-9_.-]+:?|\*/
+ 
+ let type_re    = "soft"
+                | "hard"

@@ -1,0 +1,113 @@
+diff --git a/ext/ladspa/gstladspautils.c b/ext/ladspa/gstladspautils.c
+index d55db6f85..4202e5452 100644
+--- a/ext/ladspa/gstladspautils.c
++++ b/ext/ladspa/gstladspautils.c
+@@ -351,6 +351,7 @@ gst_ladspa_object_class_get_param_spec (GstLADSPAClass * ladspa_class,
+   name =
+       gst_ladspa_object_class_get_param_name (ladspa_class, object_class,
+       portnum);
++  printf("!A %s %f %f %f\n", name, lower, def, upper);
+   perms = G_PARAM_READABLE;
+   if (LADSPA_IS_PORT_INPUT (desc->PortDescriptors[portnum]))
+     perms |= G_PARAM_WRITABLE | G_PARAM_CONSTRUCT;
+@@ -363,21 +364,24 @@ gst_ladspa_object_class_get_param_spec (GstLADSPAClass * ladspa_class,
+   if (LADSPA_IS_HINT_TOGGLED (hintdesc)) {
+     ret =
+         g_param_spec_boolean (name, name, desc->PortNames[portnum], FALSE,
+-        perms);
+-    g_free (name);
++    perms);
++  g_free (name);
+     return ret;
+   }
+ 
++  printf("!9 %s %f %f %f\n", name, lower, def, upper);
+   if (LADSPA_IS_HINT_BOUNDED_BELOW (hintdesc))
+     lower = desc->PortRangeHints[portnum].LowerBound;
+   else
+     lower = -G_MAXFLOAT;
+ 
++  printf("!8 %s %f %f %f\n", name, lower, def, upper);
+   if (LADSPA_IS_HINT_BOUNDED_ABOVE (hintdesc))
+     upper = desc->PortRangeHints[portnum].UpperBound;
+   else
+     upper = G_MAXFLOAT;
+ 
++  printf("!7 %s %f %f %f\n", name, lower, def, upper);
+   if (LADSPA_IS_HINT_SAMPLE_RATE (hintdesc)) {
+     /* FIXME:! (*= ladspa->rate?, *= GST_AUDIO_DEF_RATE?) */
+     lower *= 44100;
+@@ -385,12 +389,15 @@ gst_ladspa_object_class_get_param_spec (GstLADSPAClass * ladspa_class,
+   }
+ 
+   if (LADSPA_IS_HINT_INTEGER (hintdesc)) {
+-    lower = CLAMP (lower, G_MININT, G_MAXINT);
+-    upper = CLAMP (upper, G_MININT, G_MAXINT);
++    lower = CLAMP (lower, G_MININT+20, G_MAXINT-20);
++    upper = CLAMP (upper, G_MININT+20, G_MAXINT-20);
++    printf("!6 %s %f %f %f\n", name, lower, def, upper);
+   }
+ 
++  printf("!5 %s %f %f %f\n", name, lower, def, upper);
+   /* default to lower bound */
+   def = lower;
++  printf("!4 %s %f %f %f\n", name, lower, def, upper);
+ 
+ #ifdef LADSPA_IS_HINT_HAS_DEFAULT
+   if (LADSPA_IS_HINT_HAS_DEFAULT (hintdesc)) {
+@@ -424,6 +431,7 @@ gst_ladspa_object_class_get_param_spec (GstLADSPAClass * ladspa_class,
+   }
+ #endif /* LADSPA_IS_HINT_HAS_DEFAULT */
+ 
++  printf("!2 %s %f %f %f\n", name, lower, def, upper);
+   if (lower > upper) {
+     gfloat tmp;
+ 
+@@ -431,14 +439,46 @@ gst_ladspa_object_class_get_param_spec (GstLADSPAClass * ladspa_class,
+     tmp = lower;
+     lower = upper;
+     upper = tmp;
++    printf("!3 %s %f %f %f\n", name, lower, def, upper);
+   }
+ 
++  printf("!1 %s %f %f %f\n", name, lower, def, upper);
+   def = CLAMP (def, lower, upper);
++  printf("!0 %s %f %f %f\n", name, lower, def, upper);
++  g_printf("!00 %s %d %d %d\n", name, (gint)lower, (gint)def, (gint)upper);
+ 
+   if (LADSPA_IS_HINT_INTEGER (hintdesc)) {
++//    printf("!f %f %f %f %s\n", lower, def, upper, name);
++//    gfloat f=0.0;
++//    printf("! %f\n",f);
++//    f=G_MAXFLOAT;
++//    printf("! %f\n",f);
++//    f=CLAMP (f, G_MININT, G_MAXINT);
++//    printf("! %f %d %d\n",f, G_MAXINT, G_MAXINT-1);
++//    gint i=f;
++//    gint clampi=CLAMP(f, G_MININT, G_MAXINT);
++//    printf("!! %f %d %d %d\n", f, i, (int)f, clampi);
++//    printf("!! %d %d %d gmaxint+1=%d %d\n", i, (int)f, f == upper, f==(G_MAXINT+1), G_MAXINT+1);
++//    gint l,u,d;
++//    l=CLAMP((gfloat)lower, (gint)G_MININT+10, (gint)G_MAXINT-10);
++//    u=CLAMP((gfloat)upper, (gint)G_MININT+10, (gint)G_MAXINT-10);
++////    if ((gint)upper > (gint)(G_MAXINT-10000)) {
++////      u=G_MAXINT;
++////      printf("ccx: %f %d %d\n", upper, (gint)upper, u);
++////    } else if ((gint)upper < (gint)(G_MININT+10000)) {
++////      u=G_MININT;
++////      printf("cci: %f %d %d\n", upper, (gint)upper, u);
++////    } else {
++////      u=(gint)upper;
++////      printf("cce: %f %d %d\n", upper, (gint)upper, u);
++////    }
++//    d=CLAMP((gfloat)def, (gint)G_MININT+10, (gint)G_MAXINT-10);
++//    GParamFlags flags=perms;
++//    printf("!i %d %d %d %d %f %s\n", l, d, u, (int)upper, upper, name);
+     ret =
+         g_param_spec_int (name, name, desc->PortNames[portnum], lower, upper,
+-        def, perms);
++            def, perms);
++            //l, u, d, flags);
+   } else {
+     ret =
+         g_param_spec_float (name, name, desc->PortNames[portnum], lower, upper,

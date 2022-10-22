@@ -1,0 +1,13 @@
+diff --git a/math/Makefile b/math/Makefile
+index cb4eaec6a9d..d2b24c404e7 100644
+--- a/math/Makefile
++++ b/math/Makefile
+@@ -21,6 +21,8 @@ subdir		:= math
+ 
+ include ../Makeconfig
+ 
++CFLAGS-.o += -fno-stack-protector  -falign-functions=32
++
+ # Installed header files.
+ headers		:= math.h bits/mathcalls.h bits/mathinline.h \
+ 		   fpu_control.h complex.h bits/cmathcalls.h fenv.h \

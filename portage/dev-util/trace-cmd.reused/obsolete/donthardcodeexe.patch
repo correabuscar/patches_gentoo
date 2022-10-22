@@ -1,0 +1,16 @@
+https://bugzilla.kernel.org/show_bug.cgi?id=204259#c4
+dumb workaround, definitely not a fix because it will fail to run the hardcoded one, if `/usr/bin/trace-cmd` doesn't exist!
+
+diff --git a/kernel-shark/src/KsCaptureDialog.cpp b/kernel-shark/src/KsCaptureDialog.cpp
+index 0a29518..c587440 100644
+--- a/kernel-shark/src/KsCaptureDialog.cpp
++++ b/kernel-shark/src/KsCaptureDialog.cpp
+@@ -484,7 +484,7 @@ KsCaptureDialog::KsCaptureDialog(QWidget *parent)
+ 	connect(&_captureCtrl._closeButton,	&QPushButton::pressed,
+ 		this,				&KsCaptureDialog::close);
+ 
+-	if (!KsUtils::isInstalled())
++	if (KsUtils::isInstalled())
+ 		captureExe = QString(_INSTALL_PREFIX) + QString("/bin/trace-cmd");
+ 	else
+ 		captureExe = TRACECMD_EXECUTABLE;

@@ -1,0 +1,43 @@
+tracking bug: https://bugzilla.kernel.org/show_bug.cgi?id=97631#c1
+
+updated for 5.1-rc3
+
+diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
+index 9027a8c4219f..27961cf32d1c 100644
+--- a/include/linux/skbuff.h
++++ b/include/linux/skbuff.h
+@@ -931,6 +931,7 @@ static inline bool skb_pfmemalloc(const struct sk_buff *skb)
+  */
+ static inline struct dst_entry *skb_dst(const struct sk_buff *skb)
+ {
++  BUG_ON(NULL == skb);
+ 	/* If refdst was not refcounted, check we still are in a
+ 	 * rcu_read_lock section
+ 	 */
+@@ -984,6 +985,7 @@ static inline bool skb_dst_is_noref(const struct sk_buff *skb)
+  */
+ static inline struct rtable *skb_rtable(const struct sk_buff *skb)
+ {
++  BUG_ON(NULL == skb);
+ 	return (struct rtable *)skb_dst(skb);
+ }
+ 
+diff --git a/net/ipv4/netfilter/nf_reject_ipv4.c b/net/ipv4/netfilter/nf_reject_ipv4.c
+index aa8304c618b8..15d32f9f632a 100644
+--- a/net/ipv4/netfilter/nf_reject_ipv4.c
++++ b/net/ipv4/netfilter/nf_reject_ipv4.c
+@@ -112,7 +112,13 @@ void nf_send_reset(struct net *net, struct sk_buff *oldskb, int hook)
+ 	if (!oth)
+ 		return;
+ 
+-	if (skb_rtable(oldskb)->rt_flags & (RTCF_BROADCAST | RTCF_MULTICAST))
++  BUG_ON(NULL == oldskb);
++  struct rtable * tmp1=skb_rtable(oldskb);
++  if (NULL == tmp1) {
++    printk(KERN_CRIT "avoiding null ptr deref\n");
++    return;
++  }
++	if (tmp1->rt_flags & (RTCF_BROADCAST | RTCF_MULTICAST))
+ 		return;
+ 
+ 	nskb = alloc_skb(sizeof(struct iphdr) + sizeof(struct tcphdr) +

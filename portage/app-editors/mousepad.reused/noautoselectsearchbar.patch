@@ -1,0 +1,13 @@
+diff --git a/mousepad/mousepad-search-bar.c b/mousepad/mousepad-search-bar.c
+index 963c32a..0ba08e9 100644
+--- a/mousepad/mousepad-search-bar.c
++++ b/mousepad/mousepad-search-bar.c
+@@ -513,7 +513,7 @@ mousepad_search_bar_focus (MousepadSearchBar *bar)
+   mousepad_search_bar_highlight_schedule (bar);
+ 
+   /* select the entire entry */
+-  gtk_editable_select_region (GTK_EDITABLE (bar->entry), 0, -1);
++  //gtk_editable_select_region (GTK_EDITABLE (bar->entry), 0, -1); //yes this does make me lose PRIMARY selection (ie. MMB paste, or shift+insert)
+ }
+ 
+ 

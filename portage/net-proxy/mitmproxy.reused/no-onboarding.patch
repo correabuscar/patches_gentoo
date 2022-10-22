@@ -1,0 +1,28 @@
+src: https://raw.githubusercontent.com/macports/macports-ports/5cffb2c8a0334c4c98ac5461948185dbb8f672ad/python/py-mitmproxy/files/no-onboarding.patch
+
+this is a workaround for the problem:
+AttributeError: module 'tornado.wsgi' has no attribute 'WSGIAdapter' as seen here: https://github.com/mitmproxy/mitmproxy/issues/3618#issuecomment-525848353
+caused by tornado 6+ which replaced tornado 5+ as see here: https://github.com/tornadoweb/tornado/pulls?q=is%3Apr+wsgiadapter+is%3Aclosed
+
+this workaround means you've to install the mitmproxy certificate manually
+
+diff --git mitmproxy/addons/__init__.py mitmproxy/addons/__init__.py
+index 838fba9b..5d21bf68 100644
+--- a/mitmproxy/addons/__init__.py
++++ b/mitmproxy/addons/__init__.py
+@@ -8,7 +8,6 @@ from mitmproxy.addons import core
+ from mitmproxy.addons import cut
+ from mitmproxy.addons import disable_h2c
+ from mitmproxy.addons import export
+-from mitmproxy.addons import onboarding
+ from mitmproxy.addons import proxyauth
+ from mitmproxy.addons import replace
+ from mitmproxy.addons import script
+@@ -33,7 +32,6 @@ def default_addons():
+         cut.Cut(),
+         disable_h2c.DisableH2C(),
+         export.Export(),
+-        onboarding.Onboarding(),
+         proxyauth.ProxyAuth(),
+         replace.Replace(),
+         script.ScriptLoader(),

@@ -1,0 +1,301 @@
+diff --git a/src/check.c b/src/check.c
+index 9f9b251..4de22bc 100644
+--- a/src/check.c
++++ b/src/check.c
+@@ -103,6 +103,7 @@ static void suite_free(Suite * s)
+     }
+     check_list_free(s->tclst);
+     free(s);
++    s=NULL;
+ }
+ 
+ 
+@@ -182,6 +183,7 @@ List *tag_string_to_list(const char *tags_string)
+ 	tag = strtok(NULL, " ");
+     }
+     free(tags);
++    tags=NULL;
+     return list;
+ }
+ 
+@@ -211,6 +213,7 @@ static void tcase_free(TCase * tc)
+     check_list_free(tc->ch_tflst);
+     check_list_free(tc->tags);
+     free(tc);
++    tc=NULL;
+ }
+ 
+ unsigned int tcase_matching_tag(TCase *tc, List *check_for)
+@@ -444,6 +447,7 @@ void srunner_free(SRunner * sr)
+         return;
+ 
+     free(sr->stats);
++    sr->stats=NULL;
+     l = sr->slst;
+     for(check_list_front(l); !check_list_at_end(l); check_list_advance(l))
+     {
+@@ -460,6 +464,7 @@ void srunner_free(SRunner * sr)
+     check_list_free(sr->resultlst);
+ 
+     free(sr);
++    sr=NULL;
+ }
+ 
+ int srunner_ntests_failed(SRunner * sr)
+@@ -539,8 +544,11 @@ static void tr_init(TestResult * tr)
+ void tr_free(TestResult * tr)
+ {
+     free(tr->file);
++    tr->file=NULL;
+     free(tr->msg);
++    tr->msg=NULL;
+     free(tr);
++    tr=NULL;
+ }
+ 
+ 
+diff --git a/src/check_list.c b/src/check_list.c
+index d93f51c..19fec40 100644
+--- a/src/check_list.c
++++ b/src/check_list.c
+@@ -107,7 +107,9 @@ void check_list_free(List * lp)
+         return;
+ 
+     free(lp->data);
++    lp->data=NULL;
+     free(lp);
++    lp=NULL;
+ }
+ 
+ void *check_list_val(List * lp)
+diff --git a/src/check_log.c b/src/check_log.c
+index c785b33..802a8f8 100644
+--- a/src/check_log.c
++++ b/src/check_log.c
+@@ -436,7 +436,9 @@ void subunit_lfun(SRunner * sr, FILE * file, enum print_output printmode,
+                         eprintf("Bad result type in subunit_lfun", __FILE__,
+                                 __LINE__);
+                         free(name);
++                        name=NULL;
+                         free(msg);
++                        msg=NULL;
+                 }
+             }
+             break;
+@@ -551,6 +553,7 @@ void srunner_end_logging(SRunner * sr)
+                         __FILE__, __LINE__ - 2);
+         }
+         free(lg);
++        lg=NULL;
+     }
+     check_list_free(l);
+     sr->loglst = NULL;
+diff --git a/src/check_msg.c b/src/check_msg.c
+index 9af8827..36eefd0 100644
+--- a/src/check_msg.c
++++ b/src/check_msg.c
+@@ -89,6 +89,7 @@ void send_failure_info(const char *msg)
+     fmsg.msg = strdup(msg);
+     ppack(get_pipe(), CK_MSG_FAIL, (CheckMsg *) & fmsg);
+     free(fmsg.msg);
++    fmsg.msg=NULL;
+ }
+ 
+ void send_duration_info(int duration)
+@@ -107,6 +108,7 @@ void send_loc_info(const char *file, int line)
+     lmsg.line = line;
+     ppack(get_pipe(), CK_MSG_LOC, (CheckMsg *) & lmsg);
+     free(lmsg.file);
++    lmsg.file=NULL;
+ }
+ 
+ void send_ctx_info(enum ck_result_ctx ctx)
+@@ -268,6 +270,7 @@ FILE *open_tmp_file(char **name)
+         file = fopen(uniq_tmp_file, "w+b");
+         *name = uniq_tmp_file;
+         free(tmp_file);
++        tmp_file=NULL;
+     }
+ #else
+     /*
+diff --git a/src/check_pack.c b/src/check_pack.c
+index 0fe1774..ef17a0c 100644
+--- a/src/check_pack.c
++++ b/src/check_pack.c
+@@ -337,6 +337,7 @@ void ppack(FILE * fdes, enum ck_msg_type type, CheckMsg * msg)
+         eprintf("Error in call to fwrite:", __FILE__, __LINE__ - 2);
+ 
+     free(buf);
++    buf=NULL;
+ }
+ 
+ static int read_buf(FILE * fdes, int size, char *buf)
+@@ -378,6 +379,7 @@ static int get_result(char *buf, RcvMsg * rmsg)
+             rcvmsg_update_loc(rmsg, lmsg->file, lmsg->line);
+         }
+         free(lmsg->file);
++        lmsg->file=NULL;
+     }
+     else if(type == CK_MSG_FAIL)
+     {
+@@ -393,6 +395,7 @@ static int get_result(char *buf, RcvMsg * rmsg)
+             /* Skip subsequent failure messages, only happens for CK_NOFORK */
+         }
+         free(fmsg->msg);
++        fmsg->msg=NULL;
+     }
+     else if(type == CK_MSG_DURATION)
+     {
+@@ -435,9 +438,13 @@ static RcvMsg *rcvmsg_create(void)
+ void rcvmsg_free(RcvMsg * rmsg)
+ {
+     free(rmsg->fixture_file);
++    rmsg->fixture_file=NULL;
+     free(rmsg->test_file);
++    rmsg->test_file=NULL;
+     free(rmsg->msg);
++    rmsg->msg=NULL;
+     free(rmsg);
++    rmsg=NULL;
+ }
+ 
+ static void rcvmsg_update_ctx(RcvMsg * rmsg, enum ck_result_ctx ctx)
+@@ -445,6 +452,7 @@ static void rcvmsg_update_ctx(RcvMsg * rmsg, enum ck_result_ctx ctx)
+     if(rmsg->lastctx != CK_CTX_INVALID)
+     {
+         free(rmsg->fixture_file);
++        rmsg->fixture_file=NULL;
+         reset_rcv_fixture(rmsg);
+     }
+     rmsg->lastctx = ctx;
+@@ -455,12 +463,14 @@ static void rcvmsg_update_loc(RcvMsg * rmsg, const char *file, int line)
+     if(rmsg->lastctx == CK_CTX_TEST)
+     {
+         free(rmsg->test_file);
++        rmsg->test_file=NULL;
+         rmsg->test_line = line;
+         rmsg->test_file = strdup(file);
+     }
+     else
+     {
+         free(rmsg->fixture_file);
++        rmsg->fixture_file=NULL;
+         rmsg->fixture_line = line;
+         rmsg->fixture_file = strdup(file);
+     }
+@@ -498,6 +508,7 @@ RcvMsg *punpack(FILE * fdes)
+         }
+     }
+     free(buf);
++    buf=NULL;
+ 
+     if(rmsg->lastctx == CK_CTX_INVALID)
+     {
+diff --git a/src/check_print.c b/src/check_print.c
+index 35f13b6..8acc47f 100644
+--- a/src/check_print.c
++++ b/src/check_print.c
+@@ -67,6 +67,7 @@ static void srunner_fprint_summary(FILE * file, SRunner * sr,
+         str = sr_stat_str(sr);
+         fprintf(file, "%s\n", str);
+         free(str);
++        str=NULL;
+     }
+     return;
+ }
+@@ -159,6 +160,7 @@ void tr_fprint(FILE * file, TestResult * tr, enum print_output print_mode)
+ 
+         fprintf(file, "%s\n", trstr);
+         free(trstr);
++        trstr=NULL;
+     }
+ }
+ 
+@@ -228,6 +230,7 @@ void tr_xmlprint(FILE * file, TestResult * tr,
+     fprintf(file, "    </test>\n");
+ 
+     free(path_name);
++    path_name=NULL;
+ }
+ 
+ enum print_output get_env_printmode(void)
+diff --git a/src/check_run.c b/src/check_run.c
+index 7e212e0..530848c 100644
+--- a/src/check_run.c
++++ b/src/check_run.c
+@@ -316,7 +316,9 @@ static TestResult * srunner_run_setup(List * fixture_list, enum fork_status fork
+             }
+ 
+             free(tr->file);
++            tr->file=NULL;
+             free(tr->msg);
++            tr->msg=NULL;
+             free(tr);
+             tr = NULL;
+         }
+@@ -491,6 +493,7 @@ static TestResult *tcase_run_tfun_fork(SRunner * sr, TCase * tc, TF * tfun,
+         group_pid = getpgrp();
+         tr = tcase_run_checked_setup(sr, tc);
+         free(tr);
++        tr=NULL;
+         clock_gettime(check_get_clockid(), &ts_start);
+         tcase_fn_start(tfun->ttest->name, tfun->ttest->file, tfun->ttest->line);
+         tfun->ttest->fn(i);
+@@ -584,6 +587,7 @@ static void set_fork_info(TestResult * tr, int status, int signal_expected,
+                 if(tr->msg != NULL)
+                 {
+                     free(tr->msg);
++                    tr->msg=NULL;
+                 }
+                 tr->msg = signal_error_msg(signal_received, signal_expected);
+             }
+@@ -593,6 +597,7 @@ static void set_fork_info(TestResult * tr, int status, int signal_expected,
+                 if(tr->msg != NULL)
+                 {
+                     free(tr->msg);
++                    tr->msg=NULL;
+                 }
+                 tr->msg = pass_msg();
+             }
+@@ -604,6 +609,7 @@ static void set_fork_info(TestResult * tr, int status, int signal_expected,
+             if(tr->msg != NULL)
+             {
+                 free(tr->msg);
++                tr->msg=NULL;
+             }
+             tr->msg = signal_error_msg(signal_received, signal_expected);
+         }
+@@ -614,6 +620,7 @@ static void set_fork_info(TestResult * tr, int status, int signal_expected,
+             if(tr->msg != NULL)
+             {
+                 free(tr->msg);
++                tr->msg=NULL;
+             }
+             tr->msg = signal_msg(signal_received);
+         }
+@@ -626,6 +633,7 @@ static void set_fork_info(TestResult * tr, int status, int signal_expected,
+             if(tr->msg != NULL)
+             {
+                 free(tr->msg);
++                tr->msg=NULL;
+             }
+             tr->msg = pass_msg();
+         }
+@@ -649,6 +657,7 @@ static void set_fork_info(TestResult * tr, int status, int signal_expected,
+             if(tr->msg != NULL)
+             {
+                 free(tr->msg);
++                tr->msg=NULL;
+             }
+             tr->msg = exit_msg(exit_status);
+             if(exit_status == allowed_exit_value)
+@@ -699,7 +708,9 @@ static char *signal_error_msg(int signal_received, int signal_expected)
+                  signal_received, sig_r_str, signal_expected, sig_e_str);
+     }
+     free(sig_r_str);
++    sig_r_str=NULL;
+     free(sig_e_str);
++    sig_e_str=NULL;
+     return msg;
+ }
+ 

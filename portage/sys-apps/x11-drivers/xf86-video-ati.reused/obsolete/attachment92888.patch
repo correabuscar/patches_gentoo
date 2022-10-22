@@ -1,0 +1,56 @@
+From 75df4f50eedecab8447a61266d9b8b8af586b94f Mon Sep 17 00:00:00 2001
+From: Alex Deucher <alexdeucher@gmail.com>
+Date: Mon, 27 Jan 2014 17:32:14 -0500
+Subject: [PATCH] Don't enable acceleration if DRI is disabled
+
+DRI is required for acceleration with KMS.
+
+Bug:
+https://bugs.freedesktop.org/show_bug.cgi?id=74096
+
+Signed-off-by: Alex Deucher <alexdeucher@gmail.com>
+---
+ src/radeon_kms.c   | 2 +-
+ src/radeon_video.c | 6 ++----
+ 2 files changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/src/radeon_kms.c b/src/radeon_kms.c
+index 21a420f..4feca82 100644
+--- a/src/radeon_kms.c
++++ b/src/radeon_kms.c
+@@ -1279,7 +1279,7 @@ Bool RADEONScreenInit_KMS(SCREEN_INIT_ARGS_DECL)
+ 		   "Direct rendering disabled\n");
+     }
+ 
+-    if (info->r600_shadow_fb) {
++    if (info->r600_shadow_fb || !info->directRenderingEnabled) {
+ 	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Acceleration disabled\n");
+ 	info->accelOn = FALSE;
+     } else {
+diff --git a/src/radeon_video.c b/src/radeon_video.c
+index 5349d11..16aaf83 100644
+--- a/src/radeon_video.c
++++ b/src/radeon_video.c
+@@ -172,9 +172,7 @@ void RADEONInitVideo(ScreenPtr pScreen)
+ 	    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Set up textured video (glamor)\n");
+ 	} else
+ 	    xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Failed to set up textured video (glamor)\n");
+-    } else if ((info->ChipFamily < CHIP_FAMILY_RS400)
+-	|| (info->directRenderingEnabled)
+-	) {
++    } else if (info->directRenderingEnabled) {
+ 	texturedAdaptor = RADEONSetupImageTexturedVideo(pScreen);
+ 	if (texturedAdaptor != NULL) {
+ 	    adaptors[num_adaptors++] = texturedAdaptor;
+@@ -182,7 +180,7 @@ void RADEONInitVideo(ScreenPtr pScreen)
+ 	} else
+ 	    xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Failed to set up textured video\n");
+     } else
+-	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Textured video requires CP on R5xx/R6xx/R7xx/IGP\n");
++	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Textured video requires DRI\n");
+ 
+     if(num_adaptors)
+ 	xf86XVScreenInit(pScreen, adaptors, num_adaptors);
+-- 
+1.8.5.3
+

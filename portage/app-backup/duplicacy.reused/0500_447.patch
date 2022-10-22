@@ -1,0 +1,50 @@
+From 20172e07e6300adb8a7824c1fd7f221f18b2b732 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Sidney=20San=20Mart=C3=ADn?= <sidney@s4y.us>
+Date: Wed, 13 Jun 2018 10:49:04 -0700
+Subject: [PATCH] Acknowledge malware/spam warnings from GCD
+
+If Google thinks that a file is malware or spam (which can happen
+spuriously to blobs of encrypted data), it will prevent the initial
+download and return an error with reason "cannotDownloadAbusiveFile".
+The API expects a program to prompt the user in this case and then,
+optionally, let them bypass it.
+
+Ideally duplicacy should prompt, but this patch just logs a warning.
+
+When I printed `err.(*googleapi.Error)`, its `Errors` field was empty,
+hence the sketchy string matching. It's possible that I did something
+wrong, though.
+---
+ src/duplicacy_gcdstorage.go | 15 ++++++++++++---
+ 1 file changed, 12 insertions(+), 3 deletions(-)
+
+diff --git a/src/duplicacy_gcdstorage.go b/src/duplicacy_gcdstorage.go
+index c3efc0a4..e2ee60df 100644
+--- a/src/duplicacy_gcdstorage.go
++++ b/src/duplicacy_gcdstorage.go
+@@ -624,13 +624,22 @@ func (storage *GCDStorage) DownloadFile(threadIndex int, filePath string, chunk
+ 	var response *http.Response
+ 
+ 	for {
+-		response, err = storage.service.Files.Get(fileID).Download()
+-		if retry, err := storage.shouldRetry(threadIndex, err); err == nil && !retry {
++		// AcknowledgeAbuse(true) lets the download proceed even if GCD thinks that it contains malware.
++		// TODO: Should this prompt the user or log a warning?
++		req := storage.service.Files.Get(fileID)
++		if e, ok := err.(*googleapi.Error); ok {
++			if strings.Contains(err.Error(), "cannotDownloadAbusiveFile") || len(e.Errors) > 0 && e.Errors[0].Reason == "cannotDownloadAbusiveFile" {
++				LOG_WARN("GCD_STORAGE", "%s is marked as abusive, will download anyway.", filePath)
++				req = req.AcknowledgeAbuse(true)
++			}
++		}
++		response, err = req.Download()
++		if retry, retry_err := storage.shouldRetry(threadIndex, err); retry_err == nil && !retry {
+ 			break
+ 		} else if retry {
+ 			continue
+ 		} else {
+-			return err
++			return retry_err
+ 		}
+ 	}
+ 
