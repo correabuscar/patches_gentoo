@@ -1,0 +1,140 @@
+https://github.com/alacritty/alacritty/issues/5438
+
+patch version 2, doesn't (sometimes)crash on horiz. resize anymore.
+
+#this part is old/obsolete:
+#diff --git a/alacritty_terminal/src/grid/row.rs b/alacritty_terminal/src/grid/row.rs
+#index 2a92a78c..00efa50f 100644
+#--- a/alacritty_terminal/src/grid/row.rs
+#+++ b/alacritty_terminal/src/grid/row.rs
+##@@ -60,7 +67,12 @@ impl<T: Clone + Default> Row<T> {
+##             return;
+##         }
+## 
+##+        self.inner.reserve_exact(columns - self.inner.capacity()); this was bugged, would crash on horizontal resize sometimes!
+##         self.inner.resize_with(columns, T::default);
+##+        /*if columns != self.inner.capacity(){
+##+            dbg!("Wanted3:", columns,"got=",self.inner.capacity());
+##+        }
+##+ this isn't hit btw! so commenting out */
+##     }
+## 
+##     /// Reduce the number of columns in the row.
+#@@ -78,6 +90,8 @@ impl<T: Clone + Default> Row<T> {
+#         let mut new_row = self.inner.split_off(columns);
+#         let index = new_row.iter().rposition(|c| !c.is_empty()).map_or(0, |i| i + 1);
+#         new_row.truncate(index);
+#+        // Reduce the capacity of the left part. //src: https://github.com/alacritty/alacritty/issues/5438#issuecomment-1289521625
+#+        self.inner.shrink_to_fit();
+# 
+#         self.occ = min(self.occ, columns);
+# 
+diff --git a/alacritty_terminal/src/grid/row.rs b/alacritty_terminal/src/grid/row.rs
+index 2a92a78c..83b63f74 100644
+--- a/alacritty_terminal/src/grid/row.rs
++++ b/alacritty_terminal/src/grid/row.rs
+@@ -60,7 +67,29 @@ impl<T: Clone + Default> Row<T> {
+             return;
+         }
+ 
++        let mut cap=self.inner.capacity();
++        //so this function gets called when shrinking too, apparently
++        //or, it's a race condition due to the Copy trait, yey! ie. the Copy trait strikes again?!
++        //eg. cap=142, columns=91
++        if columns < cap {
++            //dbg!("Avoiding crash:",columns,cap);
++            //self.inner.shrink_to_fit(); //has no effect?
++            self.inner.shrink_to(columns);
++            //dbg!("After shrink:",self.inner.capacity()); //this is equal to columns
++                                                         //always,apparently! so commenting out
++                                                         //dbg!()s.
++        } else {
++            self.inner.reserve_exact(columns - cap);
++        }
++
+         self.inner.resize_with(columns, T::default);
++        cap=self.inner.capacity();
++        if columns != cap {
++            dbg!("Wanted3:", columns, cap);
++            //even with the above, this still triggers sometimes, like columns=46 cap=84, or
++            //columns=88 and cap=168
++        }
++
+     }
+ 
+     /// Reduce the number of columns in the row.
+@@ -78,6 +107,13 @@ impl<T: Clone + Default> Row<T> {
+         let mut new_row = self.inner.split_off(columns);
+         let index = new_row.iter().rposition(|c| !c.is_empty()).map_or(0, |i| i + 1);
+         new_row.truncate(index);
++        // Reduce the capacity of the left part. //src: https://github.com/alacritty/alacritty/issues/5438#issuecomment-1289521625
++        //self.inner.shrink_to_fit();
++        self.inner.shrink_to(columns);
++        let cap=self.inner.capacity();
++        if columns != cap {
++            dbg!("Wanted4:",columns,cap);
++        }
+ 
+         self.occ = min(self.occ, columns);
+ 
+diff --git a/alacritty_terminal/src/grid/storage.rs b/alacritty_terminal/src/grid/storage.rs
+index e444d9c3..32729dbe 100644
+--- a/alacritty_terminal/src/grid/storage.rs
++++ b/alacritty_terminal/src/grid/storage.rs
+@@ -9,7 +9,7 @@ use super::Row;
+ use crate::index::Line;
+ 
+ /// Maximum number of buffered lines outside of the grid for performance optimization.
+-const MAX_CACHE_SIZE: usize = 1_000;
++const MAX_CACHE_SIZE: usize = 10_000;
+ 
+ /// A ring buffer for optimizing indexing and rotation.
+ ///
+@@ -128,11 +128,46 @@ impl<T> Storage<T> {
+         if self.len + additional_rows > self.inner.len() {
+             self.rezero();
+ 
+-            let realloc_size = self.inner.len() + max(additional_rows, MAX_CACHE_SIZE);
++            let have_now=self.inner.len();
++            let additionals=max(additional_rows, MAX_CACHE_SIZE);
++            let realloc_size = have_now + additionals;
++            /*
++            // 17.7g VIRT, 16.4g RES, then win.resize horiz. a bit gives: 17.8g VIRT 16.5g RES
++            // so basically the same as if calling 'reserve_exact' full time.
++            dbg!(additional_rows);// this is usually just '1' ! but it allocates 1k at a
++                                  // time due to MAX_CACHE_SIZE below!
++            dbg!(self.len);
++            dbg!(have_now);
++            dbg!(additionals);
++            dbg!(realloc_size);
++            let ic:usize = self.inner.capacity();
++            dbg!(ic);
++            //let it double its capacity but not if it goes beyond the max amount of scrollback
++            //lines!
++            use crate::config::MAX_SCROLLBACK_LINES;
++            if realloc_size > ic && ic*2 > MAX_SCROLLBACK_LINES as usize {
++                //if reallocation will happen,
++                //and the future capacity will be extended beyond MAX_SCROLLBACK_LINES (should be
++                //the current value of scrolling.history from alacritty.yml here though, or
++                //whichever is minimum?! (as to not overallocate)
++                debug_assert!(self.inner.len() <= self.inner.capacity()); //obviously
++                //let additionals=realloc_size-ic;
++                //dbg!(additionals);
++                self.inner.reserve_exact(additionals);
++                dbg!("inside:",self.inner.capacity());
++            }  */
++            //or always reserve_exact 10k more lines! aka the value of M_C_S is 10k(not 1k) now.
++            //(that's 600 (re)allocations of 10k M_C_S for 6mil M_S_L, vs 96 ie. 10(of double each time)+86(of 10k)
++            //so use less memory but frag. it more.
++            self.inner.reserve_exact(additionals);//17.7g VIRT, 16.4g RES, expand window horiz. by
++                                                  //1 column  gives 17.8g VIRT, 16.5g RES.
+             self.inner.resize_with(realloc_size, || Row::new(columns));
++            //dbg!("After:");
++            //dbg!(self.inner.capacity());
+         }
+ 
+         self.len += additional_rows;
++        //dbg!("After:{}",self.len); //spams for each row
+     }
+ 
+     #[inline]

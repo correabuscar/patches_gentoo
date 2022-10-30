@@ -1,7 +1,7 @@
 diff --git a/src/cargo/util/workspace.rs b/src/cargo/util/workspace.rs
 index 73ee04499..88d32ee9f 100644
---- a/src/cargo/util/workspace.rs
-+++ b/src/cargo/util/workspace.rs
+--- a/src/tools/cargo/src/cargo/util/workspace.rs
++++ b/src/tools/cargo/src/cargo/util/workspace.rs
 @@ -39,7 +39,7 @@ fn print_available(
      writeln!(output, "\"{}\" takes one argument.", option_name)?;
  

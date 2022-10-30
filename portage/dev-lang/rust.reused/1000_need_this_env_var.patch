@@ -1,26 +1,27 @@
 see this patch in action at:
 somewhere inside rustlearnage the recompile_self dir!
+actually now(23oct2022) it's in: /home/user/sandbox/rust/workspace_buildrs3/recompile_self
 
-diff --git a/src/doc/src/reference/environment-variables.md b/src/doc/src/reference/environment-variables.md
-index 145737a6..cac4cf47 100644
---- a/src/doc/src/reference/environment-variables.md
-+++ b/src/doc/src/reference/environment-variables.md
-@@ -52,6 +52,7 @@ let version = env!("CARGO_PKG_VERSION");
- 
- * `CARGO` - Path to the `cargo` binary performing the build.
- * `CARGO_MANIFEST_DIR` - The directory containing the manifest of your package.
-+* `CARGO_TARGET_BINFILE_FULLPATH` - (added by a cargo patch, locally!) The fullpath of the output executable ie. the file that `cargo run` will execute
- * `CARGO_PKG_VERSION` - The full version of your package.
- * `CARGO_PKG_VERSION_MAJOR` - The major version of your package.
- * `CARGO_PKG_VERSION_MINOR` - The minor version of your package.
-@@ -83,6 +84,7 @@ let out_dir = env::var("OUT_DIR").unwrap();
-                          script). Also note that this is the value of the
-                          current working directory of the build script when it
-                          starts.
-+* `CARGO_TARGET_BINFILE_FULLPATH` - (added by a cargo patch, locally!) The fullpath of the output executable ie. the file that `cargo run` will execute
- * `CARGO_MANIFEST_LINKS` - the manifest `links` value.
- * `CARGO_FEATURE_<name>` - For each activated feature of the package being
-                            built, this environment variable will be present
+#diff --git a/src/doc/src/reference/environment-variables.md b/src/doc/src/reference/environment-variables.md
+#index 145737a6..cac4cf47 100644
+#--- a/src/tools/cargo/src/doc/src/reference/environment-variables.md
+#+++ b/src/tools/cargo/src/doc/src/reference/environment-variables.md
+#@@ -52,6 +52,7 @@ let version = env!("CARGO_PKG_VERSION");
+# 
+# * `CARGO` - Path to the `cargo` binary performing the build.
+# * `CARGO_MANIFEST_DIR` - The directory containing the manifest of your package.
+#+* `CARGO_TARGET_BINFILE_FULLPATH` - (added by a cargo patch, locally!) The fullpath of the output executable ie. the file that `cargo run` will execute
+# * `CARGO_PKG_VERSION` - The full version of your package.
+# * `CARGO_PKG_VERSION_MAJOR` - The major version of your package.
+# * `CARGO_PKG_VERSION_MINOR` - The minor version of your package.
+#@@ -83,6 +84,7 @@ let out_dir = env::var("OUT_DIR").unwrap();
+#                          script). Also note that this is the value of the
+#                          current working directory of the build script when it
+#                          starts.
+#+* `CARGO_TARGET_BINFILE_FULLPATH` - (added by a cargo patch, locally!) The fullpath of the output executable ie. the file that `cargo run` will execute
+# * `CARGO_MANIFEST_LINKS` - the manifest `links` value.
+# * `CARGO_FEATURE_<name>` - For each activated feature of the package being
+#                            built, this environment variable will be present
 #diff --git a/src/cargo/core/compiler/mod.rs b/src/cargo/core/compiler/mod.rs
 #index 22f70bf6..d0f16abf 100644
 #--- a/src/cargo/core/compiler/mod.rs
@@ -119,8 +120,8 @@ index 145737a6..cac4cf47 100644
 
 diff --git a/src/cargo/core/compiler/mod.rs b/src/cargo/core/compiler/mod.rs
 index 542427d9f..33b3a84fd 100644
---- a/src/cargo/core/compiler/mod.rs
-+++ b/src/cargo/core/compiler/mod.rs
+--- a/src/tools/cargo/src/cargo/core/compiler/mod.rs
++++ b/src/tools/cargo/src/cargo/core/compiler/mod.rs
 @@ -907,6 +907,43 @@ fn build_base_args<'a, 'cfg>(
          cmd.arg("-Zforce-unstable-if-unmarked")
              .env("RUSTC_BOOTSTRAP", "1");
@@ -149,14 +150,14 @@ index 542427d9f..33b3a84fd 100644
 +            bin_outfile_full_path=Option::Some(bindst.display().to_string());
 +            cmd.env("CARGO_TARGET_BINFILE_FULLPATH",bindst.display().to_string()); //alright this makes it work in src/main.rs with env!() macro! eg. const OUTPUT_EXE_AT_COMPILETIME: &'static str = env!("CARGO_TARGET_BINFILE_FULLPATH");
 +            //the following is needed specifically for build.rs availability of the same env. var:
-+            {
++            /*{ //FIXME: yes,needed but don't know how to do it yet!//check if this is still needed (fails to compile!) for build.rs to see the var!
 +                let a=cx.compilation.extra_env.entry(
 +                    unit.pkg.package_id().clone()
 +                )
 +                    .or_insert_with(Vec::new);
 +                a.push(("CARGO_TARGET_BINFILE_FULLPATH".to_string(), 
 +                        bindst.display().to_string())); //for build.rs availability! via eg. println!("Here's CARGO_TARGET_BINFILE_FULLPATH={}", env::var("CARGO_TARGET_BINFILE_FULLPATH").unwrap());
-+            }
++            }*/
 +            debug!("CARGO_TARGET_BINFILE_FULLPATH={}",bindst.display());
 +        }
 +    }//for
@@ -165,3 +166,23 @@ index 542427d9f..33b3a84fd 100644
      Ok(())
  }
  
+Index: /var/tmp/portage/dev-lang/rust-1.64.0-r1/work/rustc-1.64.0-src/src/tools/cargo/src/doc/src/reference/environment-variables.md
+===================================================================
+--- rustc-1.64.0-src/src/tools/cargo/src/doc/src/reference/environment-variables.md
++++ rustc-1.64.0-src/src/tools/cargo/src/doc/src/reference/environment-variables.md
+@@ -205,6 +205,7 @@ corresponding environment variable is se
+ 
+ * `CARGO` — Path to the `cargo` binary performing the build.
+ * `CARGO_MANIFEST_DIR` — The directory containing the manifest of your package.
++* `CARGO_TARGET_BINFILE_FULLPATH` - (added by a cargo patch, locally!) The fullpath of the output executable ie. the file that `cargo run` will execute
+ * `CARGO_PKG_VERSION` — The full version of your package.
+ * `CARGO_PKG_VERSION_MAJOR` — The major version of your package.
+ * `CARGO_PKG_VERSION_MINOR` — The minor version of your package.
+@@ -293,6 +294,7 @@ let out_dir = env::var("OUT_DIR").unwrap
+                          script). Also note that this is the value of the
+                          current working directory of the build script when it
+                          starts.
++* `CARGO_TARGET_BINFILE_FULLPATH` - (added by a cargo patch, locally!) The fullpath of the output executable ie. the file that `cargo run` will execute
+ * `CARGO_MANIFEST_LINKS` — the manifest `links` value.
+ * `CARGO_MAKEFLAGS` — Contains parameters needed for Cargo's [jobserver]
+                       implementation to parallelize subprocesses.

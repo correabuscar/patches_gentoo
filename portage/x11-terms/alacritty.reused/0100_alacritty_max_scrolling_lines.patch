@@ -1,0 +1,15 @@
+Index: /var/tmp/portage/x11-terms/alacritty-0.11.0/work/alacritty-0.11.0/alacritty_terminal/src/config/scrolling.rs
+===================================================================
+--- alacritty-0.11.0/alacritty_terminal/src/config/scrolling.rs
++++ alacritty-0.11.0/alacritty_terminal/src/config/scrolling.rs
+@@ -4,7 +4,9 @@ use serde::{Deserialize, Deserializer};
+ use alacritty_config_derive::{ConfigDeserialize, SerdeReplace};
+ 
+ /// Maximum scrollback amount configurable.
+-pub const MAX_SCROLLBACK_LINES: u32 = 100_000;
++pub const MAX_SCROLLBACK_LINES: u32 = 6_000_000; // this 6mil, uses 17g VIRT and 16g RES (in 'top') and
++                                                 // double that after a window resize, and doesn't
++                                                 // go back down!
+ 
+ /// Struct for scrolling related settings.
+ #[derive(ConfigDeserialize, Copy, Clone, Debug, PartialEq, Eq)]

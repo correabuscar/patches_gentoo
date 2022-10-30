@@ -1,3 +1,9 @@
 #!/bin/bash
 
+#FIXME: find a way to show exit code? or err if non-zero! when checking each patch!
+
+export WARN=0
+find . -type f -and -iname \*.patch -and -print0 | xargs -P1 -0 --max-args=1 --  /swcode/bin.append/patch_dangling_hunk_detector
+echo "Now rerunning with warning(s) enabled:"
+export WARN=1
 find . -type f -and -iname \*.patch -and -print0 | xargs -P1 -0 --max-args=1 --  /swcode/bin.append/patch_dangling_hunk_detector
