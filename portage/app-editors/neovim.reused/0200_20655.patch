@@ -1,0 +1,118 @@
+From b122cff400502ea31b5b655cbfdd7d3c1cbf48fd Mon Sep 17 00:00:00 2001
+From: Will Spurgin <will.spurgin@stitchfix.com>
+Date: Mon, 18 Nov 2019 07:57:41 -0800
+Subject: [PATCH] fix(fileio): backups failing for symlink files
+
+Set backup to NULL prior to continuing & Clear backup prior to NULL set
+to avoid leaking
+
+Fixes #11349
+
+Remove testing hacks in scripts for windows
+
+Skip FreeBSD
+
+Something appears up with these types of tests for FreeBSD on
+Circus, see 2d6735d8ce
+---
+ src/nvim/fileio.c                    |  4 +++
+ test/functional/core/fileio_spec.lua | 53 ++++++++++++++++++++++++++++
+ 2 files changed, 57 insertions(+)
+
+diff --git a/src/nvim/fileio.c b/src/nvim/fileio.c
+index 7f844bc8f7d5..a44cb42b5f7c 100644
+--- a/src/nvim/fileio.c
++++ b/src/nvim/fileio.c
+@@ -2771,6 +2771,9 @@ int buf_write(buf_T *buf, char *fname, char *sfname, linenr_T start, linenr_T en
+               != 0) {
+             SET_ERRMSG(_("E506: Can't write to backup file "
+                          "(add ! to override)"));
++            XFREE_CLEAR(backup);
++            backup = NULL;
++            continue;
+           }
+ 
+ #ifdef UNIX
+@@ -2781,6 +2784,7 @@ int buf_write(buf_T *buf, char *fname, char *sfname, linenr_T start, linenr_T en
+ #ifdef HAVE_ACL
+           mch_set_acl((char_u *)backup, acl);
+ #endif
++          SET_ERRMSG(NULL);
+           break;
+         }
+       }
+diff --git a/test/functional/core/fileio_spec.lua b/test/functional/core/fileio_spec.lua
+index d1ff5b80367e..7a8030ad436b 100644
+--- a/test/functional/core/fileio_spec.lua
++++ b/test/functional/core/fileio_spec.lua
+@@ -1,3 +1,4 @@
++local lfs = require('lfs')
+ local helpers = require('test.functional.helpers')(after_each)
+ 
+ local assert_log = helpers.assert_log
+@@ -5,6 +6,7 @@ local assert_nolog = helpers.assert_nolog
+ local clear = helpers.clear
+ local command = helpers.command
+ local eq = helpers.eq
++local neq = helpers.neq
+ local ok = helpers.ok
+ local feed = helpers.feed
+ local funcs = helpers.funcs
+@@ -132,6 +134,57 @@ describe('fileio', function()
+     eq('foo', foo_contents);
+   end)
+ 
++  it('backup symlinked files #11349', function()
++    if uname() == 'freebsd' then
++      pending('Failing FreeBSD test')
++    end
++    clear()
++
++    local initial_content = 'foo'
++    local link_file_name = 'Xtest_startup_file2'
++    local backup_file_name = link_file_name .. '~'
++
++    write_file('Xtest_startup_file1', initial_content, false)
++    lfs.link('Xtest_startup_file1', link_file_name, true)
++    command('set backup')
++    command('set backupcopy=yes')
++    command('edit ' .. link_file_name)
++    feed('Abar<esc>')
++    command('write')
++
++    local backup_raw = read_file(backup_file_name)
++    neq(nil, backup_raw, "Expected backup file " .. backup_file_name .. "to exist but did not")
++    eq(initial_content, trim(backup_raw), 'Expected backup to contain original contents')
++  end)
++
++
++  it('backup symlinked files in first avialable backupdir #11349', function()
++    if uname() == 'freebsd' then
++      pending('Failing FreeBSD test')
++    end
++    clear()
++
++    local initial_content = 'foo'
++    local backup_dir = 'Xtest_backupdir'
++    local sep = helpers.get_pathsep()
++    local link_file_name = 'Xtest_startup_file2'
++    local backup_file_name = backup_dir .. sep .. link_file_name .. '~'
++
++    write_file('Xtest_startup_file1', initial_content, false)
++    lfs.link('Xtest_startup_file1', link_file_name, true)
++    mkdir(backup_dir)
++    command('set backup')
++    command('set backupcopy=yes')
++    command('set backupdir=.__this_does_not_exist__,' .. backup_dir)
++    command('edit ' .. link_file_name)
++    feed('Abar<esc>')
++    command('write')
++
++    local backup_raw = read_file(backup_file_name)
++    neq(nil, backup_raw, "Expected backup file " .. backup_file_name .. " to exist but did not")
++    eq(initial_content, trim(backup_raw), 'Expected backup to contain original contents')
++  end)
++
+   it('readfile() on multibyte filename #10586', function()
+     clear()
+     local text = {

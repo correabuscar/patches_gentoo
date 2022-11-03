@@ -1,0 +1,44 @@
+.swp files have mode 0600 because when :set dir=/tmp they must be protected from others
+this is the neovim patch aka nvim
+
+#diff -pru5N -- vim-repo.orig/src/fileio.c vim-repo/src/fileio.c
+#--- vim-repo.orig/src/fileio.c	2014-11-30 10:33:09.042507359 +0100
+#+++ vim-repo/src/fileio.c	2014-11-30 10:34:21.898774231 +0100
+#@@ -490,11 +490,11 @@ readfile(fname, sfname, from, lines_to_s
+# 	     * (they must not write the swapfile).
+# 	     * Add the "read" and "write" bits for the user, otherwise we may
+# 	     * not be able to write to the file ourselves.
+# 	     * Setting the bits is done below, after creating the swap file.
+# 	     */
+#-	    swap_mode = (st.st_mode & 0644) | 0600;
+#+	    swap_mode = (st.st_mode & 0600) | 0600;
+# #endif
+# #ifdef FEAT_CW_EDITOR
+# 	    /* Get the FSSpec on MacOS
+# 	     * TODO: Update it properly when the buffer name changes
+# 	     */
+#Index: /var/tmp/portage/app-editors/vim-9999/work/vim-9999/src/fileio.c
+#===================================================================
+#--- .orig/src/nvim/fileio.c
+#+++ mod/src/nvim/fileio.c
+#@@ -414,7 +414,7 @@ readfile(
+# 	     * not be able to write to the file ourselves.
+# 	     * Setting the bits is done below, after creating the swap file.
+# 	     */
+#-	    swap_mode = (st.st_mode & 0644) | 0600;
+#+	    swap_mode = (st.st_mode & 0600) | 0600;
+# #endif
+# #ifdef VMS
+# 	    curbuf->b_fab_rfm = st.st_fab_rfm;
+Index: /var/tmp/portage/app-editors/neovim-0.8.0-r1/work/neovim-0.8.0/src/nvim/fileio.c
+===================================================================
+--- neovim-0.8.0/src/nvim/fileio.c
++++ neovim-0.8.0/src/nvim/fileio.c
+@@ -425,6 +425,7 @@ int readfile(char *fname, char *sfname,
+       // not be able to write to the file ourselves.
+       // Setting the bits is done below, after creating the swap file.
+       swap_mode = ((int)file_info.stat.st_mode & 0644) | 0600;
++      swap_mode = ((int)file_info.stat.st_mode & 0600) | 0600;
+ #endif
+     } else {
+       curbuf->b_mtime = 0;

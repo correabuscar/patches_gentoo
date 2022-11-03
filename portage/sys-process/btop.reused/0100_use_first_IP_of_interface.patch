@@ -1,0 +1,62 @@
+See this feature requested at: https://github.com/aristocratos/btop/issues/456
+
+Index: /var/tmp/portage/sys-process/btop-1.2.12/work/btop-1.2.12/src/linux/btop_collect.cpp
+===================================================================
+--- btop-1.2.12/src/linux/btop_collect.cpp
++++ btop-1.2.12/src/linux/btop_collect.cpp
+@@ -26,6 +26,7 @@ tab-size = 4
+ #include <netdb.h>
+ #include <ifaddrs.h>
+ #include <net/if.h>
++#include <arpa/inet.h>
+ #include <thread>
+ 
+ #if !(defined(STATIC_BUILD) && defined(__GLIBC__))
+@@ -1374,25 +1375,36 @@ namespace Net {
+ 				return empty_net;
+ 			}
+ 			int family = 0;
+-			char ip[NI_MAXHOST];
++			//char ip[NI_MAXHOST]; // NI_MAXHOST is 1025
++			const static int IPBUFFER_MAXSIZE=std::max(INET_ADDRSTRLEN, INET6_ADDRSTRLEN);
++			// INET6_ADDRSTRLEN is 46, INET6_ADDRSTRLEN is 16
++			char ip[IPBUFFER_MAXSIZE];
+ 			interfaces.clear();
+ 			string ipv4, ipv6;
+ 
+ 			//? Iteration over all items in getifaddrs() list
+-            for (auto* ifa = if_wrap(); ifa != NULL; ifa = ifa->ifa_next) {
++			for (auto* ifa = if_wrap(); ifa != NULL; ifa = ifa->ifa_next) {
+ 				if (ifa->ifa_addr == NULL) continue;
+ 				family = ifa->ifa_addr->sa_family;
+ 				const auto& iface = ifa->ifa_name;
+ 
+-				//? Get IPv4 address
+-				if (family == AF_INET) {
+-					if (getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), ip, NI_MAXHOST, NULL, 0, NI_NUMERICHOST) == 0)
+-						net[iface].ipv4 = ip;
+-				}
+-				//? Get IPv6 address
+-				else if (family == AF_INET6) {
+-					if (getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in6), ip, NI_MAXHOST, NULL, 0, NI_NUMERICHOST) == 0)
+-						net[iface].ipv6 = ip;
++				struct in_addr addr = reinterpret_cast<struct sockaddr_in*>(ifa->ifa_addr)->sin_addr;
++				if (NULL != inet_ntop(family, &addr, ip, IPBUFFER_MAXSIZE)) { //FIXME: blatantly assumes `family` can be only AF_INET or AF_INET6.
++					//? Get IPv4 address
++					if (family == AF_INET) {
++						//if (getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), ip, NI_MAXHOST, NULL, 0, NI_NUMERICHOST) == 0)
++						if (net[iface].ipv4.empty()) {  //use the first encountered IP for the interface, not the last!
++							net[iface].ipv4 = ip;
++						}
++					}
++					//? Get IPv6 address
++					else if (family == AF_INET6) {
++						//if (getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in6), ip, NI_MAXHOST, NULL, 0, NI_NUMERICHOST) == 0)
++						//if (NULL != inet_ntop(family, ifa->ifa_addr, ip, INET6_ADDRSTRLEN))
++						if (net[iface].ipv6.empty()) {  //use the first encountered IP for the interface, not the last!
++							net[iface].ipv6 = ip;
++						}
++					}
+ 				}
+ 
+ 				//? Update available interfaces vector and get status of interface
