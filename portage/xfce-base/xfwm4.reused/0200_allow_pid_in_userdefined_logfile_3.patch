@@ -1,0 +1,58 @@
+xfwm4-git needs to be compiled with --enable-debug to get a log file generated.
+Compile with configure option --enable-debug=full or else you get only DBG() statements and not the TRACE() too!
+
+run the exe with -d aka --debug to enable debug logging! else no file gets created!
+27 sept 2022
+changes to allow using --enable-debug=full without error-ing! and use optimization for fortify source, also try some things for non-full
+
+Index: /var/tmp/portage/xfce-base/xfwm4-4.16.1/work/xfwm4-4.16.1/src/main.c
+===================================================================
+--- xfwm4-4.16.1/src/main.c
++++ mod/src/main.c
+@@ -107,7 +107,7 @@ setupLog (gboolean debug)
+         str = g_getenv ("XFWM4_LOG_FILE");
+         if (str)
+         {
+-            logfile = g_strdup (str);
++            logfile = g_strdup_printf (str, (int) getpid ()); // eg. in ~/.xinitrc put line: export XFWM4_LOG_FILE="/tmp/xfwm4-debug-%d.log"
+         }
+         else
+         {
+#Index: /var/tmp/portage/xfce-base/xfwm4-4.16.1-r1/work/xfwm4-4.16.1/aclocal.m4
+#===================================================================
+#--- xfwm4-4.16.1/aclocal.m4
+#+++ xfwm4-4.16.1/aclocal.m4
+#@@ -11685,11 +11685,12 @@ AC_HELP_STRING([--disable-debug], [Inclu
+# 
+#     if test x"$enable_debug" = x"full"; then
+#       AC_DEFINE([DEBUG_TRACE], [1], [Define for tracing support])
+#-      xdt_cv_additional_CFLAGS="$xdt_cv_additional_CFLAGS -O0 -g -Werror"
+#+      xdt_cv_additional_CFLAGS="$xdt_cv_additional_CFLAGS -O2 -g -Wall"
+#       CPPFLAGS="$CPPFLAGS -DG_ENABLE_DEBUG"
+#       AC_MSG_RESULT([full])
+#     else
+#-      xdt_cv_additional_CFLAGS="$xdt_cv_additional_CFLAGS -g -Wshadow"
+#+      xdt_cv_additional_CFLAGS="$xdt_cv_additional_CFLAGS -O2 -g -Wshadow"
+#+      CPPFLAGS="$CPPFLAGS -DG_ENABLE_DEBUG"
+#       AC_MSG_RESULT([yes])
+#     fi
+# 
+Index: /var/tmp/portage/xfce-base/xfwm4-4.17.1/work/xfwm4-4.17.1/aclocal.m4
+===================================================================
+--- xfwm4-4.17.1/aclocal.m4
++++ xfwm4-4.17.1/aclocal.m4
+@@ -964,11 +964,12 @@ AS_HELP_STRING([--disable-debug],[Includ
+ 
+     if test x"$enable_debug" = x"full"; then
+       AC_DEFINE([DEBUG_TRACE], [1], [Define for tracing support])
+-      xdt_cv_additional_COMMON_FLAGS="$xdt_cv_additional_COMMON_FLAGS -O0 -g"
++      xdt_cv_additional_COMMON_FLAGS="$xdt_cv_additional_COMMON_FLAGS -O2 -g"
+       CPPFLAGS="$CPPFLAGS -DG_ENABLE_DEBUG"
+       AC_MSG_RESULT([full])
+     else
+-      xdt_cv_additional_COMMON_FLAGS="$xdt_cv_additional_COMMON_FLAGS -g -Wshadow"
++      xdt_cv_additional_COMMON_FLAGS="$xdt_cv_additional_COMMON_FLAGS -O2 -g -Wshadow"
++      CPPFLAGS="$CPPFLAGS -DG_ENABLE_DEBUG"
+       AC_MSG_RESULT([yes])
+     fi
+   else

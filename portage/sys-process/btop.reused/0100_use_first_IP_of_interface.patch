@@ -1,27 +1,8 @@
-See this feature requested at: https://github.com/aristocratos/btop/issues/456
-
-Index: /var/tmp/portage/sys-process/btop-1.2.12/work/btop-1.2.12/src/linux/btop_collect.cpp
-===================================================================
---- btop-1.2.12/src/linux/btop_collect.cpp
-+++ btop-1.2.12/src/linux/btop_collect.cpp
-@@ -26,6 +26,7 @@ tab-size = 4
- #include <netdb.h>
- #include <ifaddrs.h>
- #include <net/if.h>
-+#include <arpa/inet.h>
- #include <thread>
- 
- #if !(defined(STATIC_BUILD) && defined(__GLIBC__))
-@@ -1374,25 +1375,36 @@ namespace Net {
- 				return empty_net;
- 			}
- 			int family = 0;
--			char ip[NI_MAXHOST];
-+			//char ip[NI_MAXHOST]; // NI_MAXHOST is 1025
-+			const static int IPBUFFER_MAXSIZE=std::max(INET_ADDRSTRLEN, INET6_ADDRSTRLEN);
-+			// INET6_ADDRSTRLEN is 46, INET6_ADDRSTRLEN is 16
-+			char ip[IPBUFFER_MAXSIZE];
- 			interfaces.clear();
+diff --git a/src/linux/btop_collect.cpp b/src/linux/btop_collect.cpp
+index 7bc1f93..f35e6ec 100644
+--- a/src/linux/btop_collect.cpp
++++ b/src/linux/btop_collect.cpp
+@@ -1393,27 +1393,35 @@ namespace Net {
  			string ipv4, ipv6;
  
  			//? Iteration over all items in getifaddrs() list
@@ -31,32 +12,39 @@ Index: /var/tmp/portage/sys-process/btop-1.2.12/work/btop-1.2.12/src/linux/btop_
  				family = ifa->ifa_addr->sa_family;
  				const auto& iface = ifa->ifa_name;
  
--				//? Get IPv4 address
--				if (family == AF_INET) {
++				//? Update available interfaces vector and get status of interface
++				if (not v_contains(interfaces, iface)) {
++					interfaces.push_back(iface);
++					net[iface].connected = (ifa->ifa_flags & IFF_RUNNING);
++
++					// An interface can have more than one IP of the same family associated with it,
++					// but we pick only the first one to show in the NET box.
++					// Note: Interfaces without any IPv4 and IPv6 set are still valid and monitorable!
++					net[iface].ipv4.clear();
++					net[iface].ipv6.clear();
++				}
++
+ 				//? Get IPv4 address
+ 				if (family == AF_INET) {
 -					if (getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), ip, NI_MAXHOST, NULL, 0, NI_NUMERICHOST) == 0)
--						net[iface].ipv4 = ip;
--				}
--				//? Get IPv6 address
--				else if (family == AF_INET6) {
--					if (getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in6), ip, NI_MAXHOST, NULL, 0, NI_NUMERICHOST) == 0)
--						net[iface].ipv6 = ip;
-+				struct in_addr addr = reinterpret_cast<struct sockaddr_in*>(ifa->ifa_addr)->sin_addr;
-+				if (NULL != inet_ntop(family, &addr, ip, IPBUFFER_MAXSIZE)) { //FIXME: blatantly assumes `family` can be only AF_INET or AF_INET6.
-+					//? Get IPv4 address
-+					if (family == AF_INET) {
-+						//if (getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), ip, NI_MAXHOST, NULL, 0, NI_NUMERICHOST) == 0)
-+						if (net[iface].ipv4.empty()) {  //use the first encountered IP for the interface, not the last!
-+							net[iface].ipv4 = ip;
-+						}
-+					}
-+					//? Get IPv6 address
-+					else if (family == AF_INET6) {
-+						//if (getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in6), ip, NI_MAXHOST, NULL, 0, NI_NUMERICHOST) == 0)
-+						//if (NULL != inet_ntop(family, ifa->ifa_addr, ip, INET6_ADDRSTRLEN))
-+						if (net[iface].ipv6.empty()) {  //use the first encountered IP for the interface, not the last!
-+							net[iface].ipv6 = ip;
-+						}
-+					}
++					if (net[iface].ipv4.empty() and 
++						getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), ip, NI_MAXHOST, NULL, 0, NI_NUMERICHOST) == 0)
+ 						net[iface].ipv4 = ip;
  				}
+ 				//? Get IPv6 address
+ 				else if (family == AF_INET6) {
+-					if (getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in6), ip, NI_MAXHOST, NULL, 0, NI_NUMERICHOST) == 0)
++					if (net[iface].ipv6.empty() and 
++						getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in6), ip, NI_MAXHOST, NULL, 0, NI_NUMERICHOST) == 0)
+ 						net[iface].ipv6 = ip;
+-				}
+-
+-				//? Update available interfaces vector and get status of interface
+-				if (not v_contains(interfaces, iface)) {
+-					interfaces.push_back(iface);
+-					net[iface].connected = (ifa->ifa_flags & IFF_RUNNING);
+-				}
++				} //else, ignoring family==AF_PACKET (see man 3 getifaddrs) which is the first one in the `for` loop.
+ 			}
  
- 				//? Update available interfaces vector and get status of interface
+ 			//? Get total recieved and transmitted bytes + device address if no ip was found
