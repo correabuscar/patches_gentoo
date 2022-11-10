@@ -1,0 +1,386 @@
+see /home/user/sandbox/charset/CP437
+FIXME: only utf8 and cp437 are working, the other ones are disabled by this patch(see FIXME)
+
+Index: /var/tmp/portage/app-misc/mc-9999/work/mc-9999/src/viewer/ascii.c
+===================================================================
+--- .orig/var/tmp/portage/app-misc/mc-9999/work/mc-9999/src/viewer/ascii.c
++++ mc-9999/src/viewer/ascii.c
+@@ -270,13 +270,15 @@ mcview_is_spacing_mark (const WView * vi
+ #endif /* 0 */
+ 
+ /* --------------------------------------------------------------------------------------------- */
+-
+ static gboolean
+ mcview_isprint (const WView * view, int c)
+ {
+ #ifdef HAVE_CHARSET
+-    if (!view->utf8)
+-        c = convert_from_8bit_to_utf_c ((unsigned char) c, view->converter);
++    if (!view->utf8) {
++        //c = convert_from_8bit_to_utf_c ((unsigned char) c, view->converter);
++      //FIXME: do the following only for CP437, not for all others too! for others do the above convert_*() func.
++      c = cp437_to_unichar[(unsigned char) c & 0xff];
++    }
+     return g_unichar_isprint (c);
+ #else
+     (void) view;
+@@ -287,16 +289,28 @@ mcview_isprint (const WView * view, int
+ 
+ /* --------------------------------------------------------------------------------------------- */
+ 
++
+ static int
+ mcview_char_display (const WView * view, int c, char *s)
+ {
+ #ifdef HAVE_CHARSET
+     if (mc_global.utf8_display)
+     {
+-        if (!view->utf8)
+-            c = convert_from_8bit_to_utf_c ((unsigned char) c, view->converter);
+-        if (!g_unichar_isprint (c))
++        if (!view->utf8) {
++          //FIXME: do the following only for CP437, not for all others too!
++          //if (view->cp437) {
++            c = cp437_to_unichar[(unsigned char) c & 0xff];
++          //} else {
++          //  c = convert_from_8bit_to_utf_c ((unsigned char) c, view->converter);
++          //}
++
++        }
++        if (!g_unichar_isprint (c)) {
++          FILE * restrict f=fopen("/tmp/mc_unprintable_char.log", "a");
++          fprintf(f,"Unprintable char found: '%i'\n",c); // this only shows any if you don't do it in mcview_isprint too and comment out the call to it below! So currently is good, no output!
++          fclose(f);
+             c = '.';
++        }
+         return g_unichar_to_utf8 (c, s);
+     }
+     if (view->utf8)
+@@ -633,6 +647,7 @@ mcview_display_line (WView * view, mcvie
+ 
+         /* Nonprintable, or lonely spacing mark */
+         if ((!mcview_isprint (view, cs[0]) || mcview_ismark (view, cs[0])) && cs[0] != '\t')
++        //if (mcview_ismark (view, cs[0]) && cs[0] != '\t')
+             cs[0] = '.';
+ 
+         for (i = 0; i < n; i++)
+Index: /var/tmp/portage/app-misc/mc-9999/work/mc-9999/lib/charsets.h
+===================================================================
+--- .orig/var/tmp/portage/app-misc/mc-9999/work/mc-9999/lib/charsets.h
++++ mc-9999/lib/charsets.h
+@@ -26,6 +26,8 @@ extern const char *cp_display;
+ extern const char *cp_source;
+ extern GPtrArray *codepages;
+ 
++extern int cp437_to_unichar[256];
++
+ /*** declarations of public functions ************************************************************/
+ 
+ const char *get_codepage_id (const int n);
+Index: /var/tmp/portage/app-misc/mc-9999/work/mc-9999/src/viewer/hex.c
+===================================================================
+--- .orig/var/tmp/portage/app-misc/mc-9999/work/mc-9999/src/viewer/hex.c
++++ mc-9999/src/viewer/hex.c
+@@ -326,7 +326,9 @@ mcview_display_hex (WView * view)
+             {
+                 if (!view->utf8)
+                 {
+-                    c = convert_from_8bit_to_utf_c ((unsigned char) c, view->converter);
++                    //c = convert_from_8bit_to_utf_c ((unsigned char) c, view->converter);
++                    //FIXME: do the following only for CP437, not for all others too!
++                    c = cp437_to_unichar[(unsigned char) c & 0xff];
+                 }
+                 if (!g_unichar_isprint (c))
+                     c = '.';
+Index: /var/tmp/portage/app-misc/mc-9999/work/mc-9999/src/viewer/mcviewer.c
+===================================================================
+--- .orig/var/tmp/portage/app-misc/mc-9999/work/mc-9999/src/viewer/mcviewer.c
++++ mc-9999/src/viewer/mcviewer.c
+@@ -228,7 +228,6 @@ mcview_new (int y, int x, int lines, int
+ 
+     return view;
+ }
+-
+ /* --------------------------------------------------------------------------------------------- */
+ /** Real view only */
+ 
+diff --git a/src/viewer/lib.c b/src/viewer/lib.c
+index 938942480..f53291b5f 100644
+--- a/src/viewer/lib.c
++++ b/src/viewer/lib.c
+@@ -280,7 +280,274 @@ mcview_set_codeset (WView * view)
+         view->dpy_wrap_dirty = TRUE;
+     }
+ }
+-
++int cp437_to_unichar[256]={
++//0x0020,// 00 NUL looks like a space char
++0x2002,// 00      # NUL, using Unicode name: EN SPACE
++0x263A,//	01	01	#	WHITE SMILING FACE
++0x263B,//	02	--	#	BLACK SMILING FACE
++0x2665,//	03	--	#	BLACK HEART SUIT
++0x2666,//	04	--	#	BLACK DIAMOND SUIT
++0x2663,//	05	--	#	BLACK CLUB SUIT
++0x2660,//	06	--	#	BLACK SPADE SUIT
++0x2022,//	07	--	#	BULLET
++0x25D8,//	08	--	#	INVERSE BULLET
++0x25CB,//	09	--	#	WHITE CIRCLE
++0x25D9,//	0A	--	#	INVERSE WHITE CIRCLE
++0x2642,//	0B	--	#	MALE SIGN
++0x2640,//	0C	--	#	FEMALE SIGN
++0x266A,//	0D	02	#	EIGHTH NOTE
++0x266B,//	0E	03	#	BEAMED EIGHTH NOTES
++0x263C,//	0F	04	#	WHITE SUN WITH RAYS
++0x25BA,//	10	10	#	BLACK RIGHT-POINTING POINTER
++0x25C4,//	11	11	#	BLACK LEFT-POINTING POINTER
++0x2195,//	12	12	#	UP DOWN ARROW
++0x203C,//	13	13	#	DOUBLE EXCLAMATION MARK
++0x00B6,//	14	14	#	PILCROW SIGN
++0x00A7,//	15	15	#	SECTION SIGN
++0x25AC,//	16	16	#	BLACK RECTANGLE
++0x21A8,//	17	17	#	UP DOWN ARROW WITH BASE
++0x2191,//	18	18	#	UPWARDS ARROW
++0x2193,//	19	19	#	DOWNWARDS ARROW
++0x2192,//	1A	1A	#	RIGHTWARDS ARROW
++0x2190,//	1B	1B	#	LEFTWARDS ARROW
++0x221F,//	1C	1C	#	RIGHT ANGLE
++0x2194,//	1D	1D	#	LEFT RIGHT ARROW
++0x25B2,//	1E	1E	#	BLACK UP-POINTING TRIANGLE
++0x25BC,//	1F	1F	#	BLACK DOWN-POINTING TRIANGLE
++
++0x0020,//     /x20         SPACE
++0x0021,//     /x21         EXCLAMATION MARK
++0x0022,//     /x22         QUOTATION MARK
++0x0023,//     /x23         NUMBER SIGN
++0x0024,//     /x24         DOLLAR SIGN
++0x0025,//     /x25         PERCENT SIGN
++0x0026,//     /x26         AMPERSAND
++0x0027,//     /x27         APOSTROPHE
++0x0028,//     /x28         LEFT PARENTHESIS
++0x0029,//     /x29         RIGHT PARENTHESIS
++0x002A,//     /x2a         ASTERISK
++0x002B,//     /x2b         PLUS SIGN
++0x002C,//     /x2c         COMMA
++0x002D,//     /x2d         HYPHEN-MINUS
++0x002E,//     /x2e         FULL STOP
++0x002F,//     /x2f         SOLIDUS
++0x0030,//     /x30         DIGIT ZERO
++0x0031,//     /x31         DIGIT ONE
++0x0032,//     /x32         DIGIT TWO
++0x0033,//     /x33         DIGIT THREE
++0x0034,//     /x34         DIGIT FOUR
++0x0035,//     /x35         DIGIT FIVE
++0x0036,//     /x36         DIGIT SIX
++0x0037,//     /x37         DIGIT SEVEN
++0x0038,//     /x38         DIGIT EIGHT
++0x0039,//     /x39         DIGIT NINE
++0x003A,//     /x3a         COLON
++0x003B,//     /x3b         SEMICOLON
++0x003C,//     /x3c         LESS-THAN SIGN
++0x003D,//     /x3d         EQUALS SIGN
++0x003E,//     /x3e         GREATER-THAN SIGN
++0x003F,//     /x3f         QUESTION MARK
++0x0040,//     /x40         COMMERCIAL AT
++0x0041,//     /x41         LATIN CAPITAL LETTER A
++0x0042,//     /x42         LATIN CAPITAL LETTER B
++0x0043,//     /x43         LATIN CAPITAL LETTER C
++0x0044,//     /x44         LATIN CAPITAL LETTER D
++0x0045,//     /x45         LATIN CAPITAL LETTER E
++0x0046,//     /x46         LATIN CAPITAL LETTER F
++0x0047,//     /x47         LATIN CAPITAL LETTER G
++0x0048,//     /x48         LATIN CAPITAL LETTER H
++0x0049,//     /x49         LATIN CAPITAL LETTER I
++0x004A,//     /x4a         LATIN CAPITAL LETTER J
++0x004B,//     /x4b         LATIN CAPITAL LETTER K
++0x004C,//     /x4c         LATIN CAPITAL LETTER L
++0x004D,//     /x4d         LATIN CAPITAL LETTER M
++0x004E,//     /x4e         LATIN CAPITAL LETTER N
++0x004F,//     /x4f         LATIN CAPITAL LETTER O
++0x0050,//     /x50         LATIN CAPITAL LETTER P
++0x0051,//     /x51         LATIN CAPITAL LETTER Q
++0x0052,//     /x52         LATIN CAPITAL LETTER R
++0x0053,//     /x53         LATIN CAPITAL LETTER S
++0x0054,//     /x54         LATIN CAPITAL LETTER T
++0x0055,//     /x55         LATIN CAPITAL LETTER U
++0x0056,//     /x56         LATIN CAPITAL LETTER V
++0x0057,//     /x57         LATIN CAPITAL LETTER W
++0x0058,//     /x58         LATIN CAPITAL LETTER X
++0x0059,//     /x59         LATIN CAPITAL LETTER Y
++0x005A,//     /x5a         LATIN CAPITAL LETTER Z
++0x005B,//     /x5b         LEFT SQUARE BRACKET
++0x005C,//     /x5c         REVERSE SOLIDUS
++0x005D,//     /x5d         RIGHT SQUARE BRACKET
++0x005E,//     /x5e         CIRCUMFLEX ACCENT
++0x005F,//     /x5f         LOW LINE
++0x0060,//     /x60         GRAVE ACCENT
++0x0061,//     /x61         LATIN SMALL LETTER A
++0x0062,//     /x62         LATIN SMALL LETTER B
++0x0063,//     /x63         LATIN SMALL LETTER C
++0x0064,//     /x64         LATIN SMALL LETTER D
++0x0065,//     /x65         LATIN SMALL LETTER E
++0x0066,//     /x66         LATIN SMALL LETTER F
++0x0067,//     /x67         LATIN SMALL LETTER G
++0x0068,//     /x68         LATIN SMALL LETTER H
++0x0069,//     /x69         LATIN SMALL LETTER I
++0x006A,//     /x6a         LATIN SMALL LETTER J
++0x006B,//     /x6b         LATIN SMALL LETTER K
++0x006C,//     /x6c         LATIN SMALL LETTER L
++0x006D,//     /x6d         LATIN SMALL LETTER M
++0x006E,//     /x6e         LATIN SMALL LETTER N
++0x006F,//     /x6f         LATIN SMALL LETTER O
++0x0070,//     /x70         LATIN SMALL LETTER P
++0x0071,//     /x71         LATIN SMALL LETTER Q
++0x0072,//     /x72         LATIN SMALL LETTER R
++0x0073,//     /x73         LATIN SMALL LETTER S
++0x0074,//     /x74         LATIN SMALL LETTER T
++0x0075,//     /x75         LATIN SMALL LETTER U
++0x0076,//     /x76         LATIN SMALL LETTER V
++0x0077,//     /x77         LATIN SMALL LETTER W
++0x0078,//     /x78         LATIN SMALL LETTER X
++0x0079,//     /x79         LATIN SMALL LETTER Y
++0x007A,//     /x7a         LATIN SMALL LETTER Z
++0x007B,//     /x7b         LEFT CURLY BRACKET
++0x007C,//     /x7c         VERTICAL LINE
++0x007D,//     /x7d         RIGHT CURLY BRACKET
++0x007E,//     /x7e         TILDE
++//<U007F>     /x7f         DELETE (DEL)
++
++0x2302,//	7F	7F	#	HOUSE
++
++0x00C7,//     /x80         LATIN CAPITAL LETTER C WITH CEDILLA
++0x00FC,//     /x81         LATIN SMALL LETTER U WITH DIAERESIS
++0x00E9,//     /x82         LATIN SMALL LETTER E WITH ACUTE
++0x00E2,//     /x83         LATIN SMALL LETTER A WITH CIRCUMFLEX
++0x00E4,//     /x84         LATIN SMALL LETTER A WITH DIAERESIS
++0x00E0,//     /x85         LATIN SMALL LETTER A WITH GRAVE
++0x00E5,//     /x86         LATIN SMALL LETTER A WITH RING ABOVE
++0x00E7,//     /x87         LATIN SMALL LETTER C WITH CEDILLA
++0x00EA,//     /x88         LATIN SMALL LETTER E WITH CIRCUMFLEX
++0x00EB,//     /x89         LATIN SMALL LETTER E WITH DIAERESIS
++0x00E8,//     /x8a         LATIN SMALL LETTER E WITH GRAVE
++0x00EF,//     /x8b         LATIN SMALL LETTER I WITH DIAERESIS
++0x00EE,//     /x8c         LATIN SMALL LETTER I WITH CIRCUMFLEX
++0x00EC,//     /x8d         LATIN SMALL LETTER I WITH GRAVE
++0x00C4,//     /x8e         LATIN CAPITAL LETTER A WITH DIAERESIS
++0x00C5,//     /x8f         LATIN CAPITAL LETTER A WITH RING ABOVE
++0x00C9,//     /x90         LATIN CAPITAL LETTER E WITH ACUTE
++0x00E6,//     /x91         LATIN SMALL LETTER AE
++0x00C6,//     /x92         LATIN CAPITAL LETTER AE
++0x00F4,//     /x93         LATIN SMALL LETTER O WITH CIRCUMFLEX
++0x00F6,//     /x94         LATIN SMALL LETTER O WITH DIAERESIS
++0x00F2,//     /x95         LATIN SMALL LETTER O WITH GRAVE
++0x00FB,//     /x96         LATIN SMALL LETTER U WITH CIRCUMFLEX
++0x00F9,//     /x97         LATIN SMALL LETTER U WITH GRAVE
++0x00FF,//     /x98         LATIN SMALL LETTER Y WITH DIAERESIS
++0x00D6,//     /x99         LATIN CAPITAL LETTER O WITH DIAERESIS
++0x00DC,//     /x9a         LATIN CAPITAL LETTER U WITH DIAERESIS
++0x00A2,//     /x9b         CENT SIGN
++0x00A3,//     /x9c         POUND SIGN
++0x00A5,//     /x9d         YEN SIGN
++0x20A7,//     /x9e         PESETA SIGN
++0x0192,//     /x9f         LATIN SMALL LETTER F WITH HOOK
++0x00E1,//     /xa0         LATIN SMALL LETTER A WITH ACUTE
++0x00ED,//     /xa1         LATIN SMALL LETTER I WITH ACUTE
++0x00F3,//     /xa2         LATIN SMALL LETTER O WITH ACUTE
++0x00FA,//     /xa3         LATIN SMALL LETTER U WITH ACUTE
++0x00F1,//     /xa4         LATIN SMALL LETTER N WITH TILDE
++0x00D1,//     /xa5         LATIN CAPITAL LETTER N WITH TILDE
++0x00AA,//     /xa6         FEMININE ORDINAL INDICATOR
++0x00BA,//     /xa7         MASCULINE ORDINAL INDICATOR
++0x00BF,//     /xa8         INVERTED QUESTION MARK
++0x2310,//     /xa9         REVERSED NOT SIGN
++0x00AC,//     /xaa         NOT SIGN
++0x00BD,//     /xab         VULGAR FRACTION ONE HALF
++0x00BC,//     /xac         VULGAR FRACTION ONE QUARTER
++0x00A1,//     /xad         INVERTED EXCLAMATION MARK
++0x00AB,//     /xae         LEFT-POINTING DOUBLE ANGLE QUOTATION MARK
++0x00BB,//     /xaf         RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK
++0x2591,//     /xb0         LIGHT SHADE
++0x2592,//     /xb1         MEDIUM SHADE
++0x2593,//     /xb2         DARK SHADE
++0x2502,//     /xb3         BOX DRAWINGS LIGHT VERTICAL
++0x2524,//     /xb4         BOX DRAWINGS LIGHT VERTICAL AND LEFT
++0x2561,//     /xb5         BOX DRAWINGS VERTICAL SINGLE AND LEFT DOUBLE
++0x2562,//     /xb6         BOX DRAWINGS VERTICAL DOUBLE AND LEFT SINGLE
++0x2556,//     /xb7         BOX DRAWINGS DOWN DOUBLE AND LEFT SINGLE
++0x2555,//     /xb8         BOX DRAWINGS DOWN SINGLE AND LEFT DOUBLE
++
++0x2563,//	B9	08	#	BOX DRAWINGS DOUBLE VERTICAL AND LEFT
++0x2551,//	BA	06	#	BOX DRAWINGS DOUBLE VERTICAL
++0x2557,//	BB	0C	#	BOW DRAWINGS DOUBLE DOWN AND LEFT
++0x255D,//	BC	0F	#	BOX DRAWINGS DOUBLE UP AND LEFT
++
++0x255C,//     /xbd         BOX DRAWINGS UP DOUBLE AND LEFT SINGLE
++0x255B,//     /xbe         BOX DRAWINGS UP SINGLE AND LEFT DOUBLE
++0x2510,//     /xbf         BOX DRAWINGS LIGHT DOWN AND LEFT
++0x2514,//     /xc0         BOX DRAWINGS LIGHT UP AND RIGHT
++0x2534,//     /xc1         BOX DRAWINGS LIGHT UP AND HORIZONTAL
++0x252C,//     /xc2         BOX DRAWINGS LIGHT DOWN AND HORIZONTAL
++0x251C,//     /xc3         BOX DRAWINGS LIGHT VERTICAL AND RIGHT
++0x2500,//     /xc4         BOX DRAWINGS LIGHT HORIZONTAL
++0x253C,//     /xc5         BOX DRAWINGS LIGHT VERTICAL AND HORIZONTAL
++0x255E,//     /xc6         BOX DRAWINGS VERTICAL SINGLE AND RIGHT DOUBLE
++0x255F,//     /xc7         BOX DRAWINGS VERTICAL DOUBLE AND RIGHT SINGLE
++
++0x255A,//	C8	0E	#	BOX DRAWINGS DOUBLE UP AND RIGHT
++0x2554,//	C9	0D	#	BOX DRAWINGS DOUBLE DOWN AND RIGHT
++0x2569,//	CA	0B	#	BOX DRAWINGS DOUBLE UP AND HORIZONTAL
++0x2566,//	CB	09	#	BOX DRAWINGS DOUBLE DOWN AND HORIZONTAL
++0x2560,//	CC	0A	#	BOX DRAWINGS DOUBLE VERTICAL AND RIGHT
++0x2550,//	CD	05	#	BOX DRAWINGS DOUBLE HORIZONTAL
++0x256C,//	CE	07	#	BOX DRAWINGS DOUBLE VERTICAL AND HORIZONTAL
++
++0x2567,//     /xcf         BOX DRAWINGS UP SINGLE AND HORIZONTAL DOUBLE
++0x2568,//     /xd0         BOX DRAWINGS UP DOUBLE AND HORIZONTAL SINGLE
++0x2564,//     /xd1         BOX DRAWINGS DOWN SINGLE AND HORIZONTAL DOUBLE
++0x2565,//     /xd2         BOX DRAWINGS DOWN DOUBLE AND HORIZONTAL SINGLE
++0x2559,//     /xd3         BOX DRAWINGS UP DOUBLE AND RIGHT SINGLE
++0x2558,//     /xd4         BOX DRAWINGS UP SINGLE AND RIGHT DOUBLE
++0x2552,//     /xd5         BOX DRAWINGS DOWN SINGLE AND RIGHT DOUBLE
++0x2553,//     /xd6         BOX DRAWINGS DOWN DOUBLE AND RIGHT SINGLE
++0x256B,//     /xd7         BOX DRAWINGS VERTICAL DOUBLE AND HORIZONTAL SINGLE
++0x256A,//     /xd8         BOX DRAWINGS VERTICAL SINGLE AND HORIZONTAL DOUBLE
++0x2518,//     /xd9         BOX DRAWINGS LIGHT UP AND LEFT
++0x250C,//     /xda         BOX DRAWINGS LIGHT DOWN AND RIGHT
++0x2588,//     /xdb         FULL BLOCK
++0x2584,//     /xdc         LOWER HALF BLOCK
++0x258C,//     /xdd         LEFT HALF BLOCK
++0x2590,//     /xde         RIGHT HALF BLOCK
++0x2580,//     /xdf         UPPER HALF BLOCK
++0x03B1,//     /xe0         GREEK SMALL LETTER ALPHA
++0x00DF,//     /xe1         LATIN SMALL LETTER SHARP S (German)
++0x0393,//     /xe2         GREEK CAPITAL LETTER GAMMA
++0x03C0,//     /xe3         GREEK SMALL LETTER PI
++0x03A3,//     /xe4         GREEK CAPITAL LETTER SIGMA
++0x03C3,//     /xe5         GREEK SMALL LETTER SIGMA
++0x00B5,//     /xe6         MICRO SIGN
++0x03C4,//     /xe7         GREEK SMALL LETTER TAU
++0x03A6,//     /xe8         GREEK CAPITAL LETTER PHI
++0x0398,//     /xe9         GREEK CAPITAL LETTER THETA
++0x03A9,//     /xea         GREEK CAPITAL LETTER OMEGA
++0x03B4,//     /xeb         GREEK SMALL LETTER DELTA
++0x221E,//     /xec         INFINITY
++0x03C6,//     /xed         GREEK SMALL LETTER PHI
++0x03B5,//     /xee         GREEK SMALL LETTER EPSILON
++0x2229,//     /xef         INTERSECTION
++0x2261,//     /xf0         IDENTICAL TO
++0x00B1,//     /xf1         PLUS-MINUS SIGN
++0x2265,//     /xf2         GREATER-THAN OR EQUAL TO
++0x2264,//     /xf3         LESS-THAN OR EQUAL TO
++0x2320,//     /xf4         TOP HALF INTEGRAL
++0x2321,//     /xf5         BOTTOM HALF INTEGRAL
++0x00F7,//     /xf6         DIVISION SIGN
++0x2248,//     /xf7         ALMOST EQUAL TO
++0x00B0,//     /xf8         DEGREE SIGN
++0x2219,//     /xf9         BULLET OPERATOR
++0x00B7,//     /xfa         MIDDLE DOT
++0x221A,//     /xfb         SQUARE ROOT
++0x207F,//     /xfc         SUPERSCRIPT LATIN SMALL LETTER N
++0x00B2,//     /xfd         SUPERSCRIPT TWO
++0x25A0,//     /xfe         BLACK SQUARE
++0x00A0,//     /xff         NO-BREAK SPACE
++//1 //ascii.c:555:1: warning: excess elements in array initializer
++};
+ /* --------------------------------------------------------------------------------------------- */
+ 
+ void
