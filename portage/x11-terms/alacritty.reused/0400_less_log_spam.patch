@@ -1,0 +1,16 @@
+diff --git a/alacritty/src/display/mod.rs b/alacritty/src/display/mod.rs
+index c17d8aa7..656094c5 100644
+--- a/alacritty/src/display/mod.rs
++++ b/alacritty/src/display/mod.rs
+@@ -754,8 +754,9 @@ impl Display {
+             }
+         }
+ 
+-        info!("Padding: {} x {}", self.size_info.padding_x(), self.size_info.padding_y());
+-        info!("Width: {}, Height: {}", self.size_info.width(), self.size_info.height());
++        //too spammy!
++        //info!("Padding: {} x {}", self.size_info.padding_x(), self.size_info.padding_y());
++        //info!("Width: {}, Height: {}", self.size_info.width(), self.size_info.height());
+ 
+         // Damage the entire screen after processing update.
+         self.fully_damage();

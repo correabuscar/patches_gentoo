@@ -1,0 +1,48 @@
+https://github.com/alacritty/alacritty/pull/6001
+
+From 0126da112f420e02866c6c59a160e749264ea3a4 Mon Sep 17 00:00:00 2001
+From: Jocelyn Turcotte <turcotte.j@gmail.com>
+Date: Fri, 15 Apr 2022 19:00:41 +0200
+Subject: [PATCH] Show the history line indicator also when scrolled
+
+There is currently no scrollbar, but also not any kind of visual
+indication when the user scrolled the buffer into the history.
+
+There is however the numerical line indicator that is drawn when in
+search mode or in vi cursor mode.
+This changes also draws the indicator any time where the current
+display offset is non-zero.
+
+Related to #775
+---
+ alacritty/src/display/mod.rs | 3 +++
+ 1 file changed, 3 insertions(+)
+
+#diff --git a/alacritty/src/display/mod.rs b/alacritty/src/display/mod.rs
+#index 5bd0a097f4..b26ac5b6dc 100644
+#--- a/alacritty/src/display/mod.rs
+#+++ b/alacritty/src/display/mod.rs
+#@@ -775,6 +775,9 @@ impl Display {
+#         } else if search_state.regex().is_some() {
+#             // Show current display offset in vi-less search to indicate match position.
+#             self.draw_line_indicator(config, &size_info, total_lines, None, display_offset);
+#+        } else if display_offset != 0 {
+#+            // Also show the current display offset if the user scrolled.
+#+            self.draw_line_indicator(config, &size_info, total_lines, None, display_offset);
+#         }
+# 
+#         // Draw cursor.
+diff --git a/alacritty/src/display/mod.rs b/alacritty/src/display/mod.rs
+index ed1b1fc5..a07a4553 100644
+--- a/alacritty/src/display/mod.rs
++++ b/alacritty/src/display/mod.rs
+@@ -840,6 +841,9 @@ impl Display {
+         } else if search_state.regex().is_some() {
+             // Show current display offset in vi-less search to indicate match position.
+             self.draw_line_indicator(config, total_lines, None, display_offset);
++        } else if display_offset != 0 {
++            // Also show the current display offset if the user scrolled.
++            self.draw_line_indicator(config, total_lines, None, display_offset);
+         };
+ 
+         // Draw cursor.
