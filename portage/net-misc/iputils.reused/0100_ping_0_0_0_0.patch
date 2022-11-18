@@ -1,0 +1,21 @@
+Index: /var/tmp/portage/net-misc/iputils-20211215/work/iputils-20211215/ping/ping.c
+===================================================================
+--- .orig/var/tmp/portage/net-misc/iputils-20211215/work/iputils-20211215/ping/ping.c
++++ iputils-20211215/ping/ping.c
+@@ -775,8 +775,14 @@ int ping4_run(struct ping_rts *rts, int
+ 		bind_to_device(rts, sock->fd, rts->whereto.sin_addr.s_addr);
+ 	}
+ 
+-	if (rts->whereto.sin_addr.s_addr == 0)
+-		rts->whereto.sin_addr.s_addr = rts->source.sin_addr.s_addr;
++        //ping -c 1 -B -I 127.0.0.22 bruh  (where "0.0.0.0 bruh" is in /etc/hosts)
++        //PING bruh (0.0.0.0) from 127.0.0.22 : 56(84) bytes of data.
++        //64 bytes from 127.0.0.22 (127.0.0.22): icmp_seq=1 ttl=65 time=0.013 ms (DIFFERENT ADDRESS!)
++        //originally:
++        //PING bruh (127.0.0.22) from 127.0.0.22 : 56(84) bytes of data.
++        //64 bytes from 127.0.0.22 (127.0.0.22): icmp_seq=1 ttl=65 time=0.046 ms
++	//if (rts->whereto.sin_addr.s_addr == 0)
++	//	rts->whereto.sin_addr.s_addr = rts->source.sin_addr.s_addr;
+ 
+ 	if (rts->broadcast_pings || IN_MULTICAST(ntohl(rts->whereto.sin_addr.s_addr))) {
+ 		rts->multicast = 1;
