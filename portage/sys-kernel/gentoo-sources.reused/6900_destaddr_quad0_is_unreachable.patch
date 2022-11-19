@@ -1,0 +1,52 @@
+made for Linux kernel 6.0.9
+see: https://unix.stackexchange.com/questions/725410/why-accessing-0-0-0-0443-gets-redirected-to-127-0-0-1443-on-linux-and-how-to-d
+
+with patch:
+
+$ ping 0.0.0.0
+ping: connect: Network is unreachable
+
+$ nc -n -s 127.1.2.18 -p 5000 -vvvvvvvv -- 0.0.0.0 80
+(UNKNOWN) [0.0.0.0] 80 (http) : Network is unreachable
+ sent 0, rcvd 0
+
+server can be(as root):
+# while true; do nc -n -l -p 80 -s 127.1.2.18 -vvvvvvvv -- 127.1.2.18 5000; echo "------------------`date`";sleep 1; done
+
+This is needed when using NextDNS and cloudflare's 1.1.1.3 as DNS resolvers because they return 0.0.0.0 for blocked hostnames instead of NXDOMAIN, thus redirecting Firefox's requests from localhost to localhost
+This doesn't happen with quad9 aka 9.9.9.9 which does return NXDOMAIN !
+
+Index: /usr/src/linux/net/ipv4/route.c
+===================================================================
+--- .orig/usr/src/linux/net/ipv4/route.c
++++ mod/net/ipv4/route.c
+@@ -2525,7 +2525,7 @@ static struct rtable *__mkroute_output(c
+ 		type = RTN_BROADCAST;
+ 	else if (ipv4_is_multicast(fl4->daddr))
+ 		type = RTN_MULTICAST;
+-	else if (ipv4_is_zeronet(fl4->daddr))
++	else if (ipv4_is_zeronet(fl4->daddr)) // dest addr 0.0.0.0 is not valid!
+ 		return ERR_PTR(-EINVAL);
+ 
+ 	if (dev_out->flags & IFF_LOOPBACK)
+@@ -2740,14 +2740,17 @@ struct rtable *ip_route_output_key_hash_
+ 	}
+ 
+ 	if (!fl4->daddr) {
+-		fl4->daddr = fl4->saddr;
++			rth = ERR_PTR(-ENETUNREACH);
++			goto out;
++                        /*
++		fl4->daddr = fl4->saddr; // if you did specify src address and dest is 0.0.0.0 then set dest=src addr
+ 		if (!fl4->daddr)
+-			fl4->daddr = fl4->saddr = htonl(INADDR_LOOPBACK);
++			fl4->daddr = fl4->saddr = htonl(INADDR_LOOPBACK); // if you didn't specify source address and dest address is 0.0.0.0 then make them both 127.0.0.1
+ 		dev_out = net->loopback_dev;
+ 		fl4->flowi4_oif = LOOPBACK_IFINDEX;
+ 		res->type = RTN_LOCAL;
+ 		flags |= RTCF_LOCAL;
+-		goto make_route;
++		goto make_route;*/
+ 	}
+ 
+ 	err = fib_lookup(net, fl4, res, 0);
