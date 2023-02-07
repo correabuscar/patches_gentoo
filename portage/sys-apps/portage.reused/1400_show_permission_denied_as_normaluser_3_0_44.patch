@@ -1,0 +1,24 @@
+Index: /var/tmp/portage/sys-apps/portage-3.0.44/work/portage-3.0.44/lib/portage/dbapi/bintree.py
+===================================================================
+--- so/this/doest/matter/when/patching/a/portage-3.0.44/lib/portage/dbapi/bintree.py
++++ portage-3.0.44/lib/portage/dbapi/bintree.py
+@@ -1328,6 +1328,19 @@ class binarytree:
+                         if hasattr(f, "headers") and f.headers.get("timestamp", ""):
+                             remote_timestamp = f.headers.get("timestamp")
+                     except OSError as err:
++                        #!!! <urlopen error [Errno 13] Permission denied: '/var/cache/binpkgs/Packages'>
++                        #caught when running as non-root, because:
++                        #-rw-r----- 1 root root 2251732 09.12.2020 17:38 /var/cache/binpkgs/Packages
++                        import urllib.error
++                        #if issubclass(err, PermissionError):
++                        #   print("moo5")
++                        if isinstance(err, urllib.error.URLError) and isinstance(err, IOError):
++                            #PermissionError as err:
++                            #print("moo5", [err], [err.cause])
++                            if self.settings.get("PORTAGE_DEBUG", "0") != "0":
++                                traceback.print_exc()
++                            raise RuntimeError(f"You must run as root for --getbinpkg=y (or FEATURES=getbinpkg) to have effect and to can read {url}. Or, try arg. --getbinpkg=n") from err #!!! <urlopen error [Errno 13] Permission denied: '/var/cache/binpkgs/Packages'>
++
+                         if (
+                             hasattr(err, "code") and err.code == 304
+                         ):  # not modified (since local_timestamp)
