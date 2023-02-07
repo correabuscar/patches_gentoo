@@ -1,7 +1,7 @@
 bug #60617: POST not continued after 301, 302
 src: https://savannah.gnu.org/bugs/?60617
 --- src/http.c
-+++ src/http.c
++++ b/src/http.c
 @@ -3856,14 +3856,14 @@
                retval = NEWLOCATION_KEEP_POST;
                goto cleanup;
