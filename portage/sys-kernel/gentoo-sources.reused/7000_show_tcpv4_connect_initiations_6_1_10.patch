@@ -1,0 +1,109 @@
+this assumes you've applied this first(tho it's not actually needed): 6900_destaddr_quad0_is_unreachable.patch
+
+shows things like this on dmesg:
+
+[  175.085785] !! 1 tcp_v4_connect         0.0.0.0:    0->        0.0.0.0:  443 -------
+[  175.085792] !! 2 tcp_v4_connect         0.0.0.0 route error '-ENETUNREACH'
+[  180.524196] !! 1 tcp_v4_connect         0.0.0.0:    0-> 199.232.16.201:  443 -------
+[  180.524207] !! 5 tcp_v4_connect     192.168.0.7:    0-> 199.232.16.201:  443
+[  180.524215] !! 6 tcp_v4_connect     192.168.0.7:49310-> 199.232.16.201:  443
+
+Index: /usr/src/linux/net/ipv4/tcp_ipv4.c
+===================================================================
+--- .orig/usr/src/linux/net/ipv4/tcp_ipv4.c
++++ mod/net/ipv4/tcp_ipv4.c
+@@ -217,9 +219,25 @@ int tcp_v4_connect(struct sock *sk, stru
+ 		return -EAFNOSUPPORT;
+ 
+ 	nexthop = daddr = usin->sin_addr.s_addr;
++        struct in_addr sin_addr; // temporary for printk purposes only!
++        sin_addr.s_addr=daddr; //it seems I need to do this to printk daddr, TODO: is there a better way?
++        //for be16_to_cpu, see: https://www.kernel.org/doc/htmldocs/kernel-hacking/routines-endian.html
++        //for %u see: https://docs.kernel.org/core-api/printk-formats.html
++        //for %pI4 see: https://www.kernel.org/doc/htmldocs/kernel-hacking/common-routines.html (tho I've discovered this by grepping the sources)
++        //15 and 5 are padding spaces
++        printk(KERN_NOTICE "!! 1 tcp_v4_connect %15pI4:%5u->%15pI4:%5u -------\n",
++            &inet->inet_saddr,
++            be16_to_cpu(inet->inet_sport) /*__be16*/,
++            &sin_addr,
++            be16_to_cpu(usin->sin_port) /*__be16*/
++          );
++//#error test
+ 	inet_opt = rcu_dereference_protected(inet->inet_opt,
+ 					     lockdep_sock_is_held(sk));
+ 	if (inet_opt && inet_opt->opt.srr) {
++          //this isn't ever hit, I think it needs source IP routing to be enabled? ie. sysctl 'accept_source_route'
++          //sin_addr.s_addr=daddr;
++          //printk(KERN_NOTICE "!! 1_1 tcp_v4_connect %pI4\n", &sin_addr);
+ 		if (!daddr)
+ 			return -EINVAL;
+ 		nexthop = inet_opt->opt.faddr;
+@@ -233,18 +251,35 @@ int tcp_v4_connect(struct sock *sk, stru
+ 			      orig_dport, sk);
+ 	if (IS_ERR(rt)) {
+ 		err = PTR_ERR(rt);
+-		if (err == -ENETUNREACH)
++                sin_addr.s_addr=daddr;
++                printk(KERN_NOTICE "!! 2 tcp_v4_connect %15pI4 route error '%pe'\n", &sin_addr, rt); //note 'rt' not 'err' here!
++                //doneTODO: find a way to also show the text of the error? found: https://docs.kernel.org/core-api/printk-formats.html#error-pointers
++                //seems to need CONFIG_SYMBOLIC_ERRNAME=y as per: https://lkml.org/lkml/2019/10/15/907
++		if (err == -ENETUNREACH) {
++                  //printk(KERN_NOTICE "!! 2_1 tcp_v4_connect %pI4 route error '%d'(==UNREACHABLE)\n", &sin_addr, err);
+ 			IP_INC_STATS(sock_net(sk), IPSTATS_MIB_OUTNOROUTES);
++                }
+ 		return err;
+ 	}
++        //sin_addr.s_addr=daddr;
++        //printk(KERN_NOTICE "!! 3_0 tcp_v4_connect %pI4\n", &sin_addr);
+ 
+-	if (rt->rt_flags & (RTCF_MULTICAST | RTCF_BROADCAST)) {
++        //quick and dirty workaround to block connections to 0.0.0.0 (tcp ipv4 only)
++	if ((rt->rt_flags & (RTCF_MULTICAST | RTCF_BROADCAST))||(!daddr)) {
++                sin_addr.s_addr=daddr;
++                printk(KERN_NOTICE "!! 3 tcp_v4_connect %15pI4 UNREACHABLE(manually, you shouldn't hit this if you used 6900_destaddr_quad0_is_unreachable.patch! TODO: Look into why you're hitting this!)\n", &sin_addr);
+ 		ip_rt_put(rt);
+ 		return -ENETUNREACH;
+ 	}
+ 
+-	if (!inet_opt || !inet_opt->opt.srr)
++	if (!inet_opt || !inet_opt->opt.srr) {
+ 		daddr = fl4->daddr;
++                //sin_addr.s_addr=daddr;
++                //printk(KERN_NOTICE "!! 4_1 tcp_v4_connect %pI4\n", &sin_addr);
++        }
++
++        //sin_addr.s_addr=daddr;
++        //printk(KERN_NOTICE "!! 4 tcp_v4_connect %pI4\n", &sin_addr);
+ 
+ 	if (!inet->inet_saddr)
+ 		inet->inet_saddr = fl4->saddr;
+@@ -261,6 +296,14 @@ int tcp_v4_connect(struct sock *sk, stru
+ 	inet->inet_dport = usin->sin_port;
+ 	sk_daddr_set(sk, daddr);
+ 
++        sin_addr.s_addr=daddr;
++        printk(KERN_NOTICE "!! 5 tcp_v4_connect %15pI4:%5u->%15pI4:%5u\n",
++            &inet->inet_saddr,
++            be16_to_cpu(inet->inet_sport) /*__be16*/,
++            &sin_addr,
++            be16_to_cpu(inet->inet_dport) /*__be16*/
++          );
++
+ 	inet_csk(sk)->icsk_ext_hdr_len = 0;
+ 	if (inet_opt)
+ 		inet_csk(sk)->icsk_ext_hdr_len = inet_opt->opt.optlen;
+@@ -291,6 +334,14 @@ int tcp_v4_connect(struct sock *sk, stru
+ 	sk_setup_caps(sk, &rt->dst);
+ 	rt = NULL;
+ 
++        sin_addr.s_addr=daddr;
++        printk(KERN_NOTICE "!! 6 tcp_v4_connect %15pI4:%5u->%15pI4:%5u\n",
++            &inet->inet_saddr,
++            be16_to_cpu(inet->inet_sport) /*__be16*/,
++            &sin_addr,
++            be16_to_cpu(inet->inet_dport) /*__be16*/
++          );
++
+ 	if (likely(!tp->repair)) {
+ 		if (!tp->write_seq)
+ 			WRITE_ONCE(tp->write_seq,
