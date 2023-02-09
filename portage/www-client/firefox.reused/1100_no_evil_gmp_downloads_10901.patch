@@ -1,0 +1,41 @@
+do "hgshow 539358" to see where they got moved!
+
+diff -r 08cd64cdbc3b toolkit/content/jar.mn
+--- a/toolkit/content/jar.mn	Fri Jul 17 11:18:09 2020 +0000
++++ b/toolkit/content/jar.mn	Sun Jul 19 01:56:47 2020 +0200
+@@ -103,8 +103,6 @@
+ #ifdef XP_MACOSX
+    content/global/macWindowMenu.js
+ #endif
+-   content/global/gmp-sources/openh264.json    (gmp-sources/openh264.json)
+-   content/global/gmp-sources/widevinecdm.json (gmp-sources/widevinecdm.json)
+ 
+ # Third party files
+    content/global/third_party/d3/d3.js         (/third_party/js/d3/d3.js)
+Index: /var/tmp/portage/www-client/firefox-109.0.1/work/firefox-109.0.1/toolkit/modules/GMPInstallManager.sys.mjs
+===================================================================
+--- .orig/var/tmp/portage/www-client/firefox-109.0.1/work/firefox-109.0.1/toolkit/modules/GMPInstallManager.sys.mjs
++++ firefox-109.0.1/toolkit/modules/GMPInstallManager.sys.mjs
+@@ -35,14 +35,14 @@ function getScopedLogger(prefix) {
+ }
+ 
+ const LOCAL_GMP_SOURCES = [
+-  {
+-    id: "gmp-gmpopenh264",
+-    src: "chrome://global/content/gmp-sources/openh264.json",
+-  },
+-  {
+-    id: "gmp-widevinecdm",
+-    src: "chrome://global/content/gmp-sources/widevinecdm.json",
+-  },
++//  {
++//    id: "gmp-gmpopenh264",
++//    src: "chrome://global/content/gmp-sources/openh264.json",
++//  },
++//  {
++//    id: "gmp-widevinecdm",
++//    src: "chrome://global/content/gmp-sources/widevinecdm.json",
++//  },
+ ];
+ 
+ function downloadJSON(uri) {

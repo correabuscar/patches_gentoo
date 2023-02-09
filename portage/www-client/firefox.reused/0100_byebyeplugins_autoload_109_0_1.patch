@@ -1,0 +1,97 @@
+bye bye autoloaded plugins, like:
+/usr/lib/mozilla/plugins/libevbrowserplugin.so
+
+mozconfig already has:
+ac_add_options --disable-system-extension-dirs
+so this patch isn't really needed!
+
+diff -r 12b945b6f707 xpcom/io/nsAppFileLocationProvider.cpp
+--- a/xpcom/io/nsAppFileLocationProvider.cpp	Wed Mar 13 05:48:27 2019 -1000
++++ b/xpcom/io/nsAppFileLocationProvider.cpp	Wed Mar 13 20:41:15 2019 +0100
+@@ -25,7 +25,7 @@
+ #  include <stdlib.h>
+ #  include <sys/param.h>
+ #endif
+-
++#undef ENABLE_SYSTEM_EXTENSION_DIRS
+ // WARNING: These hard coded names need to go away. They need to
+ // come from localizable resources
+ 
+#@@ -175,13 +175,14 @@
+#   else if (nsCRT::strcmp(aProp, NS_SYSTEM_PLUGINS_DIR) == 0) {
+# #    ifdef ENABLE_SYSTEM_EXTENSION_DIRS
+#     static const char* const sysLPlgDir =
+#+      "/dev/null/no-f-ing-plugins-firefox";/*
+# #      if defined(HAVE_USR_LIB64_DIR) && defined(__LP64__)
+#         "/usr/lib64/mozilla/plugins";
+# #      elif defined(__OpenBSD__) || defined(__FreeBSD__)
+#         "/usr/local/lib/mozilla/plugins";
+# #      else
+#         "/usr/lib/mozilla/plugins";
+#-#      endif
+#+#      endif */
+#     rv = NS_NewNativeLocalFile(nsDependentCString(sysLPlgDir), false,
+#                                getter_AddRefs(localFile));
+# #    else
+Index: /var/tmp/portage/www-client/firefox-109.0.1/work/firefox-109.0.1/toolkit/xre/nsXREDirProvider.cpp
+===================================================================
+--- .orig/var/tmp/portage/www-client/firefox-109.0.1/work/firefox-109.0.1/toolkit/xre/nsXREDirProvider.cpp
++++ firefox-109.0.1/toolkit/xre/nsXREDirProvider.cpp
+@@ -455,6 +455,7 @@ nsXREDirProvider::GetFile(const char* aP
+ #if defined(XP_UNIX) || defined(XP_MACOSX)
+   else if (!strcmp(aProperty, XRE_SYS_LOCAL_EXTENSION_PARENT_DIR)) {
+ #  ifdef ENABLE_SYSTEM_EXTENSION_DIRS
++#error 2not expected shiee! because for sure we're using --disable-system-extension-dirs
+     return GetSystemExtensionsDirectory(aFile);
+ #  else
+     return NS_ERROR_FAILURE;
+@@ -464,6 +465,7 @@ nsXREDirProvider::GetFile(const char* aP
+ #if defined(XP_UNIX) && !defined(XP_MACOSX)
+   else if (!strcmp(aProperty, XRE_SYS_SHARE_EXTENSION_PARENT_DIR)) {
+ #  ifdef ENABLE_SYSTEM_EXTENSION_DIRS
++#error 3not expected shiee! because for sure we're using --disable-system-extension-dirs
+ #    if defined(__OpenBSD__) || defined(__FreeBSD__)
+     static const char* const sysLExtDir = "/usr/local/share/mozilla/extensions";
+ #    else
+@@ -477,6 +479,7 @@ nsXREDirProvider::GetFile(const char* aP
+ #endif
+   else if (!strcmp(aProperty, XRE_USER_SYS_EXTENSION_DIR)) {
+ #ifdef ENABLE_SYSTEM_EXTENSION_DIRS
++#error 4not expected shiee! because for sure we're using --disable-system-extension-dirs
+     return GetSysUserExtensionsDirectory(aFile);
+ #else
+     return NS_ERROR_FAILURE;
+@@ -1453,6 +1456,8 @@ nsresult nsXREDirProvider::GetSysUserExt
+   return NS_OK;
+ }
+ 
++#  ifdef ENABLE_SYSTEM_EXTENSION_DIRS
++#error 1not expected shiee! because for sure we're using --disable-system-extension-dirs
+ #if defined(XP_UNIX) || defined(XP_MACOSX)
+ nsresult nsXREDirProvider::GetSystemExtensionsDirectory(nsIFile** aFile) {
+   nsresult rv;
+@@ -1476,6 +1481,7 @@ nsresult nsXREDirProvider::GetSystemExte
+   return rv;
+ }
+ #endif
++#endif
+ 
+ nsresult nsXREDirProvider::GetUserDataDirectory(nsIFile** aFile, bool aLocal) {
+   nsCOMPtr<nsIFile> localDir;
+Index: /var/tmp/portage/www-client/firefox-109.0.1/work/firefox-109.0.1/toolkit/xre/nsXREDirProvider.h
+===================================================================
+--- .orig/var/tmp/portage/www-client/firefox-109.0.1/work/firefox-109.0.1/toolkit/xre/nsXREDirProvider.h
++++ firefox-109.0.1/toolkit/xre/nsXREDirProvider.h
+@@ -122,9 +122,12 @@ class nsXREDirProvider final : public ns
+                             nsISimpleEnumerator** aResult);
+   static nsresult GetUserDataDirectoryHome(nsIFile** aFile, bool aLocal);
+   static nsresult GetSysUserExtensionsDirectory(nsIFile** aFile);
++#  ifdef ENABLE_SYSTEM_EXTENSION_DIRS
++#error 5not expected shiee! because for sure we're using --disable-system-extension-dirs
+ #if defined(XP_UNIX) || defined(XP_MACOSX)
+   static nsresult GetSystemExtensionsDirectory(nsIFile** aFile);
+ #endif
++#endif
+   static nsresult EnsureDirectoryExists(nsIFile* aDirectory);
+ 
+   // Determine the profile path within the UAppData directory. This is different

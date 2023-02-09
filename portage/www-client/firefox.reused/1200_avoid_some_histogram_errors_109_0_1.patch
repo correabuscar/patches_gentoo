@@ -1,0 +1,44 @@
+Index: /var/tmp/portage/www-client/firefox-109.0.1/work/firefox-109.0.1/browser/components/sessionstore/ContentSessionStore.sys.mjs
+===================================================================
+--- .orig/var/tmp/portage/www-client/firefox-109.0.1/work/firefox-109.0.1/browser/components/sessionstore/ContentSessionStore.sys.mjs
++++ firefox-109.0.1/browser/components/sessionstore/ContentSessionStore.sys.mjs
+@@ -452,19 +452,19 @@ class MessageQueue extends Handler {
+     this.cleanupTimers();
+ 
+     let flushID = (options && options.flushID) || 0;
+-    let histID = "FX_SESSION_RESTORE_CONTENT_COLLECT_DATA_MS";
++    //let histID = "FX_SESSION_RESTORE_CONTENT_COLLECT_DATA_MS";
+ 
+     let data = {};
+     for (let [key, func] of this._data) {
+-      if (key != "isPrivate") {
+-        TelemetryStopwatch.startKeyed(histID, key);
+-      }
++      //if (key != "isPrivate") {
++      //  TelemetryStopwatch.startKeyed(histID, key);
++      //}
+ 
+       let value = func();
+ 
+-      if (key != "isPrivate") {
+-        TelemetryStopwatch.finishKeyed(histID, key);
+-      }
++      //if (key != "isPrivate") {
++      //  TelemetryStopwatch.finishKeyed(histID, key);
++      //}
+ 
+       if (value || (key != "storagechange" && key != "historychange")) {
+         data[key] = value;
+@@ -483,9 +483,9 @@ class MessageQueue extends Handler {
+       });
+     } catch (ex) {
+       if (ex && ex.result == Cr.NS_ERROR_OUT_OF_MEMORY) {
+-        Services.telemetry
+-          .getHistogramById("FX_SESSION_RESTORE_SEND_UPDATE_CAUSED_OOM")
+-          .add(1);
++        //Services.telemetry
++        //  .getHistogramById("FX_SESSION_RESTORE_SEND_UPDATE_CAUSED_OOM")
++        //  .add(1);
+         this.mm.sendAsyncMessage("SessionStore:error");
+       }
+     }

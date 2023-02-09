@@ -1,0 +1,61 @@
+diff -r b1146cce5053 toolkit/locales/en-US/toolkit/about/aboutSupport.ftl
+--- a/toolkit/locales/en-US/toolkit/about/aboutSupport.ftl	Tue Jun 23 02:23:48 2020 +0300
++++ b/toolkit/locales/en-US/toolkit/about/aboutSupport.ftl	Tue Jun 23 07:37:02 2020 +0200
+@@ -78,7 +78,7 @@
+ experimental-features-title = Experimental Features
+ experimental-features-name = Name
+ experimental-features-value = Value
+-modified-key-prefs-title = Important Modified Preferences
++modified-key-prefs-title = All Modified Preferences
+ modified-prefs-name = Name
+ modified-prefs-value = Value
+ user-js-title = user.js Preferences
+#Index: /var/tmp/portage/www-client/firefox-97.0.2/work/firefox-97.0.2/toolkit/modules/Troubleshoot.jsm
+#===================================================================
+#--- firefox-97.0.2/toolkit/modules/Troubleshoot.jsm
+#+++ firefox-97.0.2/toolkit/modules/Troubleshoot.jsm
+#@@ -29,6 +29,7 @@ XPCOMUtils.defineLazyGlobalGetters(this,
+# // entries are *prefixes*: for example, "accessibility." applies to all prefs
+# // under the "accessibility.*" branch.
+# const PREFS_FOR_DISPLAY = [
+#+  "",
+#   "accessibility.",
+#   "apz.",
+#   "browser.cache.",
+#@@ -153,8 +154,9 @@ function getPrefList(filter, allowlist =
+#   return allowlist.reduce(function(prefs, branch) {
+#     Services.prefs.getChildList(branch).forEach(function(name) {
+#       if (
+#-        filter(name) &&
+#-        !PREF_REGEXES_NOT_TO_DISPLAY.some(re => re.test(name))
+#+        filter(name) //&&
+#+        //!PREF_REGEXES_NOT_TO_DISPLAY.some(re => re.test(name))
+#+        // commented out to return all prefs! so about:support will list all prefs not just the important ones!
+#       ) {
+#         prefs[name] = getPref(name);
+#       }
+
+Index: /var/tmp/portage/www-client/firefox-109.0.1/work/firefox-109.0.1/toolkit/modules/Troubleshoot.sys.mjs
+===================================================================
+--- .orig/var/tmp/portage/www-client/firefox-109.0.1/work/firefox-109.0.1/toolkit/modules/Troubleshoot.sys.mjs
++++ firefox-109.0.1/toolkit/modules/Troubleshoot.sys.mjs
+@@ -23,6 +23,7 @@ ChromeUtils.defineESModuleGetters(lazy,
+ // entries are *prefixes*: for example, "accessibility." applies to all prefs
+ // under the "accessibility.*" branch.
+ const PREFS_FOR_DISPLAY = [
++  "",
+   "accessibility.",
+   "apz.",
+   "browser.cache.",
+@@ -156,8 +157,9 @@ function getPrefList(filter, allowlist =
+   return allowlist.reduce(function(prefs, branch) {
+     Services.prefs.getChildList(branch).forEach(function(name) {
+       if (
+-        filter(name) &&
+-        !PREF_REGEXES_NOT_TO_DISPLAY.some(re => re.test(name))
++        filter(name) //&&
++        //!PREF_REGEXES_NOT_TO_DISPLAY.some(re => re.test(name))
++        // commented out to return all prefs! so about:support will list all modified prefs not just the important ones!
+       ) {
+         prefs[name] = getPref(name);
+       }

@@ -1,0 +1,18 @@
+TODO: import things from ./old3/duckduckgo.patch
+due to https://bugzilla.mozilla.org/show_bug.cgi?id=1486820#c13
+
+see: https://duckduckgo.com/params
+
+Index: /var/tmp/portage/www-client/firefox-109.0.1/work/firefox-109.0.1/browser/components/search/extensions/ddg/manifest.json
+===================================================================
+--- .orig/var/tmp/portage/www-client/firefox-109.0.1/work/firefox-109.0.1/browser/components/search/extensions/ddg/manifest.json
++++ firefox-109.0.1/browser/components/search/extensions/ddg/manifest.json
+@@ -21,7 +21,7 @@
+       "name": "DuckDuckGo",
+       "search_url": "https://duckduckgo.com/",
+       "search_form": "https://duckduckgo.com/?q={searchTerms}",
+-      "search_url_get_params": "t=ffab&q={searchTerms}",
++      "search_url_get_params": "q={searchTerms}&kp=-1&kf=1&kaf=1&kac=-1&kae=-1&kd=1&kh=1&kg=g&k5=-1&kj=d&kx=r&ku=1&ko=1&k1=-1&kv=1&kaj=m&kam=osm&kav=1&kc=1&n=1&kk=1&kak=-1&kax=-1&kaq=-1&kap=-1&kao=-1&kau=-1&kw=s&km=m&kai=1&k18=1",
+       "suggest_url": "https://ac.duckduckgo.com/ac/",
+       "suggest_url_get_params": "q={searchTerms}&type=list"
+     }
