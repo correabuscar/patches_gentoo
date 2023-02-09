@@ -8,11 +8,13 @@ shows things like this on dmesg:
 [  180.524207] !! 5 tcp_v4_connect     192.168.0.7:    0-> 199.232.16.201:  443
 [  180.524215] !! 6 tcp_v4_connect     192.168.0.7:49310-> 199.232.16.201:  443
 
-Index: /usr/src/linux/net/ipv4/tcp_ipv4.c
+updated for 6.1.10 kernel:
+
+Index: /var/tmp/portage/sys-kernel/gentoo-sources-6.1.10/work/linux-6.1.10-gentoo/net/ipv4/tcp_ipv4.c
 ===================================================================
---- .orig/usr/src/linux/net/ipv4/tcp_ipv4.c
-+++ mod/net/ipv4/tcp_ipv4.c
-@@ -217,9 +219,25 @@ int tcp_v4_connect(struct sock *sk, stru
+--- .orig/var/tmp/portage/sys-kernel/gentoo-sources-6.1.10/work/linux-6.1.10-gentoo/net/ipv4/tcp_ipv4.c
++++ linux-6.1.10-gentoo/net/ipv4/tcp_ipv4.c
+@@ -218,9 +218,25 @@ int tcp_v4_connect(struct sock *sk, stru
  		return -EAFNOSUPPORT;
  
  	nexthop = daddr = usin->sin_addr.s_addr;
@@ -38,7 +40,7 @@ Index: /usr/src/linux/net/ipv4/tcp_ipv4.c
  		if (!daddr)
  			return -EINVAL;
  		nexthop = inet_opt->opt.faddr;
-@@ -233,18 +251,35 @@ int tcp_v4_connect(struct sock *sk, stru
+@@ -234,18 +250,35 @@ int tcp_v4_connect(struct sock *sk, stru
  			      orig_dport, sk);
  	if (IS_ERR(rt)) {
  		err = PTR_ERR(rt);
@@ -49,7 +51,7 @@ Index: /usr/src/linux/net/ipv4/tcp_ipv4.c
 +                //seems to need CONFIG_SYMBOLIC_ERRNAME=y as per: https://lkml.org/lkml/2019/10/15/907
 +		if (err == -ENETUNREACH) {
 +                  //printk(KERN_NOTICE "!! 2_1 tcp_v4_connect %pI4 route error '%d'(==UNREACHABLE)\n", &sin_addr, err);
- 			IP_INC_STATS(sock_net(sk), IPSTATS_MIB_OUTNOROUTES);
+ 			IP_INC_STATS(net, IPSTATS_MIB_OUTNOROUTES);
 +                }
  		return err;
  	}
@@ -75,9 +77,9 @@ Index: /usr/src/linux/net/ipv4/tcp_ipv4.c
 +        //sin_addr.s_addr=daddr;
 +        //printk(KERN_NOTICE "!! 4 tcp_v4_connect %pI4\n", &sin_addr);
  
- 	if (!inet->inet_saddr)
- 		inet->inet_saddr = fl4->saddr;
-@@ -261,6 +296,14 @@ int tcp_v4_connect(struct sock *sk, stru
+ 	tcp_death_row = &sock_net(sk)->ipv4.tcp_death_row;
+ 
+@@ -270,6 +303,14 @@ int tcp_v4_connect(struct sock *sk, stru
  	inet->inet_dport = usin->sin_port;
  	sk_daddr_set(sk, daddr);
  
@@ -92,7 +94,7 @@ Index: /usr/src/linux/net/ipv4/tcp_ipv4.c
  	inet_csk(sk)->icsk_ext_hdr_len = 0;
  	if (inet_opt)
  		inet_csk(sk)->icsk_ext_hdr_len = inet_opt->opt.optlen;
-@@ -291,6 +334,14 @@ int tcp_v4_connect(struct sock *sk, stru
+@@ -300,6 +341,14 @@ int tcp_v4_connect(struct sock *sk, stru
  	sk_setup_caps(sk, &rt->dst);
  	rt = NULL;
  
