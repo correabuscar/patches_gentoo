@@ -9,18 +9,219 @@
  done
  unset GK_OPTION
  
-Index: /var/tmp/portage/sys-kernel/genkernel-4.2.6-r2/work/genkernel-4.2.6/gen_cmdline.sh
+Index: /var/tmp/portage/sys-kernel/genkernel-4.0.4/work/genkernel-4.0.4/gen_cmdline.sh
 ===================================================================
---- genkernel-4.2.6/gen_cmdline.sh
-+++ genkernel-4.2.6/gen_cmdline.sh
-@@ -292,131 +292,145 @@ usage() {
- 
- parse_optbool() {
- 	local opt=${1/--no-*/no} # false
- 	opt=${opt/--*/yes} # true
- 	echo ${opt}
+--- genkernel-4.0.4/gen_cmdline.sh
++++ genkernel-4.0.4/gen_cmdline.sh
+@@ -704,27 +704,27 @@ parse_cmdline() {
+ 			print_info 3 "CMD_CLEAR_CACHEDIR: ${CMD_CLEAR_CACHEDIR}"
+ 			;;
+ 		--minkernpackage=*)
+-			CMD_MINKERNPACKAGE="${*#*=}"
++			CMD_MINKERNPACKAGE="${got#*=}"
+ 			print_info 3 "MINKERNPACKAGE: ${CMD_MINKERNPACKAGE}"
+ 			;;
+ 		--modulespackage=*)
+-			CMD_MODULESPACKAGE="${*#*=}"
++			CMD_MODULESPACKAGE="${got#*=}"
+ 			print_info 3 "MODULESPACKAGE: ${CMD_MODULESPACKAGE}"
+ 			;;
+ 		--kerncache=*)
+-			CMD_KERNCACHE="${*#*=}"
++			CMD_KERNCACHE="${got#*=}"
+ 			print_info 3 "KERNCACHE: ${CMD_KERNCACHE}"
+ 			;;
+ 		--kernel-config-filename=*)
+-			CMD_KERNEL_CONFIG_FILENAME="${*#*=}"
++			CMD_KERNEL_CONFIG_FILENAME="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_CONFIG_FILENAME: ${CMD_KERNEL_CONFIG_FILENAME}"
+ 			;;
+ 		--kernel-filename=*)
+-			CMD_KERNEL_FILENAME="${*#*=}"
++			CMD_KERNEL_FILENAME="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_FILENAME: ${CMD_KERNEL_FILENAME}"
+ 			;;
+ 		--kernel-symlink-name=*)
+-			CMD_KERNEL_SYMLINK_NAME="${*#*=}"
++			CMD_KERNEL_SYMLINK_NAME="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_SYMLINK_NAME: ${CMD_KERNEL_SYMLINK_NAME}"
+ 			;;
+ 		--symlink|--no-symlink)
+Index: /var/tmp/portage/sys-kernel/genkernel-4.3.2/work/genkernel-4.3.2/gen_cmdline.sh
+===================================================================
+--- .orig/var/tmp/portage/sys-kernel/genkernel-4.3.2/work/genkernel-4.3.2/gen_cmdline.sh
++++ genkernel-4.3.2/gen_cmdline.sh
+@@ -301,125 +301,139 @@ parse_optbool() {
  }
  
+ parse_cmdline() {
+-	case "$*" in
++	if test "$#" -ne "1"; then
++		echo "Unexpected situation, $# args passed to parse_cmdline() function: '$*'" >&2
++		echo "forcing exit" >&2
++		exit 1
++	fi
++	local got="$*"
++	case "$got" in
++	#case "$*" in
+ 		--cross-compile=*)
+-			CMD_CROSS_COMPILE="${*#*=}"
++			CMD_CROSS_COMPILE="${got#*=}"
+ 			print_info 3 "CMD_CROSS_COMPILE: ${CMD_CROSS_COMPILE}"
+ 			;;
+ 			--kernel-cross-compile=*)
+-			CMD_KERNEL_CROSS_COMPILE="${*#*=}"
++			CMD_KERNEL_CROSS_COMPILE="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_CROSS_COMPILE: ${CMD_KERNEL_CROSS_COMPILE}"
+ 			;;
+ 		--kernel-ar=*)
+-			CMD_KERNEL_AR="${*#*=}"
++			CMD_KERNEL_AR="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_AR: ${CMD_KERNEL_AR}"
+ 			;;
+ 		--kernel-as=*)
+-			CMD_KERNEL_AS="${*#*=}"
++			CMD_KERNEL_AS="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_AS: ${CMD_KERNEL_AS}"
+ 			;;
+ 		--kernel-cc=*)
+-			CMD_KERNEL_CC="${*#*=}"
++			CMD_KERNEL_CC="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_CC: ${CMD_KERNEL_CC}"
+ 			;;
+ 		--kernel-ld=*)
+-			CMD_KERNEL_LD="${*#*=}"
++			CMD_KERNEL_LD="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_LD: ${CMD_KERNEL_LD}"
+ 			;;
+ 		--kernel-make=*)
+-			CMD_KERNEL_MAKE="${*#*=}"
++			CMD_KERNEL_MAKE="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_MAKE: ${CMD_KERNEL_MAKE}"
+ 			;;
+ 		--kernel-nm=*)
+-			CMD_KERNEL_NM="${*#*=}"
++			CMD_KERNEL_NM="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_NM: ${CMD_KERNEL_NM}"
+ 			;;
+ 		--kernel-objcopy=*)
+-			CMD_KERNEL_OBJCOPY="${*#*=}"
++			CMD_KERNEL_OBJCOPY="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_OBJCOPY: ${CMD_KERNEL_OBJCOPY}"
+ 			;;
+ 		--kernel-objdump=*)
+-			CMD_KERNEL_OBJDUMP="${*#*=}"
++			CMD_KERNEL_OBJDUMP="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_OBJDUMP: ${CMD_KERNEL_OBJDUMP}"
+ 			;;
+ 		--kernel-ranlib=*)
+-			CMD_KERNEL_RANLIB="${*#*=}"
++			CMD_KERNEL_RANLIB="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_RANLIB: ${CMD_KERNEL_RANLIB}"
+ 			;;
+ 		--kernel-readelf=*)
+-			CMD_KERNEL_READELF="${*#*=}"
++			CMD_KERNEL_READELF="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_READELF: ${CMD_KERNEL_READELF}"
+ 			;;
+ 		--kernel-strip=*)
+-			CMD_KERNEL_STRIP="${*#*=}"
++			CMD_KERNEL_STRIP="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_STRIP: ${CMD_KERNEL_STRIP}"
+ 			;;
+ 		--kernel-target=*)
+-			KERNEL_MAKE_DIRECTIVE_OVERRIDE="${*#*=}"
++			KERNEL_MAKE_DIRECTIVE_OVERRIDE="${got#*=}"
+ 			print_info 3 "KERNEL_MAKE_DIRECTIVE_OVERRIDE: ${KERNEL_MAKE_DIRECTIVE_OVERRIDE}"
+ 			;;
+ 		--kernel-binary=*)
+-			KERNEL_BINARY_OVERRIDE="${*#*=}"
++			KERNEL_BINARY_OVERRIDE="${got#*=}"
+ 			print_info 3 "KERNEL_BINARY_OVERRIDE: ${KERNEL_BINARY_OVERRIDE}"
+ 			;;
+ 		--kernel-outputdir=*)
+-			CMD_KERNEL_OUTPUTDIR="${*#*=}"
++			CMD_KERNEL_OUTPUTDIR="${got#*=}"
+ 			print_info 3 "CMD_KERNEL_OUTPUTDIR: ${CMD_KERNEL_OUTPUTDIR}"
+ 			;;
+ 		--utils-ar=*)
+-			CMD_UTILS_AR="${*#*=}"
++			CMD_UTILS_AR="${got#*=}"
+ 			print_info 3 "CMD_UTILS_AR: ${CMD_UTILS_AR}"
+ 			;;
+ 		--utils-as=*)
+-			CMD_UTILS_AS="${*#*=}"
++			CMD_UTILS_AS="${got#*=}"
+ 			print_info 3 "CMD_UTILS_AS: ${CMD_UTILS_AS}"
+ 			;;
+ 		--utils-cc=*)
+-			CMD_UTILS_CC="${*#*=}"
++			CMD_UTILS_CC="${got#*=}"
+ 			print_info 3 "CMD_UTILS_CC: ${CMD_UTILS_CC}"
+ 			;;
+ 		--utils-cxx=*)
+-			CMD_UTILS_CXX="${*#*=}"
++			CMD_UTILS_CXX="${got#*=}"
+ 			print_info 3 "CMD_UTILS_CXX: ${CMD_UTILS_CXX}"
+ 			;;
+ 		--utils-cflags=*)
+-			CMD_UTILS_CFLAGS="${*#*=}"
++			CMD_UTILS_CFLAGS="${got#*=}"
+ 			print_info 3 "CMD_UTILS_CFLAGS: ${CMD_UTILS_CFLAGS}"
+ 			;;
+ 		--utils-ld=*)
+-			CMD_UTILS_LD="${*#*=}"
++			CMD_UTILS_LD="${got#*=}"
+ 			print_info 3 "CMD_UTILS_LD: ${CMD_UTILS_LD}"
+ 			;;
+ 		--utils-make=*)
+-			CMD_UTILS_MAKE="${*#*=}"
++			CMD_UTILS_MAKE="${got#*=}"
+ 			print_info 3 "CMD_UTILS_MAKE: ${CMD_UTILS_MAKE}"
+ 			;;
+ 		--utils-nm=*)
+-			CMD_UTILS_NM="${*#*=}"
++			CMD_UTILS_NM="${got#*=}"
+ 			print_info 3 "CMD_UTILS_NM: ${CMD_UTILS_NM}"
+ 			;;
+ 		--utils-objcopy=*)
+-			CMD_UTILS_OBJCOPY="${*#*=}"
++			CMD_UTILS_OBJCOPY="${got#*=}"
+ 			print_info 3 "CMD_UTILS_OBJCOPY: ${CMD_UTILS_OBJCOPY}"
+ 			;;
+ 		--utils-objdump=*)
+-			CMD_UTILS_OBJDUMP="${*#*=}"
++			CMD_UTILS_OBJDUMP="${got#*=}"
+ 			print_info 3 "CMD_UTILS_OBJDUMP: ${CMD_UTILS_OBJDUMP}"
+ 			;;
+ 		--utils-ranlib=*)
+-			CMD_UTILS_RANLIB="${*#*=}"
++			CMD_UTILS_RANLIB="${got#*=}"
+ 			print_info 3 "CMD_UTILS_RANLIB: ${CMD_UTILS_RANLIB}"
+ 			;;
+ 		--utils-readelf=*)
+-			CMD_UTILS_READELF="${*#*=}"
++			CMD_UTILS_READELF="${got#*=}"
+ 			print_info 3 "CMD_UTILS_READELF: ${CMD_UTILS_READELF}"
+ 			;;
+ 		--utils-strip=*)
+-			CMD_UTILS_STRIP="${*#*=}"
++			CMD_UTILS_STRIP="${got#*=}"
+ 			print_info 3 "CMD_UTILS_STRIP: ${CMD_UTILS_STRIP}"
+ 			;;
+ 		--makeopts=*)
+-			CMD_MAKEOPTS="${*#*=}"
++			#CMD_MAKEOPTS="${got#*=}"
++			#orig line: CMD_MAKEOPTS="${*#*=}"
++			#echo "CMD_MAKEOPTS: $# $*" > /tmp/moo.log
++			#workaround for --makeopts="-j4 V=0" else it's seen as "-j4 0"
++			#local moo="$*"
++			#CMD_MAKEOPTS="${moo#*=}"
++			CMD_MAKEOPTS="${got#*=}"
++			#echo "CMD_MAKEOPTS: ${CMD_MAKEOPTS}" >> /tmp/moo.log
+ 			print_info 3 "CMD_MAKEOPTS: ${CMD_MAKEOPTS}"
+ 			;;
+ 		--mountboot|--no-mountboot)
 @@ -345,11 +357,11 @@ parse_cmdline() {
  			print_info 3 "CMD_MOUNTBOOT: ${CMD_MOUNTBOOT}"
  			;;
@@ -295,216 +496,3 @@ Index: /var/tmp/portage/sys-kernel/genkernel-4.2.6-r2/work/genkernel-4.2.6/gen_c
  			print_info 3 "CMD_STRIP_TYPE: ${CMD_STRIP_TYPE}"
  			;;
  		--no-strip)
-Index: /var/tmp/portage/sys-kernel/genkernel-4.0.4/work/genkernel-4.0.4/gen_cmdline.sh
-===================================================================
---- genkernel-4.0.4/gen_cmdline.sh
-+++ genkernel-4.0.4/gen_cmdline.sh
-@@ -704,27 +704,27 @@ parse_cmdline() {
- 			print_info 3 "CMD_CLEAR_CACHEDIR: ${CMD_CLEAR_CACHEDIR}"
- 			;;
- 		--minkernpackage=*)
--			CMD_MINKERNPACKAGE="${*#*=}"
-+			CMD_MINKERNPACKAGE="${got#*=}"
- 			print_info 3 "MINKERNPACKAGE: ${CMD_MINKERNPACKAGE}"
- 			;;
- 		--modulespackage=*)
--			CMD_MODULESPACKAGE="${*#*=}"
-+			CMD_MODULESPACKAGE="${got#*=}"
- 			print_info 3 "MODULESPACKAGE: ${CMD_MODULESPACKAGE}"
- 			;;
- 		--kerncache=*)
--			CMD_KERNCACHE="${*#*=}"
-+			CMD_KERNCACHE="${got#*=}"
- 			print_info 3 "KERNCACHE: ${CMD_KERNCACHE}"
- 			;;
- 		--kernel-config-filename=*)
--			CMD_KERNEL_CONFIG_FILENAME="${*#*=}"
-+			CMD_KERNEL_CONFIG_FILENAME="${got#*=}"
- 			print_info 3 "CMD_KERNEL_CONFIG_FILENAME: ${CMD_KERNEL_CONFIG_FILENAME}"
- 			;;
- 		--kernel-filename=*)
--			CMD_KERNEL_FILENAME="${*#*=}"
-+			CMD_KERNEL_FILENAME="${got#*=}"
- 			print_info 3 "CMD_KERNEL_FILENAME: ${CMD_KERNEL_FILENAME}"
- 			;;
- 		--kernel-symlink-name=*)
--			CMD_KERNEL_SYMLINK_NAME="${*#*=}"
-+			CMD_KERNEL_SYMLINK_NAME="${got#*=}"
- 			print_info 3 "CMD_KERNEL_SYMLINK_NAME: ${CMD_KERNEL_SYMLINK_NAME}"
- 			;;
- 		--symlink|--no-symlink)
-Index: /var/tmp/portage/sys-kernel/genkernel-4.3.2/work/genkernel-4.3.2/gen_cmdline.sh
-===================================================================
---- .orig/var/tmp/portage/sys-kernel/genkernel-4.3.2/work/genkernel-4.3.2/gen_cmdline.sh
-+++ genkernel-4.3.2/gen_cmdline.sh
-@@ -301,125 +301,139 @@ parse_optbool() {
- }
- 
- parse_cmdline() {
--	case "$*" in
-+	if test "$#" -ne "1"; then
-+		echo "Unexpected situation, $# args passed to parse_cmdline() function: '$*'" >&2
-+		echo "forcing exit" >&2
-+		exit 1
-+	fi
-+	local got="$*"
-+	case "$got" in
-+	#case "$*" in
- 		--cross-compile=*)
--			CMD_CROSS_COMPILE="${*#*=}"
-+			CMD_CROSS_COMPILE="${got#*=}"
- 			print_info 3 "CMD_CROSS_COMPILE: ${CMD_CROSS_COMPILE}"
- 			;;
- 			--kernel-cross-compile=*)
--			CMD_KERNEL_CROSS_COMPILE="${*#*=}"
-+			CMD_KERNEL_CROSS_COMPILE="${got#*=}"
- 			print_info 3 "CMD_KERNEL_CROSS_COMPILE: ${CMD_KERNEL_CROSS_COMPILE}"
- 			;;
- 		--kernel-ar=*)
--			CMD_KERNEL_AR="${*#*=}"
-+			CMD_KERNEL_AR="${got#*=}"
- 			print_info 3 "CMD_KERNEL_AR: ${CMD_KERNEL_AR}"
- 			;;
- 		--kernel-as=*)
--			CMD_KERNEL_AS="${*#*=}"
-+			CMD_KERNEL_AS="${got#*=}"
- 			print_info 3 "CMD_KERNEL_AS: ${CMD_KERNEL_AS}"
- 			;;
- 		--kernel-cc=*)
--			CMD_KERNEL_CC="${*#*=}"
-+			CMD_KERNEL_CC="${got#*=}"
- 			print_info 3 "CMD_KERNEL_CC: ${CMD_KERNEL_CC}"
- 			;;
- 		--kernel-ld=*)
--			CMD_KERNEL_LD="${*#*=}"
-+			CMD_KERNEL_LD="${got#*=}"
- 			print_info 3 "CMD_KERNEL_LD: ${CMD_KERNEL_LD}"
- 			;;
- 		--kernel-make=*)
--			CMD_KERNEL_MAKE="${*#*=}"
-+			CMD_KERNEL_MAKE="${got#*=}"
- 			print_info 3 "CMD_KERNEL_MAKE: ${CMD_KERNEL_MAKE}"
- 			;;
- 		--kernel-nm=*)
--			CMD_KERNEL_NM="${*#*=}"
-+			CMD_KERNEL_NM="${got#*=}"
- 			print_info 3 "CMD_KERNEL_NM: ${CMD_KERNEL_NM}"
- 			;;
- 		--kernel-objcopy=*)
--			CMD_KERNEL_OBJCOPY="${*#*=}"
-+			CMD_KERNEL_OBJCOPY="${got#*=}"
- 			print_info 3 "CMD_KERNEL_OBJCOPY: ${CMD_KERNEL_OBJCOPY}"
- 			;;
- 		--kernel-objdump=*)
--			CMD_KERNEL_OBJDUMP="${*#*=}"
-+			CMD_KERNEL_OBJDUMP="${got#*=}"
- 			print_info 3 "CMD_KERNEL_OBJDUMP: ${CMD_KERNEL_OBJDUMP}"
- 			;;
- 		--kernel-ranlib=*)
--			CMD_KERNEL_RANLIB="${*#*=}"
-+			CMD_KERNEL_RANLIB="${got#*=}"
- 			print_info 3 "CMD_KERNEL_RANLIB: ${CMD_KERNEL_RANLIB}"
- 			;;
- 		--kernel-readelf=*)
--			CMD_KERNEL_READELF="${*#*=}"
-+			CMD_KERNEL_READELF="${got#*=}"
- 			print_info 3 "CMD_KERNEL_READELF: ${CMD_KERNEL_READELF}"
- 			;;
- 		--kernel-strip=*)
--			CMD_KERNEL_STRIP="${*#*=}"
-+			CMD_KERNEL_STRIP="${got#*=}"
- 			print_info 3 "CMD_KERNEL_STRIP: ${CMD_KERNEL_STRIP}"
- 			;;
- 		--kernel-target=*)
--			KERNEL_MAKE_DIRECTIVE_OVERRIDE="${*#*=}"
-+			KERNEL_MAKE_DIRECTIVE_OVERRIDE="${got#*=}"
- 			print_info 3 "KERNEL_MAKE_DIRECTIVE_OVERRIDE: ${KERNEL_MAKE_DIRECTIVE_OVERRIDE}"
- 			;;
- 		--kernel-binary=*)
--			KERNEL_BINARY_OVERRIDE="${*#*=}"
-+			KERNEL_BINARY_OVERRIDE="${got#*=}"
- 			print_info 3 "KERNEL_BINARY_OVERRIDE: ${KERNEL_BINARY_OVERRIDE}"
- 			;;
- 		--kernel-outputdir=*)
--			CMD_KERNEL_OUTPUTDIR="${*#*=}"
-+			CMD_KERNEL_OUTPUTDIR="${got#*=}"
- 			print_info 3 "CMD_KERNEL_OUTPUTDIR: ${CMD_KERNEL_OUTPUTDIR}"
- 			;;
- 		--utils-ar=*)
--			CMD_UTILS_AR="${*#*=}"
-+			CMD_UTILS_AR="${got#*=}"
- 			print_info 3 "CMD_UTILS_AR: ${CMD_UTILS_AR}"
- 			;;
- 		--utils-as=*)
--			CMD_UTILS_AS="${*#*=}"
-+			CMD_UTILS_AS="${got#*=}"
- 			print_info 3 "CMD_UTILS_AS: ${CMD_UTILS_AS}"
- 			;;
- 		--utils-cc=*)
--			CMD_UTILS_CC="${*#*=}"
-+			CMD_UTILS_CC="${got#*=}"
- 			print_info 3 "CMD_UTILS_CC: ${CMD_UTILS_CC}"
- 			;;
- 		--utils-cxx=*)
--			CMD_UTILS_CXX="${*#*=}"
-+			CMD_UTILS_CXX="${got#*=}"
- 			print_info 3 "CMD_UTILS_CXX: ${CMD_UTILS_CXX}"
- 			;;
- 		--utils-cflags=*)
--			CMD_UTILS_CFLAGS="${*#*=}"
-+			CMD_UTILS_CFLAGS="${got#*=}"
- 			print_info 3 "CMD_UTILS_CFLAGS: ${CMD_UTILS_CFLAGS}"
- 			;;
- 		--utils-ld=*)
--			CMD_UTILS_LD="${*#*=}"
-+			CMD_UTILS_LD="${got#*=}"
- 			print_info 3 "CMD_UTILS_LD: ${CMD_UTILS_LD}"
- 			;;
- 		--utils-make=*)
--			CMD_UTILS_MAKE="${*#*=}"
-+			CMD_UTILS_MAKE="${got#*=}"
- 			print_info 3 "CMD_UTILS_MAKE: ${CMD_UTILS_MAKE}"
- 			;;
- 		--utils-nm=*)
--			CMD_UTILS_NM="${*#*=}"
-+			CMD_UTILS_NM="${got#*=}"
- 			print_info 3 "CMD_UTILS_NM: ${CMD_UTILS_NM}"
- 			;;
- 		--utils-objcopy=*)
--			CMD_UTILS_OBJCOPY="${*#*=}"
-+			CMD_UTILS_OBJCOPY="${got#*=}"
- 			print_info 3 "CMD_UTILS_OBJCOPY: ${CMD_UTILS_OBJCOPY}"
- 			;;
- 		--utils-objdump=*)
--			CMD_UTILS_OBJDUMP="${*#*=}"
-+			CMD_UTILS_OBJDUMP="${got#*=}"
- 			print_info 3 "CMD_UTILS_OBJDUMP: ${CMD_UTILS_OBJDUMP}"
- 			;;
- 		--utils-ranlib=*)
--			CMD_UTILS_RANLIB="${*#*=}"
-+			CMD_UTILS_RANLIB="${got#*=}"
- 			print_info 3 "CMD_UTILS_RANLIB: ${CMD_UTILS_RANLIB}"
- 			;;
- 		--utils-readelf=*)
--			CMD_UTILS_READELF="${*#*=}"
-+			CMD_UTILS_READELF="${got#*=}"
- 			print_info 3 "CMD_UTILS_READELF: ${CMD_UTILS_READELF}"
- 			;;
- 		--utils-strip=*)
--			CMD_UTILS_STRIP="${*#*=}"
-+			CMD_UTILS_STRIP="${got#*=}"
- 			print_info 3 "CMD_UTILS_STRIP: ${CMD_UTILS_STRIP}"
- 			;;
- 		--makeopts=*)
--			CMD_MAKEOPTS="${*#*=}"
-+			#CMD_MAKEOPTS="${got#*=}"
-+			#orig line: CMD_MAKEOPTS="${*#*=}"
-+			#echo "CMD_MAKEOPTS: $# $*" > /tmp/moo.log
-+			#workaround for --makeopts="-j4 V=0" else it's seen as "-j4 0"
-+			#local moo="$*"
-+			#CMD_MAKEOPTS="${moo#*=}"
-+			CMD_MAKEOPTS="${got#*=}"
-+			#echo "CMD_MAKEOPTS: ${CMD_MAKEOPTS}" >> /tmp/moo.log
- 			print_info 3 "CMD_MAKEOPTS: ${CMD_MAKEOPTS}"
- 			;;
- 		--mountboot|--no-mountboot)
