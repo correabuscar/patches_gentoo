@@ -1,0 +1,173 @@
+installed to: /usr/lib64/python3.6/site-packages/portage/package/ebuild/fetch.py
+
+with:
+FEATURES=-usersync -userfetch userpriv usersandbox
+or
+FEATURES=-usersync -userfetch -userpriv -usersandbox
+
+before:
+ -rw-rw-r-- 1 root portage 245658 20.02.2020 18:48 /var/cache/distfiles/xkbcomp-1.4.3.tar.bz2
+after patch:
+ -rw-r--r-- 1 root root 245658 20.02.2020 18:48 /var/cache/distfiles/xkbcomp-1.4.3.tar.bz2
+
+
+#--- orig/lib/portage/package/ebuild/fetch.py	2020-02-21 15:54:00.736785490 +0100
+#+++ mod/lib/portage/package/ebuild/fetch.py	2020-02-21 15:54:42.888780851 +0100
+#@@ -61,9 +61,9 @@ _download_suffix = '.__download__'
+# 
+# _userpriv_spawn_kwargs = (
+# 	("uid",    portage_uid),
+#-	("gid",    portage_gid),
+#+	("gid",    0),
+# 	("groups", userpriv_groups),
+#-	("umask",  0o02),
+#+	("umask",  0o022),
+# )
+# 
+# def _hide_url_passwd(url):
+#@@ -907,7 +907,7 @@ def fetch(myuris, mysettings, listonly=0
+# 					if distdir_writable and not os.path.islink(myfile_path):
+# 						try:
+# 							apply_secpass_permissions(myfile_path,
+#-								gid=portage_gid, mode=0o664, mask=0o2,
+#+								gid=0, mode=0o644, mask=0o022,
+# 								stat_cached=mystat)
+# 						except PortageException as e:
+# 							if not os.access(myfile_path, os.R_OK):
+#@@ -1049,7 +1049,7 @@ def fetch(myuris, mysettings, listonly=0
+# 					if not os.path.islink(download_path):
+# 						try:
+# 							apply_secpass_permissions(download_path,
+#-								gid=portage_gid, mode=0o664, mask=0o2,
+#+								gid=0, mode=0o644, mask=0o022,
+# 								stat_cached=mystat)
+# 						except PortageException as e:
+# 							if not os.access(download_path, os.R_OK):
+#@@ -1270,7 +1270,7 @@ def fetch(myuris, mysettings, listonly=0
+# 					finally:
+# 						try:
+# 							apply_secpass_permissions(download_path,
+#-								gid=portage_gid, mode=0o664, mask=0o2)
+#+								gid=0, mode=0o644, mask=0o022) #this is the main thing!
+# 						except FileNotFound:
+# 							pass
+# 						except PortageException as e:
+Index: /var/tmp/portage/sys-apps/portage-3.0.30-r1/work/portage-3.0.30/lib/portage/package/ebuild/fetch.py
+===================================================================
+--- portage-3.0.30/lib/portage/package/ebuild/fetch.py
++++ portage-3.0.30/lib/portage/package/ebuild/fetch.py
+@@ -75,19 +75,19 @@ from portage.util import (
+     writemsg_stdout,
+ )
+ from portage.process import spawn
+ 
+ _download_suffix = ".__download__"
+ 
+ _userpriv_spawn_kwargs = (
+     ("uid", portage_uid),
+-    ("gid", portage_gid),
++    ("gid", 0),
+     ("groups", userpriv_groups),
+-    ("umask", 0o02),
++    ("umask", 0o022),
+ )
+ 
+ 
+ def _hide_url_passwd(url):
+     return re.sub(r"//([^:\s]+):[^@\s]+@", r"//\1:*password*@", url)
+ 
+ 
+ def _want_userfetch(settings):
+@@ -1276,19 +1276,19 @@ def fetch(
+                 if match and not force:
+                     # Skip permission adjustment for symlinks, since we don't
+                     # want to modify anything outside of the primary DISTDIR,
+                     # and symlinks typically point to PORTAGE_RO_DISTDIRS.
+                     if distdir_writable and not os.path.islink(myfile_path):
+                         try:
+                             apply_secpass_permissions(
+                                 myfile_path,
+-                                gid=portage_gid,
++                                gid=0,
+                                 mode=0o664,
+-                                mask=0o2,
++                                mask=0o22,
+                                 stat_cached=mystat,
+                             )
+                         except PortageException as e:
+                             if not os.access(myfile_path, os.R_OK):
+                                 writemsg(
+                                     _("!!! Failed to adjust permissions:" " %s\n")
+                                     % str(e),
+                                     noiselevel=-1,
+@@ -1458,19 +1458,19 @@ def fetch(
+                 else:
+                     # Skip permission adjustment for symlinks, since we don't
+                     # want to modify anything outside of the primary DISTDIR,
+                     # and symlinks typically point to PORTAGE_RO_DISTDIRS.
+                     if not os.path.islink(download_path):
+                         try:
+                             apply_secpass_permissions(
+                                 download_path,
+-                                gid=portage_gid,
++                                gid=0,
+                                 mode=0o664,
+-                                mask=0o2,
++                                mask=0o22,
+                                 stat_cached=mystat,
+                             )
+                         except PortageException as e:
+                             if not os.access(download_path, os.R_OK):
+                                 writemsg(
+                                     _("!!! Failed to adjust permissions:" " %s\n")
+                                     % (e,),
+                                     noiselevel=-1,
+#@@ -1754,17 +1754,17 @@ def fetch(
+#                     myret = -1
+#                     try:
+# 
+#                         myret = _spawn_fetch(mysettings, myfetch)
+# 
+#                     finally:
+#                         try:
+#                             apply_secpass_permissions(
+#-                                download_path, gid=portage_gid, mode=0o664, mask=0o2
+#+                                download_path, gid=0, mode=0o664, mask=0o22
+#                             )
+#                         except FileNotFound:
+#                             pass
+#                         except PortageException as e:
+#                             if not os.access(download_path, os.R_OK):
+#                                 writemsg(
+#                                     _("!!! Failed to adjust permissions:" " %s\n")
+#                                     % str(e),
+Index: /var/tmp/portage/sys-apps/portage-3.0.45.2/work/portage-3.0.45.2/lib/portage/package/ebuild/fetch.py
+===================================================================
+--- portage-3.0.45.2/lib/portage/package/ebuild/fetch.py
++++ /var/tmp/portage/sys-apps/portage-3.0.45.2/work/portage-3.0.45.2/lib/portage/package/ebuild/fetch.py
+#@@ -1749,7 +1749,7 @@ def fetch(
+#                     finally:
+#                         try:
+#                             apply_secpass_permissions(
+#-                                download_path, gid=portage_gid, mode=0o664, mask=0o2
+#+                                download_path, gid=0, mode=0o664, mask=0o22
+#                             )
+#                         except FileNotFound:
+#                             pass
+@@ -1745,15 +1745,15 @@ def fetch(
+                     myret = -1
+                     try:
+                         myret = _spawn_fetch(mysettings, myfetch)
+ 
+                     finally:
+                         try:
+                             apply_secpass_permissions(
+-                                download_path, gid=portage_gid, mode=0o664, mask=0o2
++                                download_path, gid=0, mode=0o664, mask=0o22
+                             )
+                         except FileNotFound:
+                             pass
+                         except PortageException as e:
+                             if not os.access(download_path, os.R_OK):
+                                 writemsg(
+                                     _("!!! Failed to adjust permissions:" " %s\n")

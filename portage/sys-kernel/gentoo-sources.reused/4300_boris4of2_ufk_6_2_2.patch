@@ -1,0 +1,48 @@
+#Index: /var/tmp/portage/sys-kernel/gentoo-sources-5.12.4/work/linux-5.12.4-gentoo/arch/x86/kernel/cpu/microcode/core.c
+#===================================================================
+#--- linux-5.12.4-gentoo/arch/x86/kernel/cpu/microcode/core.c
+#+++ linux-5.12.4-gentoo/arch/x86/kernel/cpu/microcode/core.c
+#@@ -636,8 +636,10 @@ static ssize_t reload_store(struct devic
+# 		goto put;
+# 
+# 	tmp_ret = microcode_ops->request_microcode_fw(bsp, &microcode_pdev->dev, true);
+#-	if (tmp_ret != UCODE_NEW)
+#+	if (tmp_ret != UCODE_NEW) {
+#+		pr_info("Not reloading previously-loaded already-in-effect microcode!\n");//not hit if no early loading happened before, even after sudo sh -c "echo 1  > /sys/devices/system/cpu/microcode/reload"
+# 		goto put;
+#+  }
+# 
+# 	mutex_lock(&microcode_mutex);
+# 	ret = microcode_reload_late();
+Index: /var/tmp/portage/sys-kernel/gentoo-sources-6.2.2/work/linux-6.2.2-gentoo/arch/x86/kernel/cpu/microcode/core.c
+===================================================================
+--- linux-6.2.2-gentoo/arch/x86/kernel/cpu/microcode/core.c
++++ /var/tmp/portage/sys-kernel/gentoo-sources-6.2.2/work/linux-6.2.2-gentoo/arch/x86/kernel/cpu/microcode/core.c
+@@ -478,8 +478,10 @@ static ssize_t reload_store(struct devic
+ 		goto put;
+ 
+ 	tmp_ret = microcode_ops->request_microcode_fw(bsp, &microcode_pdev->dev);
+-	if (tmp_ret != UCODE_NEW)
++	if (tmp_ret != UCODE_NEW) {
++    pr_info("Not reloading previously-loaded already-in-effect microcode!\n");//not hit if no early loading happened before, even after sudo sh -c "echo 1  > /sys/devices/system/cpu/microcode/reload"
+ 		goto put;
++  }
+ 
+ 	mutex_lock(&microcode_mutex);
+ 	ret = microcode_reload_late();
+diff --git a/arch/x86/kernel/cpu/microcode/amd.c b/arch/x86/kernel/cpu/microcode/amd.c
+index e1f3ba19ba54..878d1a8d2642 100644
+--- a/arch/x86/kernel/cpu/microcode/amd.c
++++ b/arch/x86/kernel/cpu/microcode/amd.c
+@@ -855,8 +855,10 @@ load_microcode_amd(bool save, u8 family, const u8 *data, size_t size)
+ 	if (!p) {
+ 		return ret;
+ 	} else {
+-		if (boot_cpu_data.microcode >= p->patch_id)
++		if (boot_cpu_data.microcode >= p->patch_id) {
++      pr_debug("Already in-memory microcode 0x%x ret=%d\n", boot_cpu_data.microcode, ret);//not hit when no early loading happened at all, in dmesg even after sudo sh -c "echo 1  > /sys/devices/system/cpu/microcode/reload"
+ 			return ret;
++    }
+ 
+ 		ret = UCODE_NEW;
+ 	}
