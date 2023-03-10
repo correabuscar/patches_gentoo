@@ -1,0 +1,16 @@
+avoid seeing this spam every 2 sec on dmesg:
+[  430.044964] hwmon hwmon2: TjMax is 100 degrees C
+
+Index: /var/tmp/portage/sys-kernel/gentoo-sources-6.2.2/work/linux-6.2.2-gentoo/drivers/hwmon/coretemp.c
+===================================================================
+--- linux-6.2.2-gentoo/drivers/hwmon/coretemp.c
++++ /var/tmp/portage/sys-kernel/gentoo-sources-6.2.2/work/linux-6.2.2-gentoo/drivers/hwmon/coretemp.c
+@@ -286,7 +286,7 @@ static int get_tjmax(struct temp_data *t
+ 		 * will be used
+ 		 */
+ 		if (val) {
+-			dev_dbg(dev, "TjMax is %d degrees C\n", val);
++			//dev_dbg(dev, "TjMax is %d degrees C\n", val);
+ 			return val * 1000;
+ 		}
+ 	}
