@@ -1,0 +1,11 @@
+#!/bin/bash
+
+repoloca=/tmp/patches_dir_for_push_as_user
+mkdir -p -- "$repoloca"
+rsync -a --chown=user:user -- .git "$repoloca"
+chown user:user -- "$repoloca"
+pushd "$repoloca"
+sudo -u user -g user --login -- bash -c "cd \"$repoloca\" && git push"
+ec="$?"
+popd
+exit "$ec"
