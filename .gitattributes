@@ -1,0 +1,6 @@
+#don't mess with line endings, hopefully! src: https://stackoverflow.com/a/39461324/19999437
+#* text=false
+#^ didn't work! "CRLF will be replaced by LF the next time Git touches it"
+
+* -text
+#src: https://stackoverflow.com/a/64633700/19999437
