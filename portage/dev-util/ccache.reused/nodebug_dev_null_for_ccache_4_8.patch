@@ -1,0 +1,133 @@
+ignore /dev/null when debug is used
+
+but i don't remember how debug was used, maybe by setting a log file via CCACHE_LOGFILE= env. var
+and also enabling CCACHE_DEBUG=1
+this would create multiple files based on the name of the log file, i think
+which would be bad if CCACHE_LOGFILE=/dev/null
+
+#Index: /var/tmp/portage/dev-util/ccache-4.2.1/work/ccache-4.2.1/src/ccache.cpp
+#===================================================================
+#--- ccache-4.2.1/src/ccache.cpp
+#+++ ccache-4.2.1/src/ccache.cpp
+#@@ -239,7 +239,7 @@ init_hash_debug(Context& ctx,
+#                 string_view section_name,
+#                 FILE* debug_text_file)
+# {
+#-  if (!ctx.config.debug()) {
+#+  if ((!ctx.config.debug()) || (std::string("/dev/null").compare(ctx.args_info.output_obj) == 0)) {
+#     return;
+#   }
+# 
+#@@ -2169,6 +2169,9 @@ finalize_at_exit(Context& ctx)
+#   }
+# 
+#   // Dump log buffer last to not lose any logs.
+#+  if ((!ctx.config.debug()) || (std::string("/dev/null").compare(ctx.args_info.output_obj) == 0)) {
+#+    return;
+#+  } else
+#   if (ctx.config.debug() && !ctx.args_info.output_obj.empty()) {
+#     const auto path = FMT("{}.ccache-log", ctx.args_info.output_obj);
+#     Logging::dump_log(path);
+#@@ -2425,7 +2425,7 @@ do_cache_compilation(Context& ctx, const
+#   LOG("Object file: {}", ctx.args_info.output_obj);
+#   MTR_META_THREAD_NAME(ctx.args_info.output_obj.c_str());
+# 
+#-  if (ctx.config.debug()) {
+#+  if ((ctx.config.debug())&&(std::string("/dev/null").compare(ctx.args_info.output_obj) != 0)) {
+#     const auto path = prepare_debug_path(
+#       ctx.config.debug_dir(), ctx.args_info.output_obj, "input-text");
+#     File debug_text_file(path, "w");
+#Index: /var/tmp/portage/dev-util/ccache-4.5.1/work/ccache-4.5.1/src/ccache.cpp
+#===================================================================
+#--- ccache-4.5.1/src/ccache.cpp
+#+++ ccache-4.5.1/src/ccache.cpp
+#@@ -1975,17 +1975,18 @@ cache_compilation(int argc, const char*
+# static nonstd::expected<core::StatisticsCounters, Failure>
+# do_cache_compilation(Context& ctx, const char* const* argv)
+# {
+#   if (ctx.actual_cwd.empty()) {
+#     LOG("Unable to determine current working directory: {}", strerror(errno));
+#     return nonstd::make_unexpected(Statistic::internal_error);
+#   }
+# 
+#-  if (!ctx.config.log_file().empty() || ctx.config.debug()) {
+#+  //if (!ctx.config.log_file().empty() || ctx.config.debug()) {
+#+  if (!ctx.config.log_file().empty() || (ctx.config.debug()&&(std::string("/dev/null").compare(ctx.args_info.output_obj) != 0))) {
+#     ctx.config.visit_items([&ctx](const std::string& key,
+#                                   const std::string& value,
+#                                   const std::string& origin) {
+#       const auto& log_value =
+#         key == "secondary_storage"
+#           ? ctx.storage.get_secondary_storage_config_for_logging()
+#           : value;
+Index: /var/tmp/portage/dev-util/ccache-4.7/work/ccache-4.7/src/ccache.cpp
+===================================================================
+--- ccache-4.7/src/ccache.cpp
++++ ccache-4.7/src/ccache.cpp
+@@ -195,7 +195,7 @@ init_hash_debug(Context& ctx,
+                 std::string_view section_name,
+                 FILE* debug_text_file)
+ {
+-  if (!ctx.config.debug()) {
++  if ((!ctx.config.debug()) || (std::string("/dev/null").compare(ctx.args_info.output_obj) == 0)) {
+     return;
+   }
+ 
+@@ -2140,7 +2140,7 @@ do_cache_compilation(Context& ctx, const
+ static void
+ log_result_to_debug_log(Context& ctx)
+ {
+-  if (ctx.config.log_file().empty() && !ctx.config.debug()) {
++  if ((ctx.config.log_file().empty() && !ctx.config.debug()) || (ctx.config.debug()&&(std::string("/dev/null").compare(ctx.args_info.output_obj) != 0))) {
+     return;
+   }
+ 
+@@ -2187,12 +2187,16 @@ finalize_at_exit(Context& ctx)
+   }
+ 
+   // Dump log buffer last to not lose any logs.
+-  if (ctx.config.debug() && !ctx.args_info.output_obj.empty()) {
++  if ((!ctx.config.debug()) || (std::string("/dev/null").compare(ctx.args_info.output_obj) == 0)) {
++    return;
++  } else {
++  if (ctx.config.debug() && (!ctx.args_info.output_obj.empty() && (std::string("/dev/null").compare(ctx.args_info.output_obj) != 0) )) {
+     Logging::dump_log(prepare_debug_path(ctx.config.debug_dir(),
+                                          ctx.time_of_invocation,
+                                          ctx.args_info.output_obj,
+                                          "log"));
+   }
++  }
+ }
+ 
+ // The entry point when invoked to cache a compilation.
+#@@ -2267,7 +2271,7 @@ do_cache_compilation(Context& ctx, const
+#     return nonstd::make_unexpected(Statistic::internal_error);
+#   }
+# 
+#-  if (!ctx.config.log_file().empty() || ctx.config.debug()) {
+#+  if ((!ctx.config.log_file().empty() || ctx.config.debug())&&(std::string("/dev/null").compare(ctx.args_info.output_obj) != 0)) {
+#     ctx.config.visit_items([&ctx](const std::string& key,
+#                                   const std::string& value,
+#                                   const std::string& origin) {
+@@ -2385,7 +2389,7 @@ do_cache_compilation(Context& ctx, const
+   LOG("Object file: {}", ctx.args_info.output_obj);
+   MTR_META_THREAD_NAME(ctx.args_info.output_obj.c_str());
+ 
+-  if (ctx.config.debug()) {
++  if (ctx.config.debug() &&(std::string("/dev/null").compare(ctx.args_info.output_obj) != 0) ) {
+     const auto path = prepare_debug_path(ctx.config.debug_dir(),
+                                          ctx.time_of_invocation,
+        BULK_LOG("Config: ({}) {} = {}", origin, key, log_value);
+Index: /var/tmp/portage/dev-util/ccache-4.8/work/ccache-4.8/src/ccache.cpp
+===================================================================
+--- ccache-4.8/src/ccache.cpp
++++ /var/tmp/portage/dev-util/ccache-4.8/work/ccache-4.8/src/ccache.cpp
+@@ -2172,7 +2172,7 @@ initialize(Context& ctx, const char* con
+ #endif
+   }
+ 
+-  if (!ctx.config.log_file().empty() || ctx.config.debug()) {
++  if ((!ctx.config.log_file().empty() || ctx.config.debug())&&(std::string("/dev/null").compare(ctx.args_info.output_obj) != 0)) {
+     ctx.config.visit_items([&ctx](const std::string& key,
+                                   const std::string& value,
+                                   const std::string& origin) {
