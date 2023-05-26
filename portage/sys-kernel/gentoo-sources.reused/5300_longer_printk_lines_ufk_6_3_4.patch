@@ -1,0 +1,82 @@
+after patch:
+[    0.000000] Command line: BOOT_IMAGE=/boot/vmlinuz-linux-stable root=UUID=2b8b9ab8-7ac5-4586-aa42-d7ffb12de92a rw root_trim=yes rd.luks.allow-discards rd.luks.options=discard ipv6.disable=1 ipv6.disable_ipv6=1 ipv6.autoconf=0 loglevel=15 log_buf_len=16M ignore_loglevel printk.always_kmsg_dump=y printk.time=y printk.devkmsg=on mminit_loglevel=4 memory_corruption_check=1 fbcon=scrollback:4096k fbcon=font:ProFont6x11 net.ifnames=0 nolvm dobtrfs console=tty1 earlyprintk=vga audit=0 systemd.log_target=kmsg systemd.journald.forward_to_console=1 enforcing=0 udev.children-max=1256 rd.udev.children-max=1256 nohz=on oops=panic crashkernel=256M panic=0 page_poison=1 psi=1 sysrq_always_enabled random.trust_cpu=off logo.nologo lpj=0 mce=bootlog reboot=force,cold noexec=on nohibernate scsi_mod.use_blk_mq=1 consoleblank=120 mitigations=auto,nosmt l1tf=full,force spec_store_bypass_disable=auto spectre_v2=auto spectre_v2_user=auto mds=full,nosmt rd.log=all noefi cpuidle.governor=teo zram.num_devices=3 zswap.enabled=0 zswap.same_filled_pages_enabled=1 zswap.compressor=zstd zswap.max_pool_percent=40 zswap.zpool=z3fold i915.alpha_support=1 i915.fastboot=1
+
+so this was previously hidden: (z)swap.enabled=0 zswap.same_filled_pages_enabled=1 zswap.compressor=zstd zswap.max_pool_percent=40 zswap.zpool=z3fold i915.alpha_support=1 i915.fastboot=1
+
+#Index: /var/tmp/portage/sys-kernel/gentoo-sources-5.13.1/work/linux-5.13.1-gentoo/kernel/printk/printk.c
+#===================================================================
+#--- linux-5.13.1-gentoo/kernel/printk/printk.c
+#+++ linux-5.13.1-gentoo/kernel/printk/printk.c
+#@@ -398,7 +398,10 @@ static struct latched_seq clear_seq = {
+# #define CONSOLE_LOG_MAX		1024
+# 
+# /* the maximum size allowed to be reserved for a record */
+#-#define LOG_LINE_MAX		(CONSOLE_LOG_MAX - PREFIX_MAX)
+#+//#define LOG_LINE_MAX		(CONSOLE_LOG_MAX - PREFIX_MAX)
+#+#define LOG_LINE_MAX		(PAGE_SIZE - PREFIX_MAX ) //was: (CONSOLE_LOG_MAX - PREFIX_MAX) aka (1024 - PREFIX_MAX)
+#+//^ else this line gets truncated: [    0.000000] Command line: BOOT_IMAGE=/boot/vmlinuz-linux-stable root=UUID=2b8b9ab8-7ac5-4586-aa42-d7ffb12de92a rw root_trim=yes rd.luks.allow-discards rd.luks.options=discard ipv6.disable=1 ipv6.disable_ipv6=1 ipv6.autoconf=0 loglevel=15 log_buf_len=16M ignore_loglevel printk.always_kmsg_dump=y printk.time=y printk.devkmsg=on mminit_loglevel=4 memory_corruption_check=1 fbcon=scrollback:4096k fbcon=font:ProFont6x11 net.ifnames=0 nolvm dobtrfs console=tty1 earlyprintk=vga audit=0 systemd.log_target=kmsg systemd.journald.forward_to_console=1 enforcing=0 udev.children-max=1256 rd.udev.children-max=1256 nohz=on oops=panic crashkernel=256M panic=0 page_poison=1 psi=1 sysrq_always_enabled random.trust_cpu=off logo.nologo lpj=0 mce=bootlog reboot=force,cold noexec=on nohibernate scsi_mod.use_blk_mq=1 consoleblank=120 mitigations=auto,nosmt l1tf=full,force spec_store_bypass_disable=auto spectre_v2=auto spectre_v2_user=auto mds=full,nosmt rd.log=all noefi cpuidle.governor=teo zram.num_devices=3 z
+#+
+# 
+# #define LOG_LEVEL(v)		((v) & 0x07)
+# #define LOG_FACILITY(v)		((v) >> 3 & 0xff)
+diff --git a/kernel/trace/trace.c b/kernel/trace/trace.c
+index c3aabb576fe5..f0fe8bf8dacc 100644
+--- a/kernel/trace/trace.c
++++ b/kernel/trace/trace.c
+@@ -8796,7 +8796,13 @@ static struct notifier_block trace_die_notifier = {
+  * printk is set to max of 1024, we really don't need it that big.
+  * Nothing should be printing 1000 characters anyway.
+  */
+-#define TRACE_MAX_PRINT		1000
++#ifdef CONFIG_PRINTK_CALLER
++#define PREFIX_MAX    48
++#else
++#define PREFIX_MAX    32
++#endif
++//^ copy/pasted from kernel/printk/printk.c
++#define TRACE_MAX_PRINT		(PAGE_SIZE - PREFIX_MAX) // was 1000
+ 
+ /*
+  * Define here KERN_TRACE so that we have one place to modify
+Index: /var/tmp/portage/sys-kernel/gentoo-sources-6.3.4/work/linux-6.3.4-gentoo/kernel/printk/internal.h
+===================================================================
+--- .orig/var/tmp/portage/sys-kernel/gentoo-sources-6.3.4/work/linux-6.3.4-gentoo/kernel/printk/internal.h
++++ linux-6.3.4-gentoo/kernel/printk/internal.h
+@@ -24,10 +24,12 @@ int devkmsg_sysctl_set_loglvl(struct ctl
+  * the maximum size of a formatted record (i.e. with prefix added
+  * per line and dropped messages or in extended message format)
+  */
+-#define PRINTK_MESSAGE_MAX	2048
++#define PRINTK_MESSAGE_MAX	(PAGE_SIZE) //was 2048
+ 
+ /* the maximum size allowed to be reserved for a record */
+-#define PRINTKRB_RECORD_MAX	1024
++#define PRINTKRB_RECORD_MAX	(PAGE_SIZE - PRINTK_PREFIX_MAX) //was 1024
++//^ else this line gets truncated: [    0.000000] Command line: BOOT_IMAGE=/boot/vmlinuz-linux-stable root=UUID=2b8b9ab8-7ac5-4586-aa42-d7ffb12de92a rw root_trim=yes rd.luks.allow-discards rd.luks.options=discard ipv6.disable=1 ipv6.disable_ipv6=1 ipv6.autoconf=0 loglevel=15 log_buf_len=16M ignore_loglevel printk.always_kmsg_dump=y printk.time=y printk.devkmsg=on mminit_loglevel=4 memory_corruption_check=1 fbcon=scrollback:4096k fbcon=font:ProFont6x11 net.ifnames=0 nolvm dobtrfs console=tty1 earlyprintk=vga audit=0 systemd.log_target=kmsg systemd.journald.forward_to_console=1 enforcing=0 udev.children-max=1256 rd.udev.children-max=1256 nohz=on oops=panic crashkernel=256M panic=0 page_poison=1 psi=1 sysrq_always_enabled random.trust_cpu=off logo.nologo lpj=0 mce=bootlog reboot=force,cold noexec=on nohibernate scsi_mod.use_blk_mq=1 consoleblank=120 mitigations=auto,nosmt l1tf=full,force spec_store_bypass_disable=auto spectre_v2=auto spectre_v2_user=auto mds=full,nosmt rd.log=all noefi cpuidle.governor=teo zram.num_devices=3 z
++//see: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=b0975c47c2178e35038b12ad63f17c64bb522684
+ 
+ /* Flags for a single printk record. */
+ enum printk_info_flags {
+Index: /var/tmp/portage/sys-kernel/gentoo-sources-6.3.4/work/linux-6.3.4-gentoo/kernel/trace/trace.c
+===================================================================
+--- .orig/var/tmp/portage/sys-kernel/gentoo-sources-6.3.4/work/linux-6.3.4-gentoo/kernel/trace/trace.c
++++ linux-6.3.4-gentoo/kernel/trace/trace.c
+@@ -9953,17 +9953,7 @@ static int trace_die_panic_handler(struc
+ 	return NOTIFY_DONE;
+ }
+ 
+-/*
+- * printk is set to max of 1024, we really don't need it that big.
+- * Nothing should be printing 1000 characters anyway.
+- */
+-#ifdef CONFIG_PRINTK_CALLER
+-#define PREFIX_MAX    48
+-#else
+-#define PREFIX_MAX    32
+-#endif
+-//^ copy/pasted from kernel/printk/printk.c
+-#define TRACE_MAX_PRINT		(PAGE_SIZE - PREFIX_MAX) // was 1000
++#define TRACE_MAX_PRINT		(PAGE_SIZE - PRINTK_PREFIX_MAX) // was 1000
+ 
+ /*
+  * Define here KERN_TRACE so that we have one place to modify
