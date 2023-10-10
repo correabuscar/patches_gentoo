@@ -1,0 +1,112 @@
+updated for gemato-20.5
+======
+now updated for gemato-16.2 (worked on 20.2 too)
+==
+this is noautomaticWKDupdates_2of2.patch for gemato-14.3
+and it also needs the portage patch: noautomaticWKDupdates_1of2.patch
+to be complete!
+
+what it does it just use whatever is specified via -K eg. /usr/share/openpgp-keys/gentoo-release.asc
+and it doesn't refresh any keys from upstream either via WKD or via keyserver
+
+so without patch:
+$ time gemato verify /var/db/repos/gentoo -K /usr/share/openpgp-keys/gentoo-release.asc --one-file-system --require-signed-manifest  --debug
+INFO:root:Refreshing keys...
+DEBUG:root:refresh_keys(allow_wkd=True, keyserver=None) called
+DEBUG:root:refresh_keys_wkd(): keyid: DB6B8C1F96D8BF6D
+DEBUG:root:refresh_keys_wkd(): fingerprint: DCD05B71EAB94199527F44ACDB6B8C1F96D8BF6D
+DEBUG:root:refresh_keys_wkd(): UID: infrastructure@gentoo.org
+DEBUG:root:refresh_keys_wkd(): ignoring UID without mail: Gentoo Portage Snapshot Signing Key (Automated Signing Key)
+DEBUG:root:refresh_keys_wkd(): keyid: 9E6438C817072058
+DEBUG:root:refresh_keys_wkd(): fingerprint: D99EAC7379A850BCE47DA5F29E6438C817072058
+DEBUG:root:refresh_keys_wkd(): UID: releng@gentoo.org
+DEBUG:root:refresh_keys_wkd(): keyid: BB572E0E2D182910
+DEBUG:root:refresh_keys_wkd(): fingerprint: 13EBBDBEDE7A12775DFDB1BABB572E0E2D182910
+DEBUG:root:refresh_keys_wkd(): UID: releng@gentoo.org
+DEBUG:root:refresh_keys_wkd(): keyid: A13D0EF1914E7A72
+DEBUG:root:refresh_keys_wkd(): fingerprint: EF9538C9E8E64311A52CDEDFA13D0EF1914E7A72
+DEBUG:root:refresh_keys_wkd(): UID: repomirrorci@gentoo.org
+DEBUG:root:refresh_keys_wkd(): gpg --locate-keys failed: gpg: keybox '/tmp/tmp21ufouoi/pubring.kbx' created
+gpg: connecting dirmngr at '/tmp/tmp21ufouoi/S.dirmngr' failed: IPC connect call failed
+gpg: error retrieving 'infrastructure@gentoo.org' via WKD: No dirmngr
+gpg: error reading key: No dirmngr
+gpg: connecting dirmngr at '/tmp/tmp21ufouoi/S.dirmngr' failed: IPC connect call failed
+gpg: error retrieving 'repomirrorci@gentoo.org' via WKD: No dirmngr
+gpg: error reading key: No dirmngr
+gpg: connecting dirmngr at '/tmp/tmp21ufouoi/S.dirmngr' failed: IPC connect call failed
+gpg: error retrieving 'releng@gentoo.org' via WKD: No dirmngr
+gpg: error reading key: No dirmngr
+
+DEBUG:root:GNUPGHOME left for debug purposes: /tmp/tmpo98xmth7
+ERROR:root:OpenPGP keyring refresh failed:
+gpg: connecting dirmngr at '/tmp/tmpo98xmth7/S.dirmngr' failed: IPC connect call failed
+gpg: keyserver refresh failed: No dirmngr
+
+
+real	0m24.193s
+user	0m0.157s
+sys	0m0.021s
+
+and with patch:
+$ time gemato verify /var/db/repos/gentoo -K /usr/share/openpgp-keys/gentoo-release.asc --one-file-system --require-signed-manifest  --debug
+INFO:root:Refreshing keys...
+DEBUG:root:refresh_keys(allow_wkd=True, keyserver=None) called
+DEBUG:root:refresh_keys_wkd(): doing nothing (see: /usr/lib64/python3.6/site-packages/gemato/openpgp.py)
+DEBUG:root:refresh_keys_keyserver(): doing nothing (see: /usr/lib64/python3.6/site-packages/gemato/openpgp.py)
+INFO:root:Keys refreshed.
+INFO:root:Manifest timestamp: 2020-02-23 14:08:56 UTC
+INFO:root:Valid OpenPGP signature found:
+INFO:root:- primary key: DCD05B71EAB94199527F44ACDB6B8C1F96D8BF6D
+INFO:root:- subkey: E1D6ABB63BFCFB4BA02FDF1CEC590EEAC9189250
+INFO:root:- timestamp: 2020-02-23 14:08:56 UTC
+INFO:root:Verifying /var/db/repos/gentoo...
+INFO:root:/var/db/repos/gentoo verified in 10.06 seconds
+DEBUG:root:GNUPGHOME left for debug purposes: /tmp/tmp2_ok1oze
+
+real	0m10.263s
+user	0m9.316s
+sys	0m0.910s
+
+Note: you can use no patch and arg: -R aka --no-refresh-keys
+to get the same behaviour! but this patch is intended to be used with 'emerge --sync' (or 'emaint sync' ? not tried )!
+
+file installed in: /usr/lib64/python3.6/site-packages/gemato/openpgp.py
+
+Index: /var/tmp/portage/app-portage/gemato-16.2/work/gemato-16.2/gemato/openpgp.py
+===================================================================
+--- orig/gemato/openpgp.py
++++ mod/gemato/openpgp.py
+@@ -405,7 +405,7 @@ class IsolatedGPGEnvironment(SystemGPGEn
+     or use as a context manager (via 'with').
+     """
+ 
+-    def __init__(self, debug=False, proxy=None, timeout=None):
++    def __init__(self, debug=True, proxy=None, timeout=None):
+         super().__init__(debug=debug)
+         self.proxy = proxy
+         self.timeout = timeout
+@@ -382,11 +382,14 @@ debug-level guru
+ 
+         return ret
+ 
+-    def refresh_keys_wkd(self):
++    def refresh_keys_wkd(self, Force=False):
+         """
+         Attempt to fetch updated keys using WKD.  Returns true if *all*
+         keys were successfully found.  Otherwise, returns false.
+         """
++        if False == Force:
++            logging.debug('refresh_keys_wkd(): doing nothing (see: /usr/lib64/python3.6/site-packages/gemato/openpgp.py)')
++            return False
+         if requests is None:
+             logging.debug('refresh_keys_wkd(): failing because requests'
+                           'module is missing')
+@@ -359,6 +362,8 @@ debug-level guru
+         return True
+ 
+     def refresh_keys_keyserver(self, keyserver=None):
++        logging.debug('refresh_keys_keyserver(): doing nothing (see: /usr/lib64/python3.6/site-packages/gemato/openpgp.py)')
++        return
+         ks_args = []
+         if keyserver is not None:
+             ks_args = ['--keyserver', keyserver]

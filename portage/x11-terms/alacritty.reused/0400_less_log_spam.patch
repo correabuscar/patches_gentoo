@@ -1,3 +1,6 @@
+applied on:
+  commit 778558060243505d07b0850a115e3944862db5cd (HEAD -> master, origin/master, origin/HEAD)
+  Date:   Fri Nov 11 02:27:05 2022 -0800
 diff --git a/alacritty/src/display/mod.rs b/alacritty/src/display/mod.rs
 index c17d8aa7..656094c5 100644
 --- a/alacritty/src/display/mod.rs

@@ -1,0 +1,16 @@
+when privacy.reduceTimerPrecision.unconditional=true in about:config it will clamp high precision timer to 20us, but now clamp it to 100ms instead, just like privacy.resistFingerprinting.reduceTimerPrecision.microseconds=100000 us is already set for non-high precision timer mode.
+
+
+Index: /var/tmp/portage/www-client/firefox-118.0.1/work/firefox-118.0.1/toolkit/components/resistfingerprinting/nsRFPService.cpp
+===================================================================
+--- .orig/var/tmp/portage/www-client/firefox-118.0.1/work/firefox-118.0.1/toolkit/components/resistfingerprinting/nsRFPService.cpp
++++ firefox-118.0.1/toolkit/components/resistfingerprinting/nsRFPService.cpp
+@@ -88,7 +88,7 @@ static mozilla::LazyLogModule gResistFin
+ 
+ #define RESIST_FINGERPRINTINGPROTECTION_OVERRIDE_PREF \
+   "privacy.fingerprintingProtection.overrides"
+-#define RFP_TIMER_UNCONDITIONAL_VALUE 20
++#define RFP_TIMER_UNCONDITIONAL_VALUE 100000 //20 //this is in microseconds ie. 20us (original value)
+ #define LAST_PB_SESSION_EXITED_TOPIC "last-pb-context-exited"
+ 
+ static constexpr uint32_t kVideoFramesPerSec = 30;

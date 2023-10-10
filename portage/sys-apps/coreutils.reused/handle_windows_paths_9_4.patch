@@ -1,0 +1,44 @@
+filenames with paths like a\b\c will be tried as a/b/c if the first fails
+...these names with paths like that are inside checksum files created on windows, and now you're trying to check them on linux.
+
+
+Index: /var/tmp/portage/sys-apps/coreutils-9.4/work/coreutils-9.4/src/digest.c
+===================================================================
+--- .orig/var/tmp/portage/sys-apps/coreutils-9.4/work/coreutils-9.4/src/digest.c
++++ coreutils-9.4/src/digest.c
+@@ -985,6 +985,27 @@ digest_file (char const *filename, int *
+   else
+     {
+       fp = fopen (filename, (O_BINARY && *binary ? "rb" : "r"));
++      //fprintf(stderr, "!! '%s'\n", filename);
++      if ((fp == NULL) && (NULL != index(filename,'\\'))) { //ie. there is a \ in filename(which contains the path too), only then try to convert \ into /
++        if (!ignore_missing && errno == ENOENT) {
++          //error (0, errno, "%s", quotef (filename));
++          fprintf(stderr, "(%d) '%s': %s. Will next retry with '\\' as '/' just in case this was a path from Windows and we're now in Linux.\n", errno, strerror(errno), quotef (filename));
++          fflush(stdout);
++          fflush(stderr);
++        }
++        //strncpy(new, filename,
++        char *c=filename; // bye bye const
++        int count=0;
++        while (('\0' != *c) && (count <= 4096)) {
++          if (*c == '\\') {
++            *c = '/';
++          }
++          c++;
++          count++;
++        }
++        //fprintf(stderr," !! count=%d\n", count);
++        fp = fopen (filename, (O_BINARY && *binary ? "rb" : "r"));
++      }
+       if (fp == nullptr)
+         {
+           if (ignore_missing && errno == ENOENT)
+@@ -1154,6 +1175,7 @@ digest_check (char const *checkfile_name
+     }
+   else
+     {
++      //fprintf(stderr, "!!! %s\n", checkfile_name);
+       checkfile_stream = fopen (checkfile_name, "r");
+       if (checkfile_stream == nullptr)
+         {

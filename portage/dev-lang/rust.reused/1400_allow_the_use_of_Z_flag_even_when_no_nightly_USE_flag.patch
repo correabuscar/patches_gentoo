@@ -1,0 +1,19 @@
+so USE=nightly got masked in /var/db/repos/gentoo/profiles/base/package.use.mask
+which means I'm not allowed to pass -Z flag to rustc when compiling my programs!
+
+this attempts to workaround that!
+although I could enable the USE flag in /etc/portage/profile/use.mask
+
+Index: /var/tmp/portage/dev-lang/rust-1.73.0/work/rustc-1.73.0-src/compiler/rustc_session/src/config.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.73.0/work/rustc-1.73.0-src/compiler/rustc_session/src/config.rs
++++ rustc-1.73.0-src/compiler/rustc_session/src/config.rs
+@@ -2958,7 +2958,7 @@ pub mod nightly_options {
+         flags: &[RustcOptGroup],
+     ) {
+         let has_z_unstable_option = matches.opt_strs("Z").iter().any(|x| *x == "unstable-options");
+-        let really_allows_unstable_options = match_is_nightly_build(matches);
++        let really_allows_unstable_options = true;
+ 
+         for opt in flags.iter() {
+             if opt.stability == OptionStability::Stable {

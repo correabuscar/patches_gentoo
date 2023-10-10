@@ -1,0 +1,14 @@
+
+Index: /usr/lib/python3.11/site-packages/pkgcore/ebuild/repository.py
+===================================================================
+--- .orig/usr/lib/python3.11/site-packages/pkgcore/ebuild/repository.py
++++ pkgcore-0.12.23/src/pkgcore/ebuild/repository.py
+@@ -43,7 +43,7 @@ from .eapi import get_eapi
+ 
+ class repo_operations(_repo_ops.operations):
+     def _cmd_implementation_manifest(
+-        self, domain, restriction, observer, mirrors=False, force=False, distdir=None
++        self, domain, restriction, observer, mirrors=True, force=False, distdir=None
+     ):
+         manifest_config = self.repo.config.manifests
+         if manifest_config.disabled:

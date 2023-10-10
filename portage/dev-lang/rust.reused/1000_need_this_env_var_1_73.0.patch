@@ -1,0 +1,264 @@
+see this patch in action at:
+somewhere inside rustlearnage the recompile_self dir!
+actually now(23oct2022) it's in: /home/user/sandbox/rust/workspace_buildrs3/recompile_self
+
+#diff --git a/src/doc/src/reference/environment-variables.md b/src/doc/src/reference/environment-variables.md
+#index 145737a6..cac4cf47 100644
+#--- a/src/tools/cargo/src/doc/src/reference/environment-variables.md
+#+++ b/src/tools/cargo/src/doc/src/reference/environment-variables.md
+#@@ -52,6 +52,7 @@ let version = env!("CARGO_PKG_VERSION");
+# 
+# * `CARGO` - Path to the `cargo` binary performing the build.
+# * `CARGO_MANIFEST_DIR` - The directory containing the manifest of your package.
+#+* `CARGO_TARGET_BINFILE_FULLPATH` - (added by a cargo patch, locally!) The fullpath of the output executable ie. the file that `cargo run` will execute
+# * `CARGO_PKG_VERSION` - The full version of your package.
+# * `CARGO_PKG_VERSION_MAJOR` - The major version of your package.
+# * `CARGO_PKG_VERSION_MINOR` - The minor version of your package.
+#@@ -83,6 +84,7 @@ let out_dir = env::var("OUT_DIR").unwrap();
+#                          script). Also note that this is the value of the
+#                          current working directory of the build script when it
+#                          starts.
+#+* `CARGO_TARGET_BINFILE_FULLPATH` - (added by a cargo patch, locally!) The fullpath of the output executable ie. the file that `cargo run` will execute
+# * `CARGO_MANIFEST_LINKS` - the manifest `links` value.
+# * `CARGO_FEATURE_<name>` - For each activated feature of the package being
+#                            built, this environment variable will be present
+#diff --git a/src/cargo/core/compiler/mod.rs b/src/cargo/core/compiler/mod.rs
+#index 22f70bf6..d0f16abf 100644
+#--- a/src/cargo/core/compiler/mod.rs
+#+++ b/src/cargo/core/compiler/mod.rs
+#@@ -908,6 +908,42 @@ fn build_base_args<'a, 'cfg>(
+#         let dir = cx.files().layout(unit.kind).incremental().as_os_str();
+#         opt(cmd, "-C", "incremental=", Some(dir));
+#     }
+#+
+#+    //starter: https://github.com/rust-lang/cargo/issues/2841#issuecomment-354932455
+#+    let mut bin_outfile_full_path=Option::None;
+#+    //for &(ref dst, ref link_dst, file_type) in cx.target_filenames(&unit)?.iter() {
+#+    for output in cx.outputs(unit)?.iter() {//new line
+#+        //if file_type != FileFlavor::Normal {
+#+        if output.flavor != FileFlavor::Normal {
+#+            continue
+#+        }
+#+        //let bindst = match *link_dst {
+#+        let bindst = match output.hardlink {
+#+            Some(ref link_dst) => link_dst,
+#+            //None => dst,
+#+            None => &output.path,
+#+        };
+#+
+#+        if bin_outfile_full_path.is_some() {
+#+            log::error!("!! Already set bin_outfile_full_path='{}' This is unexpected. Should've been set only once! FIXME: investigate what caused this!",bin_outfile_full_path.clone().unwrap());
+#+            assert!(bin_outfile_full_path.is_none());
+#+        } else {
+#+            bin_outfile_full_path=Option::Some(bindst.display().to_string());
+#+            cmd.env("CARGO_TARGET_BINFILE_FULLPATH",bindst.display().to_string()); //alright this makes it work in src/main.rs with env!() macro! eg. const OUTPUT_EXE_AT_COMPILETIME: &'static str = env!("CARGO_TARGET_BINFILE_FULLPATH");
+#+            //the following is needed specifically for build.rs availability of the same env. var:
+#+            {
+#+                let a=cx.compilation.extra_env.entry(
+#+                    unit.pkg.package_id().clone()
+#+                )
+#+                    .or_insert_with(Vec::new);
+#+                a.push(("CARGO_TARGET_BINFILE_FULLPATH".to_string(), 
+#+                        bindst.display().to_string())); //for build.rs availability! via eg. println!("Here's CARGO_TARGET_BINFILE_FULLPATH={}", env::var("CARGO_TARGET_BINFILE_FULLPATH").unwrap());
+#+            }
+#+            debug!("CARGO_TARGET_BINFILE_FULLPATH={}",bindst.display());
+#+        }
+#+    }//for
+#+
+#+
+#     Ok(())
+# }
+# 
+#diff --git a/src/cargo/core/compiler/mod.rs b/src/cargo/core/compiler/mod.rs
+#index 599b7721..82d30a74 100644
+#--- a/src/cargo/core/compiler/mod.rs
+#+++ b/src/cargo/core/compiler/mod.rs
+#@@ -968,6 +974,43 @@ fn build_base_args<'a, 'cfg>(
+#         let dir = cx.files().layout(unit.kind).incremental().as_os_str();
+#         opt(cmd, "-C", "incremental=", Some(dir));
+#     }
+#+
+#+    //starter: https://github.com/rust-lang/cargo/issues/2841#issuecomment-354932455
+#+    let mut bin_outfile_full_path=Option::None;
+#+    //for &(ref dst, ref link_dst, file_type) in cx.target_filenames(&unit)?.iter() {
+#+    for output in cx.outputs(unit)?.iter() {//new line
+#+        //if file_type != FileFlavor::Normal {
+#+        if output.flavor != FileFlavor::Normal {
+#+            continue
+#+        }
+#+        //let bindst = match *link_dst {
+#+        let bindst = match output.hardlink {
+#+            Some(ref link_dst) => link_dst,
+#+            //None => dst,
+#+            None => &output.path,
+#+        };
+#+
+#+        if bin_outfile_full_path.is_some() {
+#+            log::error!("!! Already set bin_outfile_full_path='{}' This is unexpected. Should've been set only once! FIXME: investigate what caused this! bindst='{}'",bin_outfile_full_path.clone().unwrap(),bindst.display().to_string());
+#+            //FIXME: hitting this during `make build` of tikv: [2019-09-20T20:59:48Z ERROR cargo::core::compiler] !! Already set bin_outfile_full_path='/home/user/build/2nonpkgs/rust.stuff/tikv/target/debug/deps/liblexical_core-f34ca059fce58bc7.a' This is unexpected. Should've been set only once! FIXME: investigate what caused this! bindst='/home/user/build/2nonpkgs/rust.stuff/tikv/target/debug/deps/liblexical_core-f34ca059fce58bc7.so'
+#+            //assert!(bin_outfile_full_path.is_none());
+#+        } else {
+#+            bin_outfile_full_path=Option::Some(bindst.display().to_string());
+#+            cmd.env("CARGO_TARGET_BINFILE_FULLPATH",bindst.display().to_string()); //alright this makes it work in src/main.rs with env!() macro! eg. const OUTPUT_EXE_AT_COMPILETIME: &'static str = env!("CARGO_TARGET_BINFILE_FULLPATH");
+#+            //the following is needed specifically for build.rs availability of the same env. var:
+#+            {
+#+                let a=cx.compilation.extra_env.entry(
+#+                    unit.pkg.package_id().clone()
+#+                )
+#+                    .or_insert_with(Vec::new);
+#+                a.push(("CARGO_TARGET_BINFILE_FULLPATH".to_string(), 
+#+                        bindst.display().to_string())); //for build.rs availability! via eg. println!("Here's CARGO_TARGET_BINFILE_FULLPATH={}", env::var("CARGO_TARGET_BINFILE_FULLPATH").unwrap());
+#+            }
+#+            debug!("CARGO_TARGET_BINFILE_FULLPATH={}",bindst.display());
+#+        }
+#+    }//for
+#+
+#+
+#     Ok(())
+# }
+# 
+
+#diff --git a/src/cargo/core/compiler/mod.rs b/src/cargo/core/compiler/mod.rs
+#index 542427d9f..33b3a84fd 100644
+#--- a/src/tools/cargo/src/cargo/core/compiler/mod.rs
+#+++ b/src/tools/cargo/src/cargo/core/compiler/mod.rs
+#@@ -907,6 +907,43 @@ fn build_base_args<'a, 'cfg>(
+#         cmd.arg("-Zforce-unstable-if-unmarked")
+#             .env("RUSTC_BOOTSTRAP", "1");
+#     }
+#+
+#+    //starter: https://github.com/rust-lang/cargo/issues/2841#issuecomment-354932455
+#+    let mut bin_outfile_full_path=Option::None;
+#+    //for &(ref dst, ref link_dst, file_type) in cx.target_filenames(&unit)?.iter() {
+#+    for output in cx.outputs(unit)?.iter() {//new line
+#+        //if file_type != FileFlavor::Normal {
+#+        if output.flavor != FileFlavor::Normal {
+#+            continue
+#+        }
+#+        //let bindst = match *link_dst {
+#+        let bindst = match output.hardlink {
+#+            Some(ref link_dst) => link_dst,
+#+            //None => dst,
+#+            None => &output.path,
+#+        };
+#+
+#+        if bin_outfile_full_path.is_some() {
+#+            log::error!("!! Already set bin_outfile_full_path='{}' This is unexpected. Should've been set only once! FIXME: investigate what caused this! bindst='{}'",bin_outfile_full_path.clone().unwrap(),bindst.display().to_string());
+#+            //FIXME: hitting this during `make build` of tikv: [2019-09-20T20:59:48Z ERROR cargo::core::compiler] !! Already set bin_outfile_full_path='/home/user/build/2nonpkgs/rust.stuff/tikv/target/debug/deps/liblexical_core-f34ca059fce58bc7.a' This is unexpected. Should've been set only once! FIXME: investigate what caused this! bindst='/home/user/build/2nonpkgs/rust.stuff/tikv/target/debug/deps/liblexical_core-f34ca059fce58bc7.so'
+#+            //assert!(bin_outfile_full_path.is_none());
+#+        } else {
+#+            bin_outfile_full_path=Option::Some(bindst.display().to_string());
+#+            cmd.env("CARGO_TARGET_BINFILE_FULLPATH",bindst.display().to_string()); //alright this makes it work in src/main.rs with env!() macro! eg. const OUTPUT_EXE_AT_COMPILETIME: &'static str = env!("CARGO_TARGET_BINFILE_FULLPATH");
+#+            //the following is needed specifically for build.rs availability of the same env. var:
+#+            /*{ //FIXME: yes,needed but don't know how to do it yet!//check if this is still needed (fails to compile!) for build.rs to see the var!
+#+                let a=cx.compilation.extra_env.entry(
+#+                    unit.pkg.package_id().clone()
+#+                )
+#+                    .or_insert_with(Vec::new);
+#+                a.push(("CARGO_TARGET_BINFILE_FULLPATH".to_string(), 
+#+                        bindst.display().to_string())); //for build.rs availability! via eg. println!("Here's CARGO_TARGET_BINFILE_FULLPATH={}", env::var("CARGO_TARGET_BINFILE_FULLPATH").unwrap());
+#+            }*/
+#+            debug!("CARGO_TARGET_BINFILE_FULLPATH={}",bindst.display());
+#+        }
+#+    }//for
+#+
+#+
+#     Ok(())
+# }
+# 
+#Index: /var/tmp/portage/dev-lang/rust-1.64.0-r1/work/rustc-1.64.0-src/src/tools/cargo/src/doc/src/reference/environment-variables.md
+#===================================================================
+#--- rustc-1.64.0-src/src/tools/cargo/src/doc/src/reference/environment-variables.md
+#+++ rustc-1.64.0-src/src/tools/cargo/src/doc/src/reference/environment-variables.md
+#@@ -205,6 +205,7 @@ corresponding environment variable is se
+# 
+# * `CARGO` — Path to the `cargo` binary performing the build.
+# * `CARGO_MANIFEST_DIR` — The directory containing the manifest of your package.
+#+* `CARGO_TARGET_BINFILE_FULLPATH` - (added by a cargo patch, locally!) The fullpath of the output executable ie. the file that `cargo run` will execute
+# * `CARGO_PKG_VERSION` — The full version of your package.
+# * `CARGO_PKG_VERSION_MAJOR` — The major version of your package.
+# * `CARGO_PKG_VERSION_MINOR` — The minor version of your package.
+#@@ -293,6 +294,7 @@ let out_dir = env::var("OUT_DIR").unwrap
+#                          script). Also note that this is the value of the
+#                          current working directory of the build script when it
+#                          starts.
+#+* `CARGO_TARGET_BINFILE_FULLPATH` - (added by a cargo patch, locally!) The fullpath of the output executable ie. the file that `cargo run` will execute
+# * `CARGO_MANIFEST_LINKS` — the manifest `links` value.
+# * `CARGO_MAKEFLAGS` — Contains parameters needed for Cargo's [jobserver]
+#                       implementation to parallelize subprocesses.
+
+Index: /var/tmp/portage/dev-lang/rust-1.69.0-r1/work/rustc-1.69.0-src/src/tools/cargo/src/doc/src/reference/environment-variables.md
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.69.0-r1/work/rustc-1.69.0-src/src/tools/cargo/src/doc/src/reference/environment-variables.md
++++ rustc-1.69.0-src/src/tools/cargo/src/doc/src/reference/environment-variables.md
+@@ -218,6 +218,7 @@ corresponding environment variable is se
+ * `CARGO_MANIFEST_DIR` --- The directory containing the manifest of your package.
+ * `CARGO_PKG_VERSION` --- The full version of your package.
+ * `CARGO_PKG_VERSION_MAJOR` --- The major version of your package.
++* `CARGO_TARGET_BINFILE_FULLPATH` --- (added by a cargo patch, locally!) The fullpath of the output executable ie. the file that `cargo run` will execute.
+ * `CARGO_PKG_VERSION_MINOR` --- The minor version of your package.
+ * `CARGO_PKG_VERSION_PATCH` --- The patch version of your package.
+ * `CARGO_PKG_VERSION_PRE` --- The pre-release version of your package.
+@@ -309,6 +310,7 @@ let out_dir = env::var("OUT_DIR").unwrap
+                          script). Also note that this is the value of the
+                          current working directory of the build script when it
+                          starts.
++* `CARGO_TARGET_BINFILE_FULLPATH` --- (added by a cargo patch, locally!) The fullpath of the output executable ie. the file that `cargo run` will execute.
+ * `CARGO_MANIFEST_LINKS` --- the manifest `links` value.
+ * `CARGO_MAKEFLAGS` --- Contains parameters needed for Cargo's [jobserver]
+                       implementation to parallelize subprocesses.
+#
+#had to remove the log::error! and im not sure if this works or not!
+--- tools/cargo/src/cargo/core/compiler/mod.rs	2023-10-03 04:52:44.000000000 +0200
++++ b/src/tools/cargo/src/cargo/core/compiler/mod.rs	2023-10-09 17:22:43.957906354 +0200
+@@ -1156,10 +1156,50 @@ fn build_base_args(cx: &Context<'_, '_>,
+                 .unwrap_or(bin_target.name().to_string());
+             let key = format!("CARGO_BIN_EXE_{}", name);
+             cmd.env(&key, exe_path);
+         }
+     }
++
++    //starter: https://github.com/rust-lang/cargo/issues/2841#issuecomment-354932455
++    let mut bin_outfile_full_path=Option::None;
++    //for &(ref dst, ref link_dst, file_type) in cx.target_filenames(&unit)?.iter() {
++    for output in cx.outputs(unit)?.iter() {//new line
++        //if file_type != FileFlavor::Normal {
++        if output.flavor != FileFlavor::Normal {
++            continue
++        }
++        //let bindst = match *link_dst {
++        let bindst = match output.hardlink {
++            Some(ref link_dst) => link_dst,
++            //None => dst,
++            None => &output.path,
++        };
++
++        if bin_outfile_full_path.is_some() {
++            let bcx = cx.bcx;
++            bcx.config.shell().error(format!(
++            //log::error!(
++                "!! Already set bin_outfile_full_path='{}' This is unexpected. Should've been set only once! FIXME: investigate what caused this! bindst='{}'",bin_outfile_full_path.clone().unwrap(),bindst.display().to_string()))?;
++            //FIXME: hitting this during `make build` of tikv: [2019-09-20T20:59:48Z ERROR cargo::core::compiler] !! Already set bin_outfile_full_path='/home/user/build/2nonpkgs/rust.stuff/tikv/target/debug/deps/liblexical_core-f34ca059fce58bc7.a' This is unexpected. Should've been set only once! FIXME: investigate what caused this! bindst='/home/user/build/2nonpkgs/rust.stuff/tikv/target/debug/deps/liblexical_core-f34ca059fce58bc7.so'
++            //assert!(bin_outfile_full_path.is_none());
++        } else {
++            bin_outfile_full_path=Option::Some(bindst.display().to_string());
++            cmd.env("CARGO_TARGET_BINFILE_FULLPATH",bindst.display().to_string()); //alright this makes it work in src/main.rs with env!() macro! eg. const OUTPUT_EXE_AT_COMPILETIME: &'static str = env!("CARGO_TARGET_BINFILE_FULLPATH");
++            //the following is needed specifically for build.rs availability of the same env. var:
++            /*{ //FIXME: yes,needed but don't know how to do it yet!//check if this is still needed (fails to compile!) for build.rs to see the var!
++                let a=cx.compilation.extra_env.entry(
++                    unit.pkg.package_id().clone()
++                )
++                    .or_insert_with(Vec::new);
++                a.push(("CARGO_TARGET_BINFILE_FULLPATH".to_string(), 
++                        bindst.display().to_string())); //for build.rs availability! via eg. println!("Here's CARGO_TARGET_BINFILE_FULLPATH={}", env::var("CARGO_TARGET_BINFILE_FULLPATH").unwrap());
++            }*/
++            debug!("CARGO_TARGET_BINFILE_FULLPATH={}",bindst.display());
++        }
++    }//for
++
++
+     Ok(())
+ }
+ 
+ /// All active features for the unit passed as `--cfg features=<feature-name>`.
+ fn features_args(unit: &Unit) -> Vec<OsString> {

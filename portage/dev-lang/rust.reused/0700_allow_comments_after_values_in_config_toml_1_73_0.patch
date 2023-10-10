@@ -1,0 +1,29 @@
+this will have effect when running ./go
+lines like this will be seen correctly:
+submodules = false #XXX false is needed here when you ... blah blah
+
+FIXME: but something like this will break:
+somekey="some#value"
+
+
+Index: /var/tmp/portage/dev-lang/rust-1.73.0/work/rustc-1.73.0-src/src/bootstrap/bootstrap.py
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.73.0/work/rustc-1.73.0-src/src/bootstrap/bootstrap.py
++++ rustc-1.73.0-src/src/bootstrap/bootstrap.py
+@@ -794,13 +794,14 @@ class RustBuild(object):
+     def get_toml_static(config_toml, key, section=None):
+         cur_section = None
+         for line in config_toml.splitlines():
+-            section_match = re.match(r'^\s*\[(.*)\]\s*$', line)
++            section_match = re.match(r'^\s*\[([^#]+)\]\s*(#.*)?$', line)
+             if section_match is not None:
+                 cur_section = section_match.group(1)
+ 
+-            match = re.match(r'^{}\s*=(.*)$'.format(key), line)
++            match = re.match(r'^\s*{}\s*=\s*([^#]*)\s*(#.*)?$'.format(key), line)
+             if match is not None:
+                 value = match.group(1)
++                #print(key,line,match,"!",value,"!",match.group(2))
+                 if section is None or section == cur_section:
+                     return RustBuild.get_string(value) or value.strip()
+         return None

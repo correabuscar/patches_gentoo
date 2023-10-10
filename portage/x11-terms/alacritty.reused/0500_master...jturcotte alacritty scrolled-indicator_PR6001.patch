@@ -1,5 +1,9 @@
 https://github.com/alacritty/alacritty/pull/6001
 
+applied on:
+  commit 778558060243505d07b0850a115e3944862db5cd (HEAD -> master, origin/master, origin/HEAD)
+  Date:   Fri Nov 11 02:27:05 2022 -0800
+
 From 0126da112f420e02866c6c59a160e749264ea3a4 Mon Sep 17 00:00:00 2001
 From: Jocelyn Turcotte <turcotte.j@gmail.com>
 Date: Fri, 15 Apr 2022 19:00:41 +0200

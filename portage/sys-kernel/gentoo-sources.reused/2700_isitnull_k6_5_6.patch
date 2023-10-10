@@ -1,0 +1,50 @@
+to check if this bug was fixed (apparently was):
+https://bugzilla.kernel.org/show_bug.cgi?id=97231#c12
+
+updated for 4.18-rc2
+updated for 5.1-rc3
+updated for 5.17.0
+updated for 5.18.0
+
+Index: /var/tmp/portage/sys-kernel/gentoo-sources-5.17.0/work/linux-5.17.0-gentoo/net/netfilter/nf_tables_core.c
+===================================================================
+--- linux-5.17.0-gentoo/net/netfilter/nf_tables_core.c
++++ linux-5.17.0-gentoo/net/netfilter/nf_tables_core.c
+@@ -221,7 +222,12 @@ nft_do_chain(struct nft_pktinfo *pkt, void *priv)
+ 				 NFT_TRACETYPE_RULE);
+ 
+ 		chain = regs.verdict.chain;
++    if (NULL != chain) {
+ 		goto do_chain;
++    } else {
++      printk(KERN_DEBUG "avoiding oops, stackptr: %d chain: %p rule: %p\n", stackptr, chain, rule); //rulenum was removed in this commit e65eebec9c67dfd973d8b79844b992ff828d00df and maybe this won't be hit anymore?(according to that commits description)
++      break;
++    }
+ 	case NFT_CONTINUE:
+ 	case NFT_RETURN:
+ 		nft_trace_packet(&info, chain, rule,
+#Index: /var/tmp/portage/sys-kernel/gentoo-sources-5.18.0/work/linux-5.18.0-gentoo/net/netfilter/nf_tables_core.c
+#===================================================================
+#--- linux-5.18.0-gentoo/net/netfilter/nf_tables_core.c
+#+++ linux-5.18.0-gentoo/net/netfilter/nf_tables_core.c
+#@@ -235,6 +235,7 @@ do_chain:
+# 	last_rule = (void *)blob->data + blob->size;
+# next_rule:
+# 	regs.verdict.code = NFT_CONTINUE;
+#+  BUG_ON(NULL == chain);
+# 	for (; rule < last_rule; rule = nft_rule_next(rule)) {
+# 		nft_rule_dp_for_each_expr(expr, last, rule) {
+# 			if (expr->ops == &nft_cmp_fast_ops)
+
+Index: /var/tmp/portage/sys-kernel/gentoo-sources-6.5.6/work/linux-6.5.6-gentoo/net/netfilter/nf_tables_core.c
+===================================================================
+--- .orig/var/tmp/portage/sys-kernel/gentoo-sources-6.5.6/work/linux-6.5.6-gentoo/net/netfilter/nf_tables_core.c
++++ linux-6.5.6-gentoo/net/netfilter/nf_tables_core.c
+@@ -275,6 +275,7 @@ do_chain:
+ 	rule = (struct nft_rule_dp *)blob->data;
+ next_rule:
+ 	regs.verdict.code = NFT_CONTINUE;
++  BUG_ON(NULL == chain);
+ 	for (; !rule->is_last ; rule = nft_rule_next(rule)) {
+ 		nft_rule_dp_for_each_expr(expr, last, rule) {
+ 			if (expr->ops == &nft_cmp_fast_ops)

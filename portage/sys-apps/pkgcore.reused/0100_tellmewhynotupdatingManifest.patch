@@ -1,0 +1,17 @@
+
+TODO: needs a non 0 exit code, somehow.
+
+Index: /var/tmp/portage/sys-apps/pkgcore-0.12.23/work/pkgcore-0.12.23/src/pkgcore/ebuild/repository.py
+===================================================================
+--- .orig/var/tmp/portage/sys-apps/pkgcore-0.12.23/work/pkgcore-0.12.23/src/pkgcore/ebuild/repository.py
++++ pkgcore-0.12.23/src/pkgcore/ebuild/repository.py
+@@ -115,6 +115,9 @@ class repo_operations(_repo_ops.operatio
+ 
+             # Manifest file is current and not forcing a refresh
+             if not force and manifest.distfiles.keys() == pkgdir_fetchables.keys():
++                observer.error(
++                        f"Not updating manifest due to no --force and all fetchables are up to date. https://github.com/pkgcore/pkgdev/issues/108#issuecomment-1754024761\nYou can use 'ebuild file.ebuild manifest' to get Manifest updated"
++                        )
+                 continue
+ 
+             # fetch distfiles

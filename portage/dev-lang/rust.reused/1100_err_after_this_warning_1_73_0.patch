@@ -1,0 +1,123 @@
+what you get with this patch:
+
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   /home/user/build/2nonpkgs/rust.stuff/rustlearnage/recompile_self/Cargo.toml
+workspace: /home/user/build/2nonpkgs/rust.stuff/rustlearnage/Cargo.toml
+error: Treating the above warning(s) as an error!
+
+this happens when package's Cargo.toml aka /home/user/build/2nonpkgs/rust.stuff/rustlearnage/recompile_self/Cargo.toml has:
+[profile.dev]
+debug-assertions = false
+
+[profile.release]
+debug-assertions = true
+
+instead of having those ONLY in:
+workspace's Cargo.toml aka /home/user/build/2nonpkgs/rust.stuff/rustlearnage/Cargo.toml
+
+diff --git a/src/cargo/core/workspace.rs b/src/cargo/core/workspace.rs
+index 647eed02..6e0b3858 100644
+--- a/src/tools/cargo/src/cargo/core/workspace.rs
++++ b/src/tools/cargo/src/cargo/core/workspace.rs
+@@ -659,12 +659,13 @@ impl<'cfg> Workspace<'cfg> {
+         }
+ 
+         if let Some(ref root_manifest) = self.root_manifest {
++            let mut did_warn=false;
+             for pkg in self
+                 .members()
+                 .filter(|p| p.manifest_path() != root_manifest)
+             {
+                 let manifest = pkg.manifest();
+-                let emit_warning = |what| -> CargoResult<()> {
++                let mut emit_warning = |what| -> CargoResult<()> { // closure needs to be mut because it's mutating its environment(ie. did_warn gets set inside it) 
+                     let msg = format!(
+                         "{} for the non root package will be ignored, \
+                          specify {} at the workspace root:\n\
+@@ -675,6 +676,9 @@ impl<'cfg> Workspace<'cfg> {
+                         pkg.manifest_path().display(),
+                         root_manifest.display(),
+                     );
++                    if !did_warn {
++                        did_warn=true;
++                    }
+                     self.config.shell().warn(&msg)
+                 };
+                 if manifest.original().has_profiles() {
+#@@ -687,6 +691,9 @@ impl<'cfg> Workspace<'cfg> {
+#                     emit_warning("patch")?;
+#                 }
+#             }
+#+            if did_warn {
+#+                failure::bail!("Treating the above warning(s) as an error!");
+#+            }
+#         }
+# 
+#         Ok(())
+#this last hunk from above gets applied to the wrong piece of code on rust 1.64.0-r1 of Gentoo
+#here's where it did get applied:
+#@@ -1454,17 +1457,14 @@ impl<'cfg> Workspace<'cfg> {
+#                             .or_default()
+#                             .insert(FeatureValue::Feature(*dep_feature));
+#                     } else {
+#                         cwd_features.insert(feature.clone());
+#                     }
+#                 }
+#             }
+#-            if did_warn {
+#-                failure::bail!("Treating the above warning(s) as an error!");
+#-            }
+#         }
+# 
+#         let ms: Vec<_> = self
+#             .members()
+#             .filter_map(|member| {
+#                 let member_id = member.package_id();
+#                 match self.current_opt() {
+
+#obsoleted:
+#Index: /var/tmp/portage/dev-lang/rust-1.64.0-r1/work/rustc-1.64.0-src/src/tools/cargo/src/cargo/core/workspace.rs
+#===================================================================
+#--- rustc-1.64.0-src/src/tools/cargo/src/cargo/core/workspace.rs
+#+++ rustc-1.64.0-src/src/tools/cargo/src/cargo/core/workspace.rs
+#@@ -994,14 +994,17 @@ impl<'cfg> Workspace<'cfg> {
+#                 if let Some(behavior) = manifest.resolve_behavior() {
+#                     if behavior != self.resolve_behavior {
+#                         // Only warn if they don't match.
+#                         emit_warning("resolver")?;
+#                     }
+#                 }
+#             }
+#+            if did_warn {
+#+                bail!("Treating the above warning(s) as an error!");
+#+            }
+#         }
+#         Ok(())
+#     }
+# 
+#     pub fn load(&self, manifest_path: &Path) -> CargoResult<Package> {
+#         match self.packages.maybe_get(manifest_path) {
+#             Some(&MaybePackage::Package(ref p)) => return Ok(p.clone()),
+
+Index: /var/tmp/portage/dev-lang/rust-1.73.0/work/rustc-1.73.0-src/src/tools/cargo/src/cargo/core/workspace.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.73.0/work/rustc-1.73.0-src/src/tools/cargo/src/cargo/core/workspace.rs
++++ rustc-1.73.0-src/src/tools/cargo/src/cargo/core/workspace.rs
+@@ -1011,14 +1011,17 @@ impl<'cfg> Workspace<'cfg> {
+                 if let Some(behavior) = manifest.resolve_behavior() {
+                     if behavior != self.resolve_behavior {
+                         // Only warn if they don't match.
+                         emit_warning("resolver")?;
+                     }
+                 }
+             }
++            if did_warn {
++                bail!("Treating the above warning(s) as an error!");
++            }
+             if let MaybePackage::Virtual(vm) = self.root_maybe() {
+                 if vm.resolve_behavior().is_none() {
+                     if let Some(edition) = self
+                         .members()
+                         .filter(|p| p.manifest_path() != root_manifest)
+                         .map(|p| p.manifest().edition())
+                         .filter(|&e| e >= Edition::Edition2021)

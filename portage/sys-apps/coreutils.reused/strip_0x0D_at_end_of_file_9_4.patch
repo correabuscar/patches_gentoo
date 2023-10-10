@@ -1,0 +1,16 @@
+Index: /var/tmp/portage/sys-apps/coreutils-9.4/work/coreutils-9.4/src/digest.c
+===================================================================
+--- .orig/var/tmp/portage/sys-apps/coreutils-9.4/work/coreutils-9.4/src/digest.c
++++ coreutils-9.4/src/digest.c
+@@ -904,7 +904,10 @@ split_3 (char *s, size_t s_len,
+   /* All characters between the type indicator and end of line are
+      significant -- that includes leading and trailing white space.  */
+   *file_name = &s[i];
+-
++  if (s[s_len-1] == '\r') { // ignore ^M at the end instead of treating it as part of the filename  - naive fix
++      s[s_len-1] = '\0';
++      //printf ("!! %s\n", *file_name); //will break 2 tests for md5sum and sha1sum! must probably print on stderr instead!
++  }
+   if (escaped_filename)
+     return filename_unescape (&s[i], s_len - i) != nullptr;
+ 

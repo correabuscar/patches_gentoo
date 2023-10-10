@@ -1,0 +1,199 @@
+see also:  https://github.com/rust-lang/rust-installer/issues/110
+with this patch:
+real    43m32.147s
+user    349m54.882s
+sys     4m55.782s
+
+without it's like 56mins.
+
+28Sept2022: now using this patch made by aswild: https://github.com/rust-lang/rust-installer/issues/110#issuecomment-908057324
+for rust 1.64.0-r1
+
+#Index: /var/tmp/portage/dev-lang/rust-1.64.0-r1/work/rustc-1.64.0-src/src/bootstrap/tarball.rs
+#===================================================================
+#--- rustc-1.64.0-src/src/bootstrap/tarball.rs
+#+++ rustc-1.64.0-src/src/bootstrap/tarball.rs
+#@@ -341,11 +341,14 @@ impl<'a> Tarball<'a> {
+#             .dist_compression_formats
+#             .as_ref()
+#             .and_then(|formats| formats.get(0))
+#-            .map(|s| s.as_str())
+#-            .unwrap_or("gz");
+#+            .map(|format| match format.as_str() {
+#+                "none" => "".to_string(),
+#+                s => format!(".{}", s),
+#+                })
+#+            .unwrap_or_else(|| ".gz".to_string());
+# 
+#         GeneratedTarball {
+#-            path: crate::dist::distdir(self.builder).join(format!("{}.tar.{}", package_name, ext)),
+#+            path: crate::dist::distdir(self.builder).join(format!("{}.tar{}", package_name, ext)),
+#             decompressed_output,
+#             work: self.temp_dir,
+#         }
+Index: /var/tmp/portage/dev-lang/rust-1.73.0/work/rustc-1.73.0-src/src/bootstrap/tarball.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.73.0/work/rustc-1.73.0-src/src/bootstrap/tarball.rs
++++ rustc-1.73.0-src/src/bootstrap/tarball.rs
+@@ -340,11 +340,17 @@ impl<'a> Tarball<'a> {
+             .dist_compression_formats
+             .as_ref()
+             .and_then(|formats| formats.get(0))
+-            .map(|s| s.as_str())
+-            .unwrap_or("gz");
++//            .map(|s| s.as_str())
++//            .unwrap_or("gz");
++            .map(|format| match format.as_str() {
++                "none" => "".to_string(),
++                s => format!(".{}", s),
++                })
++            .unwrap_or_else(|| ".gz".to_string());
+ 
+         GeneratedTarball {
+             path: crate::dist::distdir(self.builder).join(format!("{package_name}.tar.{ext}")),
++            path: crate::dist::distdir(self.builder).join(format!("{package_name}.tar{ext}")),
+             decompressed_output,
+             work: self.temp_dir,
+         }
+--- .orig/var/tmp/portage/dev-lang/rust-1.73.0/work/rustc-1.73.0-src/src/bootstrap/tarball.rs
++++ rustc-1.73.0-src/src/bootstrap/tarball.rs
+@@ -349,7 +349,6 @@ impl<'a> Tarball<'a> {
+             .unwrap_or_else(|| ".gz".to_string());
+ 
+         GeneratedTarball {
+-            path: crate::dist::distdir(self.builder).join(format!("{package_name}.tar.{ext}")),
+             path: crate::dist::distdir(self.builder).join(format!("{package_name}.tar{ext}")),
+             decompressed_output,
+             work: self.temp_dir,
+Index: /var/tmp/portage/dev-lang/rust-1.64.0-r1/work/rustc-1.64.0-src/src/tools/rust-installer/src/combiner.rs
+===================================================================
+--- rustc-1.64.0-src/src/tools/rust-installer/src/combiner.rs
++++ rustc-1.64.0-src/src/tools/rust-installer/src/combiner.rs
+@@ -88,7 +88,7 @@ impl Combiner {
+                 })?;
+ 
+             let pkg_name =
+-                input_tarball.trim_end_matches(&format!(".tar.{}", compression.extension()));
++                input_tarball.trim_end_matches(&format!(".tar{}", compression.extension()));
+             let pkg_name = Path::new(pkg_name).file_name().unwrap();
+             let pkg_dir = Path::new(&self.work_dir).join(&pkg_name);
+ 
+Index: /var/tmp/portage/dev-lang/rust-1.64.0-r1/work/rustc-1.64.0-src/src/tools/rust-installer/src/compression.rs
+===================================================================
+--- rustc-1.64.0-src/src/tools/rust-installer/src/compression.rs
++++ rustc-1.64.0-src/src/tools/rust-installer/src/compression.rs
+@@ -6,6 +6,7 @@ use xz2::{read::XzDecoder, write::XzEnco
+ 
+ #[derive(Debug, Copy, Clone)]
+ pub enum CompressionFormat {
++    None,
+     Gz,
+     Xz,
+ }
+@@ -13,6 +14,7 @@ pub enum CompressionFormat {
+ impl CompressionFormat {
+     pub(crate) fn detect_from_path(path: impl AsRef<Path>) -> Option<Self> {
+         match path.as_ref().extension().and_then(|e| e.to_str()) {
++            Some("tar") => Some(CompressionFormat::None),
+             Some("gz") => Some(CompressionFormat::Gz),
+             Some("xz") => Some(CompressionFormat::Xz),
+             _ => None,
+@@ -54,6 +58,7 @@ impl CompressionFormat {
+     pub(crate) fn decode(&self, path: impl AsRef<Path>) -> Result<Box<dyn Read>, Error> {
+         let file = crate::util::open_file(path.as_ref())?;
+         Ok(match self {
++            CompressionFormat::None => Box::new(file),
+             CompressionFormat::Gz => Box::new(GzDecoder::new(file)),
+             CompressionFormat::Xz => Box::new(XzDecoder::new(file)),
+         })
+@@ -71,6 +76,7 @@ impl TryFrom<&'_ str> for CompressionFor
+         let mut parsed = Vec::new();
+         for format in value.split(',') {
+             match format.trim() {
++                "none" => parsed.push(CompressionFormat::None),
+                 "gz" => parsed.push(CompressionFormat::Gz),
+                 "xz" => parsed.push(CompressionFormat::Xz),
+                 other => anyhow::bail!("unknown compression format: {}", other),
+@@ -105,7 +112,7 @@ impl fmt::Display for CompressionFormats
+ 
+ impl Default for CompressionFormats {
+     fn default() -> Self {
+-        Self(vec![CompressionFormat::Gz, CompressionFormat::Xz])
++        Self(vec![CompressionFormat::None, CompressionFormat::Gz, CompressionFormat::Xz])
+     }
+ }
+ 
+@@ -119,6 +125,31 @@ pub(crate) trait Encoder: Send + Write {
+     fn finish(self: Box<Self>) -> Result<(), Error>;
+ }
+ 
++#[derive(Debug)]
++struct NopEncoder<W>(W);
++
++impl<W> NopEncoder<W> {
++    fn new(writer: W) -> Self {
++        Self(writer)
++    }
++}
++
++impl<W: Send + Write> Write for NopEncoder<W> {
++    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
++        self.0.write(buf)
++    }
++
++    fn flush(&mut self) -> std::io::Result<()> {
++        self.0.flush()
++    }
++}
++
++impl<W: Send + Write> Encoder for NopEncoder<W> {
++    fn finish(self: Box<Self>) -> Result<(), Error> {
++        Ok(())
++    }
++}
++
+ impl<W: Send + Write> Encoder for GzEncoder<W> {
+     fn finish(self: Box<Self>) -> Result<(), Error> {
+         GzEncoder::finish(*self).context("failed to finish .gz file")?;
+
+Index: /var/tmp/portage/dev-lang/rust-1.73.0/work/rustc-1.73.0-src/src/tools/rust-installer/src/compression.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.73.0/work/rustc-1.73.0-src/src/tools/rust-installer/src/compression.rs
++++ rustc-1.73.0-src/src/tools/rust-installer/src/compression.rs
+@@ -54,8 +54,9 @@ impl CompressionFormat {
+ 
+     pub(crate) fn extension(&self) -> &'static str {
+         match self {
+-            CompressionFormat::Gz => "gz",
+-            CompressionFormat::Xz => "xz",
++            CompressionFormat::Gz => ".gz",
++            CompressionFormat::Xz => ".xz",
++            CompressionFormat::None => "",
+         }
+     }
+ 
+@@ -65,7 +66,7 @@ impl CompressionFormat {
+         profile: CompressionProfile,
+     ) -> Result<Box<dyn Encoder>, Error> {
+         let mut os = path.as_ref().as_os_str().to_os_string();
+-        os.push(format!(".{}", self.extension()));
++        os.push(format!("{}", self.extension()));
+         let path = Path::new(&os);
+ 
+         if path.exists() {
+@@ -74,6 +75,7 @@ impl CompressionFormat {
+         let file = crate::util::create_new_file(path)?;
+ 
+         Ok(match self {
++            CompressionFormat::None => Box::new(NopEncoder::new(file)),
+             CompressionFormat::Gz => Box::new(GzEncoder::new(
+                 file,
+                 match profile {
+@@ -154,6 +156,7 @@ impl fmt::Display for CompressionFormats
+                 match format {
+                     CompressionFormat::Xz => "xz",
+                     CompressionFormat::Gz => "gz",
++                    CompressionFormat::None => "none",
+                 },
+                 f,
+             )?;

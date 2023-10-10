@@ -1,0 +1,46 @@
+applied on:
+  commit 778558060243505d07b0850a115e3944862db5cd (HEAD -> master, origin/master, origin/HEAD)
+  Date:   Fri Nov 11 02:27:05 2022 -0800
+
+diff --git a/Cargo.toml b/Cargo.toml
+index aad21557..dc5f8cb0 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -8,5 +8,36 @@ members = [
+ 
+ [profile.release]
+ lto = true
+-debug = 1
++debug = 2
+ incremental = false
++codegen-units = 1 #https://github.com/johnthagen/min-sized-rust#reduce-parallel-code-generation-units-to-increase-optimization
++strip=false
++opt-level = 3 #this is default for release
++debug-assertions = true
++overflow-checks = true
++panic = 'unwind'
++
++#Build Dependencies
++
++#"All profiles, by default, do not optimize build dependencies (build scripts, proc macros, and their dependencies). The default settings for build overrides are:
++#[profile.dev.build-override]
++#opt-level = 0
++#codegen-units = 256
++#[profile.release.build-override]
++#opt-level = 0
++#codegen-units = 256
++#" src: https://doc.rust-lang.org/cargo/reference/profiles.html#build-dependencies
++
++[profile.release.build-override]
++opt-level = 3
++codegen-units = 1
++
++# Set the default for dependencies.
++[profile.release.package."*"]
++opt-level = 3
++codegen-units = 1
++#debug-assertions = true #inherited
++#overflow-checks = true  #inherited, it seems!
++
++
++
