@@ -1,0 +1,20 @@
+diff --git a/src/librustc/mir/interpret/error.rs b/src/librustc/mir/interpret/error.rs
+index c3fe5d773a..a50146f2b6 100644
+--- a/src/librustc/mir/interpret/error.rs
++++ b/src/librustc/mir/interpret/error.rs
+@@ -413,7 +413,14 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
+                 "referenced constant has errors",
+             Overflow(mir::BinOp::Add) => "attempt to add with overflow",
+             Overflow(mir::BinOp::Sub) => "attempt to subtract with overflow",
+-            Overflow(mir::BinOp::Mul) => "attempt to multiply with overflow",
++            //Overflow(mir::BinOp::Mul) => "attempt to multiply with overflow",
++            Overflow(mir::BinOp::Mul) => {
++                {
++                    use backtrace::Backtrace;
++                    eprintln!("{:?}", Backtrace::new()); //thanks to WindowsBunny on irc for the idea!
++                }
++                "wuuuuuuattttttt??!attempt to multiply with overflow"
++            },
+             Overflow(mir::BinOp::Div) => "attempt to divide with overflow",
+             Overflow(mir::BinOp::Rem) => "attempt to calculate the remainder with overflow",
+             OverflowNeg => "attempt to negate with overflow",
