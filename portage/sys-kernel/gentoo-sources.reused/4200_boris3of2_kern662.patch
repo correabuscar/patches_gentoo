@@ -1,0 +1,13 @@
+Index: /var/tmp/portage/sys-kernel/gentoo-sources-6.6.2/work/linux-6.6.2-gentoo/arch/x86/kernel/cpu/microcode/Makefile
+===================================================================
+--- linux-6.6.2-gentoo/arch/x86/kernel/cpu/microcode/Makefile
++++ linux-6.6.2-gentoo/arch/x86/kernel/cpu/microcode/Makefile
+@@ -3,3 +3,8 @@ microcode-y				:= core.o
+ obj-$(CONFIG_MICROCODE)			+= microcode.o
+ microcode-$(CONFIG_CPU_SUP_INTEL)	+= intel.o
+ microcode-$(CONFIG_CPU_SUP_AMD)		+= amd.o
++
++CFLAGS_amd.o := -DDEBUG
++CFLAGS_intel.o := -DDEBUG
++CFLAGS_microcode.o := -DDEBUG
++CFLAGS_core.o := -DDEBUG

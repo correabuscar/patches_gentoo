@@ -1,0 +1,60 @@
+diff --git a/scripts/kconfig/nconf.gui.c b/scripts/kconfig/nconf.gui.c
+index a64b1c31253e..c19fac897840 100644
+--- a/scripts/kconfig/nconf.gui.c
++++ b/scripts/kconfig/nconf.gui.c
+@@ -326,6 +326,7 @@ int btn_dialog(WINDOW *main_window, const char *msg, int btn_num, ...)
+ 			menu_driver(menu, REQ_RIGHT_ITEM);
+ 			break;
+ 		case 10: /* ENTER */
++    case 343: // added by je, keypad enter
+ 		case 27: /* ESCAPE */
+ 		case ' ':
+ 		case KEY_F(F_BACK):
+@@ -335,7 +336,7 @@ int btn_dialog(WINDOW *main_window, const char *msg, int btn_num, ...)
+ 		touchwin(win);
+ 		refresh_all_windows(main_window);
+ 
+-		if (res == 10 || res == ' ') {
++		if (res == 10 || res == 343 /* added by je, keypad enter */ || res == ' ') {
+ 			res = item_index(current_item(menu));
+ 			break;
+ 		} else if (res == 27 || res == KEY_F(F_BACK) ||
+@@ -434,6 +435,7 @@ int dialog_inputbox(WINDOW *main_window,
+ 		int len = strlen(result);
+ 		switch (res) {
+ 		case 10: /* ENTER */
++    case 343: // added by je, keypad enter
+ 		case 27: /* ESCAPE */
+ 		case KEY_F(F_HELP):
+ 		case KEY_F(F_EXIT):
+@@ -515,7 +517,7 @@ int dialog_inputbox(WINDOW *main_window,
+ 		touchwin(win);
+ 		refresh_all_windows(main_window);
+ 
+-		if (res == 10) {
++		if (res == 10 || res == 343 /* added by je, keypad enter */) {
+ 			res = 0;
+ 			break;
+ 		} else if (res == 27 || res == KEY_F(F_BACK) ||
+#@@ -643,7 +645,8 @@ void show_scroll_win(WINDOW *main_window,
+# 			start_x++;
+# 			break;
+# 		}
+#-		if (res == 10 || res == 27 || res == 'q' ||
+#+		if (res == 10 || res == 343 /* added by je, keypad enter */
+#+        || res == 27 || res == 'q' ||
+# 			res == KEY_F(F_HELP) || res == KEY_F(F_BACK) ||
+# 			res == KEY_F(F_EXIT))
+# 			break;
+Index: /var/tmp/portage/sys-kernel/gentoo-sources-6.6.2/work/linux-6.6.2-gentoo/scripts/kconfig/nconf.gui.c
+===================================================================
+--- linux-6.6.2-gentoo/scripts/kconfig/nconf.gui.c
++++ linux-6.6.2-gentoo/scripts/kconfig/nconf.gui.c
+@@ -619,6 +619,7 @@ int show_scroll_win_ext(WINDOW *main_win
+ 			}
+ 		}
+ 		if (res == 0 || res == 10 || res == 27 || res == 'q' ||
++        res == 343 || /* added by je, keypad enter */
+ 			res == KEY_F(F_HELP) || res == KEY_F(F_BACK) ||
+ 			res == KEY_F(F_EXIT))
+ 			break;
