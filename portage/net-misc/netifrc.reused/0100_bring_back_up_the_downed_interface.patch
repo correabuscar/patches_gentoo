@@ -1,0 +1,15 @@
+in /etc/conf.d/net when using mac_em1="random-samekind" for example, it would forget to bring the interface back up
+thus fail further down in like setting gateway due to if being down.
+
+Index: /var/tmp/portage/net-misc/netifrc-0.7.7/work/netifrc-0.7.7/net/macchanger.sh
+===================================================================
+--- netifrc-0.7.7/net/macchanger.sh
++++ netifrc-0.7.7/net/macchanger.sh
+@@ -87,6 +87,7 @@ macchanger_pre_start()
+ 	eindent
+ 	newmac=$(_get_mac_address)
+ 	einfo "changed to ${newmac}"
++	_up
+ 	eoutdent
+ 
+ 	return 0

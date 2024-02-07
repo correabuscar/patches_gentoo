@@ -1,0 +1,30 @@
+this made in China usb mouse does this on any motion:
+[ 1394.874946] xhci_hcd 0000:00:14.0: ep 0x81 - asked for 8 bytes, 2 bytes untransferred2
+
+
+Index: /usr/src/linux-6.5.7-gentoo/drivers/usb/host/xhci-ring.c
+===================================================================
+--- .orig/usr/src/linux-6.5.7-gentoo/drivers/usb/host/xhci-ring.c
++++ linux-6.5.7-gentoo/drivers/usb/host/xhci-ring.c
+@@ -2482,16 +2482,17 @@ static int process_bulk_intr_td(struct x
+ 		/* handle success with untransferred data as short packet */
+ 		if (ep_trb != td->last_trb || remaining) {
+ 			xhci_warn(xhci, "WARN Successful completion on short TX\n");
+-			xhci_dbg(xhci, "ep %#x - asked for %d bytes, %d bytes untransferred\n",
++			xhci_dbg(xhci, "ep %#x - asked for %d bytes, %d bytes untransferred1\n",
+ 				 td->urb->ep->desc.bEndpointAddress,
+ 				 requested, remaining);
+ 		}
+ 		td->status = 0;
+ 		break;
+ 	case COMP_SHORT_PACKET:
+-		xhci_dbg(xhci, "ep %#x - asked for %d bytes, %d bytes untransferred\n",
+-			 td->urb->ep->desc.bEndpointAddress,
+-			 requested, remaining);
++    //		no more usb dmesg spam on mouse motion
++//		xhci_dbg(xhci, "ep %#x - asked for %d bytes, %d bytes untransferred2\n",
++//			 td->urb->ep->desc.bEndpointAddress,
++//			 requested, remaining);
+ 		td->status = 0;
+ 		break;
+ 	case COMP_STOPPED_SHORT_PACKET:
