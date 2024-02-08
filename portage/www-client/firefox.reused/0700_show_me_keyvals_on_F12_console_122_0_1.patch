@@ -1,0 +1,24 @@
+
+Index: /var/tmp/portage/www-client/firefox-122.0.1/work/firefox-122.0.1/browser/components/newtab/lib/ActivityStreamPrefs.sys.mjs
+===================================================================
+--- .orig/var/tmp/portage/www-client/firefox-122.0.1/work/firefox-122.0.1/browser/components/newtab/lib/ActivityStreamPrefs.sys.mjs
++++ firefox-122.0.1/browser/components/newtab/lib/ActivityStreamPrefs.sys.mjs
+@@ -85,8 +85,10 @@ export class DefaultPrefs extends Prefer
+       let value;
+       if (IS_UNOFFICIAL_BUILD && "value_local_dev" in prefConfig) {
+         value = prefConfig.value_local_dev;
++        console.log("setDefaultPref value_local_dev '"+pref+"'='"+value+"'");
+       } else {
+         value = prefConfig.value;
++        console.log("setDefaultPref '"+pref+"'='"+value+"'");
+       }
+ 
+       try {
+@@ -94,6 +96,7 @@ export class DefaultPrefs extends Prefer
+       } catch (ex) {
+         // Potentially the user somehow set an unexpected value type, so we fail
+         // to set a default of our expected type
++        console.log("failed to setDefaultPref '"+pref+"'='"+value+"'");
+       }
+     }
+   }
