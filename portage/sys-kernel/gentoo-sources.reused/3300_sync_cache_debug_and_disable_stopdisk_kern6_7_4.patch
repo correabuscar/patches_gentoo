@@ -1,0 +1,51 @@
+diff --git a/drivers/scsi/sd.c b/drivers/scsi/sd.c
+index b6bb4e0ce0e3..af7c5e2f2b4f 100644
+--- a/drivers/scsi/sd.c
++++ b/drivers/scsi/sd.c
+@@ -3641,7 +3641,7 @@ static int sd_suspend_common(struct devi
+ 
+ 	if (sdkp->device->manage_start_stop) {
+ 		if (!sdkp->device->silence_suspend)
+-			sd_printk(KERN_NOTICE, sdkp, "Stopping disk\n");
++			sd_printk(KERN_NOTICE, sdkp, "2Stopping disk\n");//never hit
+ 		/* an error is not worth aborting a system sleep */
+ 		ret = sd_start_stop_device(sdkp, 0);
+ 		if (ignore_stop_errors)
+
+Index: /var/tmp/portage/sys-kernel/gentoo-sources-6.7.4/work/linux-6.7.4-gentoo/drivers/scsi/sd.c
+===================================================================
+--- .orig/var/tmp/portage/sys-kernel/gentoo-sources-6.7.4/work/linux-6.7.4-gentoo/drivers/scsi/sd.c
++++ linux-6.7.4-gentoo/drivers/scsi/sd.c
+@@ -3857,16 +3857,17 @@ static void sd_shutdown(struct device *d
+ 		return;
+ 
+ 	if (sdkp->WCE && sdkp->media_present) {
+-		sd_printk(KERN_NOTICE, sdkp, "Synchronizing SCSI cache\n");
++		sd_printk(KERN_NOTICE, sdkp, "1Synchronizing SCSI cache\n");
+ 		sd_sync_cache(sdkp);
++		sd_printk(KERN_NOTICE, sdkp, "1Synchronizing SCSI cache - done\n");
+ 	}
+ 
+ 	if ((system_state != SYSTEM_RESTART &&
+ 	     sdkp->device->manage_system_start_stop) ||
+ 	    (system_state == SYSTEM_POWER_OFF &&
+ 	     sdkp->device->manage_shutdown)) {
+-		sd_printk(KERN_NOTICE, sdkp, "Stopping disk\n");
+-		sd_start_stop_device(sdkp, 0);
++		sd_printk(KERN_NOTICE, sdkp, "1Stopping disk - ok, not bypassing this!\n");
++		sd_start_stop_device(sdkp, 0);//was commented out, but not anymore now(since 3 may 2017), I am allowing it because echo 1 | sudo tee /sys/block/${blockdev}/device/delete >/dev/null  on the esata device(via ~/bin/esata_eject script) will call this! so it won't stop the disk unless I allow this! Also note: a second hdparm -Y /dev/sdb on the Samsung 1TB SSD will wake up the 'standby' device!(-C also wakes it up, which is status report: standby or active/idle) - so powering off kernel after this happens(by the kernel) will increase that POR_Recovery_Count (see smartctl) as if power was cut off to the drive
+ 	}
+ }
+ 
+@@ -3885,8 +3886,9 @@ static int sd_suspend_common(struct devi
+ 		return 0;
+ 
+ 	if (sdkp->WCE && sdkp->media_present) {
+-		if (!sdkp->device->silence_suspend)
+-			sd_printk(KERN_NOTICE, sdkp, "Synchronizing SCSI cache\n");
++		if (!sdkp->device->silence_suspend) {
++			sd_printk(KERN_NOTICE, sdkp, "2Synchronizing SCSI cache\n");//never hit
++		}
+ 		ret = sd_sync_cache(sdkp);
+ 		/* ignore OFFLINE device */
+ 		if (ret == -ENODEV)

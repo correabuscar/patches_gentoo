@@ -1,0 +1,34 @@
+#commented out as the code differs and this logic doesn't seem to be happening anymore, so microcode is loaded...
+
+#Index: /var/tmp/portage/sys-kernel/gentoo-sources-6.2.2/work/linux-6.2.2-gentoo/arch/x86/kernel/cpu/microcode/core.c
+#===================================================================
+#--- linux-6.2.2-gentoo/arch/x86/kernel/cpu/microcode/core.c
+#+++ /var/tmp/portage/sys-kernel/gentoo-sources-6.2.2/work/linux-6.2.2-gentoo/arch/x86/kernel/cpu/microcode/core.c
+#@@ -478,8 +478,10 @@ static ssize_t reload_store(struct devic
+# 		goto put;
+# 
+# 	tmp_ret = microcode_ops->request_microcode_fw(bsp, &microcode_pdev->dev);
+#-	if (tmp_ret != UCODE_NEW)
+#+	if (tmp_ret != UCODE_NEW) {
+#+    pr_info("Not reloading previously-loaded already-in-effect microcode!\n");//not hit if no early loading happened before, even after sudo sh -c "echo 1  > /sys/devices/system/cpu/microcode/reload"
+# 		goto put;
+#+  }
+# 
+# 	mutex_lock(&microcode_mutex);
+# 	ret = microcode_reload_late();
+Index: /var/tmp/portage/sys-kernel/gentoo-sources-6.2.3/work/linux-6.2.3-gentoo/arch/x86/kernel/cpu/microcode/amd.c
+===================================================================
+--- linux-6.2.3-gentoo/arch/x86/kernel/cpu/microcode/amd.c
++++ /var/tmp/portage/sys-kernel/gentoo-sources-6.2.3/work/linux-6.2.3-gentoo/arch/x86/kernel/cpu/microcode/amd.c
+@@ -875,8 +875,10 @@ static enum ucode_state load_microcode_a
+ 		if (!p)
+ 			continue;
+ 
+-		if (c->microcode >= p->patch_id)
++		if (c->microcode >= p->patch_id) {
++ 			pr_debug("Already in-memory microcode 0x%x ret=%d\n", c->microcode, ret);//not hit when no early loading happened at all, in dmesg even after sudo sh -c "echo 1  > /sys/devices/system/cpu/microcode/reload"
+ 			continue;
++		}
+ 
+ 		ret = UCODE_NEW;
+ 
