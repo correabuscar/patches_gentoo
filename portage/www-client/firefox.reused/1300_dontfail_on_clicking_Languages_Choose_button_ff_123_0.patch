@@ -1,0 +1,18 @@
+fixes: JavaScript error: chrome://browser/content/preferences/languages.js, line 134: TypeError: null has no properties
+which happens when you click Choose button under Language in about:preferences#general
+
+this may or may not still happen today, untested:
+
+Index: /var/tmp/portage/www-client/firefox-123.0/work/firefox-123.0/browser/components/preferences/dialogs/languages.js
+===================================================================
+--- .orig/var/tmp/portage/www-client/firefox-123.0/work/firefox-123.0/browser/components/preferences/dialogs/languages.js
++++ firefox-123.0/browser/components/preferences/dialogs/languages.js
+@@ -154,7 +154,7 @@ var gLanguagesDialog = {
+ 
+     var selectedIndex = 0;
+     var preference = Preferences.get("intl.accept_languages");
+-    if (preference.value == "") {
++    if (preference.value == "" || preference.value == undefined) {
+       this._activeLanguages.selectedIndex = -1;
+       this.onLanguageSelect();
+       return;
