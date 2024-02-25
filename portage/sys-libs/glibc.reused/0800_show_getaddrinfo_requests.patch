@@ -1,0 +1,262 @@
+updated to  25feb2024 glibc 2.39-r1
+//up to date with git, now 13.dec.2019:
+diff --git a/sysdeps/posix/getaddrinfo.c b/sysdeps/posix/getaddrinfo.c
+index c67c5a955cd..09065aae195 100644
+--- a/nss/getaddrinfo.c
++++ b/nss/getaddrinfo.c
+@@ -84,6 +84,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ #include <scratch_buffer.h>
+ #include <inet/net-internal.h>
+ 
++#include <syslog.h> //for syslog, below
++#include <unistd.h> // for getuid()/geteuid()/getpid() below  [I'm aware that this .h is already included above]
++
+ /* Former AI_IDN_ALLOW_UNASSIGNED and AI_IDN_USE_STD3_ASCII_RULES
+    flags, now ignored.  */
+ #define DEPRECATED_AI_IDN 0x300
+@@ -2159,12 +2162,83 @@ int
+ getaddrinfo (const char *name, const char *service,
+ 	     const struct addrinfo *hints, struct addrinfo **pai)
+ {
+-  int i = 0, last_i = 0;
++  int i = 0//, last_i = 0 //XXX: you don't need this here!
++    ;
+   int nresults = 0;
+   struct addrinfo *p = NULL;
+   struct gaih_service gaih_service, *pservice;
+   struct addrinfo local_hints;
+ 
++  //addition block:
++  //"The problem is that when you have a macro replacement, the preprocessor will only expand the macros recursively if neither the stringizing operator # nor the token-pasting operator ## are applied to it." src: https://stackoverflow.com/a/1597129
++  //#define LOG_NAME_RND21066 __FILE__ ":" # __LINE__ "/" __FUNC__
++  #define CONCAT_RND7785(a,b) a # b  //XXX: use this only for openlog's first arg!
++  #define JUSTPASSALONGTOCONCAT_RND13313(a,b) CONCAT_RND7785(a,b) //required for '#' to actually concat the expanded __LINE__ instead of the string "__LINE__"
++  #if defined(__manual_funcname__)
++    #error "unexpected non-sense"
++  #endif
++  #define __manual_funcname__ "getaddrinfo" //string!
++  #if defined(__func__)
++    #define __FUNCNAME_RND20365__ __func__
++  #else
++    #if defined(__FUNCTION__)
++      #define __FUNCNAME_RND20365__ __FUNCTION__
++    #else
++      #if defined(__PRETTY_FUNCTION__)
++        #define __FUNCNAME_RND20365__ __PRETTY_FUNCTION__
++      #else
++        #warning "!! Using manually-set function-name! (thus you should ensure __manual_funcname__ is properly set)" //"!! Using user setable function name " __manual_funcname__ //"Neither ‘#error’ nor ‘#warning’ macro-expands its argument. Internal whitespace sequences are each replaced with a single space. The line must consist of complete tokens. It is wisest to make the argument of these directives be a single string constant; this avoids problems with apostrophes and the like." src: https://gcc.gnu.org/onlinedocs/cpp/Diagnostics.html
++        #define __FUNCNAME_RND20365__ __manual_funcname__  //user selectable - should be the name of current function (as string)!
++      #endif
++    #endif
++  #endif
++  #define LOG_NAME_RND21066 JUSTPASSALONGTOCONCAT_RND13313("glibc", __WORDSIZE) JUSTPASSALONGTOCONCAT_RND13313(":" __FILE__ ":", __LINE__) "/" __FUNCNAME_RND20365__
++  //__func__ doesn't expand to anything other than "__func__" (as string)! so, using __FUNCTION__ -  same thing!; oh actually it's another thing! none of these macros are defined in this context! so i have to use a manually-set name!
++  extern const char *__progname;
++  extern const char *__progname_full;
++  const pid_t cp_pid=getpid();
++  //openlog - If ident(aka first arg) is NULL, the program  name is  used.
++  openlog(LOG_NAME_RND21066 , LOG_CONS 
++      //| LOG_PID  //however pid is still appended on syslog(but not on stderr) - even though this is commented out!
++      | LOG_NDELAY
++      | LOG_PERROR,//also write to stderr!
++      LOG_LOCAL1);
++  #undef LOG_NAME_RND21066
++  #undef JUSTPASSALONGTOCONCAT_RND13313
++  #undef CONCAT_RND7785
++  #undef __FUNCNAME_RND20365__ 
++  #undef __manual_funcname__
++  inline const char *getUserName(const uid_t uid)  //src: https://stackoverflow.com/a/8953445
++  {
++    //uid_t uid = geteuid();
++    struct passwd *pw = getpwuid(uid);
++    if (pw)
++    {
++      return pw->pw_name; //return ptr to string; Do not free() this!
++    }
++
++    return NULL; //when printed shows "(null)" (as a string) so we could return this!
++  }
++
++  uid_t guid=getuid();
++  uid_t geuid=geteuid();
++  const char *username=getUserName(guid);
++  const char *eusername=getUserName(geuid);
++  syslog(LOG_NOTICE, "%s[%d](full:'%s') for user "
++      "%s(%d(eff:%s(%d))) 1of2"
++      " attempting to resolve (requested)hostname:\n\x1b[41m%s\x1b(B\x1b[m"
++      ,__progname
++      ,cp_pid
++      ,__progname_full
++      ,username
++      ,guid
++      ,eusername
++      ,geuid
++      , name);
++  //closelog();//they say it's optional, so....
++  //addition block ends.
++
++
+   if (name != NULL && name[0] == '*' && name[1] == 0)
+     name = NULL;
+ 
+@@ -2248,18 +2322,72 @@ getaddrinfo (const char *name, const char *service,
+     pservice = NULL;
+ 
+   struct addrinfo **end = &p;
++  //additions block starts:
++  bool mallocD_transformed_name=false;
++  char* transformed_name=name;//initially the same, however FIXME: this can be already transformed here, but I'm unsure if HAVE_LIBIDN is or isn't set for the below #ifdef though, it seems to be unset that's why mallocD_xformD_name isn't != transformed_name or IDNA_SUCCESS isn't achieved; so the message will say 'not transformed' ! ie. ping 𝙵𝟢𝟢  will resolve to f00 (if it exists in /etc/hosts !) but say not transformed! and if it doesn't exist in /etc/hosts it's not transformed, apparently! so this assignment is 𝙵𝟢𝟢 hmm..
++  //additions block ends.
++
+   unsigned int naddrs = 0;
+   struct scratch_buffer tmpbuf;
+ 
+   scratch_buffer_init (&tmpbuf);
+-  last_i = gaih_inet (name, pservice, hints, end, &naddrs, &tmpbuf);
++  int last_i = gaih_inet (name, pservice, hints, end, &naddrs, &tmpbuf);
+   scratch_buffer_free (&tmpbuf);
++      //additions block starts:
++      {//we still need to transform this hostname(aka |name|) whether this fails or succeeds, because both paths use it to display the transformed hostname(aka |transformed_name|!
++        //repeating some code from within func. 'gaih_inet' (which is called just above, by their original code)
++#ifdef HAVE_LIBIDN
++      if ((hints->ai_flags & AI_IDN) && (NULL != transformed_name)) //iptables will crash when transformed_name(aka name) is NULL inside __idna_to_ascii_lz() call below!
++	{
++        char *mallocD_xformD_name = NULL;//tmp!
++        int idn_flags = 0;
++        if (hints->ai_flags & AI_IDN_ALLOW_UNASSIGNED)
++          idn_flags |= IDNA_ALLOW_UNASSIGNED;
++        if (hints->ai_flags & AI_IDN_USE_STD3_ASCII_RULES)
++          idn_flags |= IDNA_USE_STD3_ASCII_RULES;
++        int rc = __idna_to_ascii_lz (transformed_name, &mallocD_xformD_name, idn_flags); //so 'ping 𝙵𝟢𝟢' will solve '𝙵𝟢𝟢' as 'f00' and fail if 'f00' is not in /etc/hosts for example! (𝙵𝟢𝟢 being in /etc/hosts has no impact whatsoever! ie. not seen as 𝙵𝟢𝟢, seen as f00!)
++        if (rc == IDNA_SUCCESS) {
++          if (mallocD_xformD_name != transformed_name) {
++            transformed_name = mallocD_xformD_name;
++            mallocD_xformD_name=NULL;
++            mallocD_transformed_name=true;
++          }
++        }
++        //end code repeat
++    }//if
++#endif
++      }
++      //additions block ends.
++
+ 
+   if (last_i != 0)
+     {
+       freeaddrinfo (p);
+       __free_in6ai (in6ai);
+ 
++    //additions block starts:
++    {
++      syslog(LOG_NOTICE, "%s[%d](full:'%s') for user "
++          "%s(%d(eff:%s(%d))) 2of2"//TODO: syslog a message for every failed attempt and don't forget the '2of2'
++          " FAILed to resolve requested hostname '\x1b[41m%s\x1b(B\x1b[m'(raw), which %s transformed(eg. 𝙵𝟢𝟢->f00) into:\n%s"
++          ,__progname
++          ,cp_pid
++          ,__progname_full
++          ,username
++          ,guid
++          ,eusername
++          ,geuid
++          , name
++          , (mallocD_transformed_name?"\x1b[45mwas\x1b(B\x1b[m":"was not")
++          , (mallocD_transformed_name?transformed_name:name)
++          );
++      closelog();//they say it's optional; okFIXME: what happens after this if the program already had its own openlog and then it's attempting to syslog itself after this?! so what happens is that the progname(syslog()'s first arg) is reset to the actual exe name, but the log still happens! so the only thing still identifying the program is the same pid number!
++      if (mallocD_transformed_name) {
++        free(transformed_name);transformed_name=NULL;mallocD_transformed_name=false;
++      }
++    }
++    //additions block ends.
++
+       return -last_i;
+     }
+ 
+@@ -2485,10 +2614,85 @@ getaddrinfo (const char *name, const char *service,
+   if (p)
+     {
+       *pai = p;
++
++      //additions block starts:  (moved here because it was missing results from /etc/hosts  - and unsure if this fixes it, it should!)
++      {
++        char *buf; //src: https://stackoverflow.com/a/35458253
++        size_t size;
++        FILE *fp = open_memstream(&buf, &size);//auto growing buffer(initially 0 bytes), yey!
++        if (fp) {//TODO: make the 'else' path tell me what the 'errno' was! see 'man strerror'
++          //assert(fp);
++          //    fprintf(fp, "Hello World!\n");
++          //    fprintf(fp, "%s also work, of course.\n", "Format specifiers");
++          for(const struct addrinfo *moo = p; moo != NULL; moo = moo->ai_next) {
++            char *ipa = NULL;//src: https://stackoverflow.com/a/29147085
++            const struct sockaddr *res = moo->ai_addr;
++            assert(res);
++            switch(res->sa_family) {
++              case AF_INET: {
++                              const struct sockaddr_in *addr_in = (struct sockaddr_in *)res;
++                              ipa = malloc(INET_ADDRSTRLEN);
++                              inet_ntop(AF_INET, &(addr_in->sin_addr), ipa, INET_ADDRSTRLEN);
++                              break;
++                            }
++              case AF_INET6: {
++                               const struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)res;
++                               ipa = malloc(INET6_ADDRSTRLEN);
++                               inet_ntop(AF_INET6, &(addr_in6->sin6_addr), ipa, INET6_ADDRSTRLEN);
++                               break;
++                             }
++              default:
++                             break;
++            }
++            //printf("IP address: %s\n", ipa);
++            fprintf(fp, "\x1b[44m%s %s%s%s%s\x1b(B\x1b[m\n", //using /etc/hosts format: ip hostname!
++                //moo->ai_canonname //could use 'canonname' here instead, but wanna be sure, in case it changes in the future!
++                //If hints.ai_flags includes the AI_CANONNAME flag, then the ai_canonname
++                //field  of  the first of the addrinfo structures in the returned list is
++                //set to point to the official name of the host.
++                //^ from 'man 3 getaddrinfo'
++                //well this isn't good, let's just use name, well ok transformed_name:
++                ipa,
++                transformed_name,//always show transformed name, but if transformed also show original (as comment, since it's useless to be in the list of aliases in /etc/hosts if it were transformed!)
++                (mallocD_transformed_name?" // requested as: '":""),
++                (mallocD_transformed_name?name:""),
++                (mallocD_transformed_name?"'":"")
++                );
++            free(ipa);ipa=NULL;
++          }
++          fclose(fp);
++          syslog(LOG_NOTICE, "%s[%d](full:'%s') for user "
++              "%s(%d(eff:%s(%d))) 2of2"//TODO: syslog a message for every failed attempt and don't forget the '2of2'
++              " successfully resolved requested hostname('%s') which %s transformed('%s') as follows:\n%s"
++              ,__progname
++              ,cp_pid
++              ,__progname_full
++              ,username
++              ,guid
++              ,eusername
++              ,geuid
++              , name
++              , (mallocD_transformed_name?"\x1b[45mwas\x1b(B\x1b[m":"was not")
++              , transformed_name
++              ,buf);
++          if (mallocD_transformed_name) {
++            free(transformed_name);transformed_name=NULL;mallocD_transformed_name=false;
++          }
++          closelog();//they say it's optional;
++          free(buf);buf=NULL;//that's right!
++          //      } else {
++          //        assert(!fp);
++          //        fclose(fp);//actually it's NULL here, so ... these 2 aren't needed!
++          //        free(buf);//but it should be 0 bytes!
++      }
++      }
++      //additions block ends.
++
+       return 0;
+     }
+ 
+-  return last_i ? -last_i : EAI_NONAME;
++  return //last_i ? -last_i :  //yep this was useless!
++    EAI_NONAME;
+ }
+ libc_hidden_def (getaddrinfo)
+ 

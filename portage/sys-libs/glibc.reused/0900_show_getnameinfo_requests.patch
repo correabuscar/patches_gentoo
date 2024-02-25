@@ -1,0 +1,153 @@
+diff -upr glibc-2.27.orig/inet/getnameinfo.c glibc-2.27/inet/getnameinfo.c
+--- glibc-2.27.orig/inet/getnameinfo.c	2018-02-01 17:17:18.000000000 +0100
++++ glibc-2.27/nss/getnameinfo.c	2018-04-24 14:02:38.015356901 +0200
+@@ -73,6 +73,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBI
+ #include <scratch_buffer.h>
+ #include <net-internal.h>
+ 
++#include <syslog.h> //for syslog, below
++#include <unistd.h> // for getuid()/geteuid()/getpid() below  [I'm aware that this .h is already included above]
++#include <pwd.h> //for getpwuid()
++#include <assert.h> //for assert()
++
++
+ #ifndef min
+ # define min(x,y) (((x) > (y)) ? (y) : (x))
+ #endif /* min */
+@@ -536,12 +541,136 @@ getnameinfo (const struct sockaddr *sa,
+ 
+   if (host != NULL && hostlen > 0)
+     {
++      //addition block:
++      //"The problem is that when you have a macro replacement, the preprocessor will only expand the macros recursively if neither the stringizing operator # nor the token-pasting operator ## are applied to it." src: https://stackoverflow.com/a/1597129
++      //#define LOG_NAME_RND2510 __FILE__ ":" # __LINE__ "/" __FUNC__
++//grrreat, good indenting vim!
++#define CONCAT_RND28490(a,b) a # b  //XXX: use this only for openlog's first arg!
++#define JUSTPASSALONGTOCONCAT_RND8410(a,b) CONCAT_RND28490(a,b) //required for '#' to actually concat the expanded __LINE__ instead of the string "__LINE__"
++#if defined(__manual_funcname__)
++#error "unexpected non-sense"
++#endif
++#define __manual_funcname__ "getnameinfo" //string!
++#if defined(__func__)
++#define __FUNCNAME_RND26538__ __func__
++#else
++#if defined(__FUNCTION__)
++#define __FUNCNAME_RND26538__ __FUNCTION__
++#else
++#if defined(__PRETTY_FUNCTION__)
++#define __FUNCNAME_RND26538__ __PRETTY_FUNCTION__
++#else
++#warning "!! Using manually-set function-name! (thus you should ensure __manual_funcname__ is properly set)" //"!! Using user setable function name " __manual_funcname__ //"Neither ‘#error’ nor ‘#warning’ macro-expands its argument. Internal whitespace sequences are each replaced with a single space. The line must consist of complete tokens. It is wisest to make the argument of these directives be a single string constant; this avoids problems with apostrophes and the like." src: https://gcc.gnu.org/onlinedocs/cpp/Diagnostics.html
++#define __FUNCNAME_RND26538__ __manual_funcname__  //user selectable - should be the name of current function (as string)!
++#endif
++#endif
++#endif
++#define LOG_NAME_RND2510 JUSTPASSALONGTOCONCAT_RND8410("glibc", __WORDSIZE) JUSTPASSALONGTOCONCAT_RND8410(":" __FILE__ ":", __LINE__) "/" __FUNCNAME_RND26538__
++      //__func__ doesn't expand to anything other than "__func__" (as string)! so, using __FUNCTION__ -  same thing!; oh actually it's another thing! none of these macros are defined in this context! so i have to use a manually-set name!
++      extern const char *__progname;
++      extern const char *__progname_full;
++      const pid_t cp_pid=getpid();
++      //openlog - If ident(aka first arg) is NULL, the program  name is  used.
++      openlog(LOG_NAME_RND2510 , LOG_CONS 
++          //| LOG_PID  //however pid is still appended on syslog(but not on stderr) - even though this is commented out!
++          | LOG_NDELAY
++          | LOG_PERROR,//also write to stderr!
++          LOG_LOCAL1);
++#undef LOG_NAME_RND2510
++#undef JUSTPASSALONGTOCONCAT_RND8410
++#undef CONCAT_RND28490
++#undef __FUNCNAME_RND26538__ 
++#undef __manual_funcname__
++      inline const char *getUserName(const uid_t uid)  //src: https://stackoverflow.com/a/8953445
++      {
++        //uid_t uid = geteuid();
++        struct passwd *pw = getpwuid(uid);
++        if (pw)
++        {
++          return pw->pw_name; //return ptr to string; Do not free() this!
++        }
++
++        return NULL; //when printed shows "(null)" (as a string) so we could return this!
++      }
++
++      uid_t guid=getuid();
++      uid_t geuid=geteuid();
++      const char *username=getUserName(guid);
++      const char *eusername=getUserName(geuid);
++      char *ipa = NULL;//src: https://stackoverflow.com/a/29147085
++      assert(sa);
++      switch(sa->sa_family) {
++        case AF_INET: {
++                        const struct sockaddr_in *addr_in = (struct sockaddr_in *)sa;
++                        ipa = malloc(INET_ADDRSTRLEN);
++                        inet_ntop(AF_INET, &(addr_in->sin_addr), ipa, INET_ADDRSTRLEN);
++                        break;
++                      }
++        case AF_INET6: {
++                         const struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)sa;
++                         ipa = malloc(INET6_ADDRSTRLEN);
++                         inet_ntop(AF_INET6, &(addr_in6->sin6_addr), ipa, INET6_ADDRSTRLEN);
++                         break;
++                       }
++        default:
++                       break;
++      }
++      syslog(LOG_NOTICE, "%s[%d](full:'%s') for user "
++          "%s(%d(eff:%s(%d))) 1of2"
++          " attempting to reverse-resolve (requested)IP address:\n%s"
++          ,__progname
++          ,cp_pid
++          ,__progname_full
++          ,username
++          ,guid
++          ,eusername
++          ,geuid
++          , ipa);
++      //addition block ends.
++
+       int result = gni_host (&tmpbuf, sa, addrlen, host, hostlen, flags);
+       if (result != 0)
+ 	{
+ 	  scratch_buffer_free (&tmpbuf);
++
++    //additions block starts:
++    syslog(LOG_NOTICE, "%s[%d](full:'%s') for user "
++        "%s(%d(eff:%s(%d))) 2of2"//TODO: syslog a message for every failed attempt and don't forget the '2of2'
++        " FAILed to reverse-resolve requested IP:\n%s"
++        ,__progname
++        ,cp_pid
++        ,__progname_full
++        ,username
++        ,guid
++        ,eusername
++        ,geuid
++        , ipa
++        );
++    free(ipa);ipa=NULL;
++    closelog();//they say it's optional; okFIXME: what happens after this if the program already had its own openlog and then it's attempting to syslog itself after this?! so what happens is that the progname(syslog()'s first arg) is reset to the actual exe name, but the log still happens! so the only thing still identifying the program is the same pid number!
++    //additions block ends.
++
+ 	  return result;
+ 	}
++      //additions block starts: (don't insert anything above between '}' and 'else {'
++      else {//it was successful
++        syslog(LOG_NOTICE, "%s[%d](full:'%s') for user "
++            "%s(%d(eff:%s(%d))) 2of2"//TODO: syslog a message for every failed attempt and don't forget the '2of2'
++            " successfully reverse-resolved requested IP address:\n%s %s"
++            ,__progname
++            ,cp_pid
++            ,__progname_full
++            ,username
++            ,guid
++            ,eusername
++            ,geuid
++            , ipa
++            , host);
++        free(ipa);ipa=NULL;
++        closelog();//they say it's optional;
++      }//else success block
++      //additions block ends.
++
+     }
+ 
+   if (serv && (servlen > 0))

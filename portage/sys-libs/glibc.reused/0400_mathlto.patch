@@ -1,0 +1,13 @@
+Index: glibc/math/Makefile
+===================================================================
+--- glibc.orig/math/Makefile
++++ glibc/math/Makefile
+@@ -21,6 +21,8 @@ subdir		:= math
+ 
+ include ../Makeconfig
+ 
++CFLAGS-.o += -fno-stack-protector  -falign-functions=32
++
+ # Installed header files.
+ headers		:= math.h bits/mathcalls.h \
+ 		   fpu_control.h complex.h bits/cmathcalls.h fenv.h \
