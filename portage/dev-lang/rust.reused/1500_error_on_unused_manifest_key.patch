@@ -243,12 +243,12 @@ Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/
                      // Output an empty line.
                      writeln!(bcx.config.shell().err())?;
                  }
-+//TODO: use this on normal 'cargo build' warnins too! ie. CARGO_PEDANTIC=0 to disable error-ing on warnings there too!
++//TODO: use this on normal 'cargo build' warnings too! ie. CARGO_PEDANTIC=0 to disable error-ing on warnings there too!
 +				let env_name="CARGO_PEDANTIC"; // XXX: if it's unset or set to empty then it's on/enabled !
 +				use std::env;
 +                let ev=env::var(env_name).unwrap_or(String::new());
 +                if !ev.is_empty() {
-+                    let ev=ev.to_lowercase(); //TODO: shadowed rather that mut, which is better ?!
++                    let ev=ev.to_lowercase(); //TODO: shadowed rather than mut, which is better ?!
 +//                    use once_cell::sync::Lazy;
 +//					static DISABLED_VALUES: Lazy<Vec<&'static str>> = Lazy::new(|| {
 +//						vec!["0", "off", "no", "disabled"]
