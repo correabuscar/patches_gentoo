@@ -245,18 +245,18 @@ Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/
                  }
 -            }
 -        }
-+//TODO: use this on normal 'cargo build' warnings too! ie. CARGO_PEDANTIC=0 to disable error-ing on warnings there too!
-+				let env_name="CARGO_PEDANTIC"; // XXX: if it's unset or set to empty then it's on/enabled !
++//dontTODO: use this on normal 'cargo build' warnings too! ie. CARGO_PEDANTIC=0 to disable error-ing on warnings there too!
++                let env_name="CARGO_PEDANTIC"; // XXX: if it's unset or set to empty then it's on/enabled !
 +                let is_on:bool=true;
-+				use std::env;
++                use std::env;
 +                static DISABLED_VALUES: &[&str] = &["0", "off", "no", "disabled"];
 +                let env_val=env::var(env_name).unwrap_or(String::new());
 +                if !env_val.is_empty() {
 +                    let env_val=env_val.to_lowercase(); //TODO: shadowed rather than mut, which is better ?!
 +//                    use once_cell::sync::Lazy;
-+//					static DISABLED_VALUES: Lazy<Vec<&'static str>> = Lazy::new(|| {
-+//						vec!["0", "off", "no", "disabled"]
-+//					});
++//                    static DISABLED_VALUES: Lazy<Vec<&'static str>> = Lazy::new(|| {
++//                        vec!["0", "off", "no", "disabled"]
++//                    });
 +//                    use lazy_static::lazy_static;
 +//                    lazy_static! {
 +//                        static ref DISABLED_VALUES: Vec<&'static str> = vec!["0", "off", "no", "disabled"];
