@@ -247,7 +247,7 @@ Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/
 -        }
 +//dontTODO: use this on normal 'cargo build' warnings too! ie. CARGO_PEDANTIC=0 to disable error-ing on warnings there too!
 +                let env_name="CARGO_PEDANTIC"; // XXX: if it's unset or set to empty then it's on/enabled !
-+                let is_on:bool=true;
++                let mut is_on:bool=true;
 +                use std::env;
 +                static DISABLED_VALUES: &[&str] = &["0", "off", "no", "disabled"];
 +                let env_val=env::var(env_name).unwrap_or(String::new());
