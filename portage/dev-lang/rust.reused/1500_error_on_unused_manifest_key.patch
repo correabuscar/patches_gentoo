@@ -3,6 +3,38 @@ we wanna avoid a future this: https://github.com/rust-lang/rust/security/advisor
 also any other potential gotchas due to allowing unrecognized keys to exist and be ignored by cargo(with only a warning)
 
 tested on rust 1.75.0 on Gentoo
+example:
+
+$ cargo build
+warning: unused2 manifest key: dependencies.gl.problem
+warning: unused2 manifest key: dependencies.winit.problem2
+warning: unused manifest key: build
+warning: unused manifest key: hi
+warning: unused manifest key: package.nonexistent636926912
+warning: unused manifest key: well
+error: Compilation failed due to cargo warnings! Manually done this(via cargo patch) so that things like the following (ie. dep key packages= and using rust pre 1.26.0 which ignores it, downloads squatted package) will be avoided in the future: https://github.com/rust-lang/rust/security/advisories/GHSA-phjm-8x66-qw4r
+
+for this Cargo.toml:
+[package]
+name = "unused_manifest_key"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+nonexistent636926912="wtw"
+
+[dependencies]
+gl = { version="0.14", problem="moo" }
+winit = { version="0.28", problem2="moo2" }
+
+[well.hello]
+there="ok"
+
+[hi]
+
+[build]
+rustflags = ["-D", "warnings"]
+
 
 Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/util/toml/mod.rs
 ===================================================================
