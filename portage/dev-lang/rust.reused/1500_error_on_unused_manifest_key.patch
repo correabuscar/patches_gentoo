@@ -1,0 +1,256 @@
+treat all cargo warnings as errors (well, it bails after showing them)
+we wanna avoid a future this: https://github.com/rust-lang/rust/security/advisories/GHSA-phjm-8x66-qw4r
+also any other potential gotchas due to allowing unrecognized keys to exist and be ignored by cargo(with only a warning)
+
+tested on rust 1.75.0 on Gentoo
+
+Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/util/toml/mod.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/util/toml/mod.rs
++++ rustc-1.75.0-src/src/tools/cargo/src/cargo/util/toml/mod.rs
+@@ -1,3 +1,5 @@
++#![deny(unused_must_use)]
++
+ use std::collections::{BTreeMap, BTreeSet, HashMap};
+ use std::ffi::OsStr;
+ use std::path::{Path, PathBuf};
+@@ -102,13 +104,22 @@ fn read_manifest_from_str(
+         stringify(&mut key, &path);
+         unused.insert(key);
+     })?;
++//    let mut found_unused_manifest_keys=false;
++//    //XXX: This detects keys in the root Cargo.toml file so not inside [dependencies] for example.
+     let add_unused = |warnings: &mut Warnings| {
+         for key in unused {
++//            if !found_unused_manifest_keys {
++//                found_unused_manifest_keys=true;
++//            }
+             warnings.add_warning(format!("unused manifest key: {}", key));
+             if key == "profiles.debug" {
+                 warnings.add_warning("use `[profile.dev]` to configure debug builds".to_string());
+-            }
+-        }
++            };
++        };
++//        if found_unused_manifest_keys {
++//            bail!("Unused manifest keys detected1, failing early to avoid any possible future issues like the package= one using earlier rust like explained in https://github.com/rust-lang/rust/security/advisories/GHSA-phjm-8x66-qw4r");
++//        };
++//        Ok(()) //thanks bail! which forces this closure to return -> Result<_, Error>
+     };
+ 
+     if let Some(deps) = manifest
+@@ -133,6 +144,7 @@ fn read_manifest_from_str(
+             package_root,
+             config,
+         )?;
++//        add_unused(manifest.warnings_mut())?;
+         add_unused(manifest.warnings_mut());
+         if manifest.targets().iter().all(|t| t.is_custom_build()) {
+             bail!(
+@@ -145,6 +157,7 @@ fn read_manifest_from_str(
+     } else {
+         let (mut m, paths) =
+             schema::TomlManifest::to_virtual_manifest(manifest, source_id, package_root, config)?;
++//        add_unused(m.warnings_mut())?;
+         add_unused(m.warnings_mut());
+         Ok((EitherManifest::Virtual(m), paths))
+     };
+@@ -463,7 +476,7 @@ impl schema::TomlManifest {
+                             "workspace.dependencies",
+                             dep.unused_keys(),
+                             &mut warnings,
+-                        );
++                        );//?;
+                     }
+                 }
+                 let ws_root_config = WorkspaceRootConfig::new(
+@@ -678,7 +691,7 @@ impl schema::TomlManifest {
+                 } else {
+                     kind_name.to_string()
+                 };
+-                unused_dep_keys(name_in_toml, &table_in_toml, v.unused_keys(), cx.warnings);
++                unused_dep_keys(name_in_toml, &table_in_toml, v.unused_keys(), cx.warnings);//?;
+                 cx.deps.push(dep);
+                 deps.insert(
+                     n.to_string(),
+@@ -1242,7 +1255,7 @@ impl schema::TomlManifest {
+                 "replace",
+                 replacement.unused_keys(),
+                 &mut cx.warnings,
+-            );
++            );//?;
+             dep.set_version_req(OptVersionReq::exact(&version));
+             replace.push((spec, dep));
+         }
+@@ -1274,7 +1287,7 @@ impl schema::TomlManifest {
+                             &format!("patch.{toml_url}",),
+                             dep.unused_keys(),
+                             &mut cx.warnings,
+-                        );
++                        );//?;
+                         dep.to_dependency(name, cx, None)
+                     })
+                     .collect::<CargoResult<Vec<_>>>()?,
+@@ -1356,11 +1369,27 @@ fn unused_dep_keys(
+     kind: &str,
+     unused_keys: Vec<String>,
+     warnings: &mut Vec<String>,
++//) -> CargoResult<()> {
+ ) {
++    //XXX: This code detects unuseds in the subkeys like in the [dependencies] but not in the root
++    //package
++//    let mut found_unused_manifest_keys=false;
+     for unused in unused_keys {
+-        let key = format!("unused manifest key: {kind}.{dep_name}.{unused}");
++//        if !found_unused_manifest_keys {
++//            found_unused_manifest_keys=true;
++//        }
++        let key = format!("unused2 manifest key: {kind}.{dep_name}.{unused}");
+         warnings.push(key);
+-    }
++    };
++//    if found_unused_manifest_keys {
++//        use std::io::Write;
++//        let mut stderr = std::io::stderr();
++//        for warn in warnings {
++//            writeln!(stderr, "{}", warn)?;
++//        }
++//        bail!("Unused manifest keys detected, failing early to avoid any possible future issues like the package= one using earlier rust like explained in https://github.com/rust-lang/rust/security/advisories/GHSA-phjm-8x66-qw4r");
++//    };
++//    return Ok(());
+ }
+ 
+ fn inheritable_from_path(
+Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/core/compiler/job_queue/mod.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/core/compiler/job_queue/mod.rs
++++ rustc-1.75.0-src/src/tools/cargo/src/cargo/core/compiler/job_queue/mod.rs
+@@ -962,6 +962,8 @@ impl<'cfg> DrainState<'cfg> {
+                     // Output an empty line.
+                     writeln!(bcx.config.shell().err())?;
+                 }
++                use anyhow::bail;
++                bail!("boooooooooooooooooo2");
+             }
+         }
+ 
+Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/core/workspace.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/core/workspace.rs
++++ rustc-1.75.0-src/src/tools/cargo/src/cargo/core/workspace.rs
+@@ -1098,12 +1098,16 @@ impl<'cfg> Workspace<'cfg> {
+     }
+ 
+     pub fn emit_warnings(&self) -> CargoResult<()> {
++        let mut seen_any_warnings=false;
+         for (path, maybe_pkg) in &self.packages.packages {
+             let warnings = match maybe_pkg {
+                 MaybePackage::Package(pkg) => pkg.manifest().warnings().warnings(),
+                 MaybePackage::Virtual(vm) => vm.warnings().warnings(),
+             };
+             let path = path.join("Cargo.toml");
++            if !seen_any_warnings && !warnings.is_empty() {
++                seen_any_warnings=true;
++            }
+             for warning in warnings {
+                 if warning.is_critical {
+                     let err = anyhow::format_err!("{}", warning.message);
+@@ -1122,6 +1126,10 @@ impl<'cfg> Workspace<'cfg> {
+                 }
+             }
+         }
++        if seen_any_warnings {
++            //use anyhow::bail;
++            bail!("Compilation failed due to cargo warnings! Manually done this(via cargo patch) so that things like the following (ie. dep key packages= and using rust pre 1.26.0 which ignores it, downloads squatted package) will be avoided in the future: https://github.com/rust-lang/rust/security/advisories/GHSA-phjm-8x66-qw4r");
++        }
+         Ok(())
+     }
+ 
+Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/ops/resolve.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/ops/resolve.rs
++++ rustc-1.75.0-src/src/tools/cargo/src/cargo/ops/resolve.rs
+@@ -814,6 +814,7 @@ fn emit_warnings_of_unused_patches(
+     resolve: &Resolve,
+     registry: &PackageRegistry<'_>,
+ ) -> CargoResult<()> {
++    let mut seen_any_warnings=false;
+     const MESSAGE: &str = "was not used in the crate graph.";
+ 
+     // Patch package with the source URLs being patch
+@@ -861,6 +862,9 @@ fn emit_warnings_of_unused_patches(
+                     write!(msg, "\n    {}", id.display_registry_name())?;
+                 }
+                 ws.config().shell().warn(msg)?;
++                if !seen_any_warnings {
++                    seen_any_warnings=true;
++                }
+             }
+             _ => unemitted_unused_patches.push(unused),
+         }
+@@ -868,6 +872,9 @@ fn emit_warnings_of_unused_patches(
+ 
+     // Show general help message.
+     if !unemitted_unused_patches.is_empty() {
++        if !seen_any_warnings {
++            seen_any_warnings=true;
++        }
+         let warnings: Vec<_> = unemitted_unused_patches
+             .iter()
+             .map(|pkgid| format!("Patch `{}` {}", pkgid, MESSAGE))
+@@ -877,5 +884,9 @@ fn emit_warnings_of_unused_patches(
+             .warn(format!("{}\n{}", warnings.join("\n"), UNUSED_PATCH_WARNING))?;
+     }
+ 
++    if seen_any_warnings {
++        use anyhow::bail;
++        bail!("Compilation failed due to cargo [patch] warnings(above)! Manually done this(via cargo patch) so that things like the following (ie. dep key packages= and using rust pre 1.26.0 which ignores it, downloads squatted package) will be avoided in the future: https://github.com/rust-lang/rust/security/advisories/GHSA-phjm-8x66-qw4r");
++    }
+     return Ok(());
+ }
+
+#first try (fail):
+#Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/util/toml/mod.rs
+#===================================================================
+#--- .orig/var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/util/toml/mod.rs
+#+++ rustc-1.75.0-src/src/tools/cargo/src/cargo/util/toml/mod.rs
+#@@ -102,14 +102,21 @@ fn read_manifest_from_str(
+#         stringify(&mut key, &path);
+#         unused.insert(key);
+#     })?;
+#+    let found_unused_manifest_keys=false;
+#     let add_unused = |warnings: &mut Warnings| {
+#         for key in unused {
+#+            if !found_unused_manifest_keys {
+#+                found_unused_manifest_keys=true;
+#+            }
+#             warnings.add_warning(format!("unused manifest key: {}", key));
+#             if key == "profiles.debug" {
+#                 warnings.add_warning("use `[profile.dev]` to configure debug builds".to_string());
+#             }
+#         }
+#     };
+#+    if found_unused_manifest_keys {
+#+        bail!("Unused manifest keys detected1, failing early to avoid any possible future issues like the package= one using earlier rust like explained in https://github.com/rust-lang/rust/security/advisories/GHSA-phjm-8x66-qw4r");
+#+    }
+# 
+#     if let Some(deps) = manifest
+#         .workspace
+#@@ -1357,10 +1364,17 @@ fn unused_dep_keys(
+#     unused_keys: Vec<String>,
+#     warnings: &mut Vec<String>,
+# ) {
+#+    let found_unused_manifest_keys=false;
+#     for unused in unused_keys {
+#+            if !found_unused_manifest_keys {
+#+                found_unused_manifest_keys=true;
+#+            }
+#         let key = format!("unused manifest key: {kind}.{dep_name}.{unused}");
+#         warnings.push(key);
+#     }
+#+    if found_unused_manifest_keys {
+#+        bail!("Unused manifest keys detected2, failing early to avoid any possible future issues like the package= one using earlier rust like explained in https://github.com/rust-lang/rust/security/advisories/GHSA-phjm-8x66-qw4r");
+#+    }
+# }
+# 
+# fn inheritable_from_path(
