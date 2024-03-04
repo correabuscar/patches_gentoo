@@ -1,0 +1,15 @@
+normally if I type 'log' inside 'crash', I then hit End to see the end, but then I wanna scroll back up a little, but it exited due to 'less -E' so let's not exit - use 'q' key to exit.
+
+Index: /var/tmp/portage/dev-util/crash-9999/work/crash-9999/cmdline.c
+===================================================================
+--- .orig/var/tmp/portage/dev-util/crash-9999/work/crash-9999/cmdline.c
++++ crash-9999/cmdline.c
+@@ -363,7 +363,7 @@ dump_history(void)
+ 
+ static char *less_argv[5] = {
+ 	"/usr/bin/less",
+-	"-E",
++	"-+E", // + is opposite of: -E or --QUIT-AT-EOF Causes less to automatically exit the first time it reaches end-of-file.
+ 	"-X",
+         "-Ps -- MORE --  forward\\: <SPACE>, <ENTER> or j  backward\\: b or k  quit\\: q",
+ 	NULL
