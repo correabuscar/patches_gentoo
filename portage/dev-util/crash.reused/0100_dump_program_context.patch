@@ -1,0 +1,14 @@
+show 'crash' args and stuff at startup, helps knowing what it sees.
+
+Index: /var/tmp/portage/dev-util/crash-9999/work/crash-9999/main.c
+===================================================================
+--- .orig/var/tmp/portage/dev-util/crash-9999/work/crash-9999/main.c
++++ crash-9999/main.c
+@@ -713,6 +713,7 @@ main(int argc, char **argv)
+ 	machdep_init(PRE_GDB);
+         datatype_init();
+ 
++        dump_program_context();
+ 	/*
+ 	 *  gdb_main_loop() modifies "command_loop_hook" to point to the 
+          *  main_loop() function below, and then calls gdb's main() function.
