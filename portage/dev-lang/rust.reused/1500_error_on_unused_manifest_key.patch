@@ -235,46 +235,6 @@ Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/
  }
  
  fn inheritable_from_path(
-Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/core/compiler/job_queue/mod.rs
-===================================================================
---- .orig/var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/core/compiler/job_queue/mod.rs
-+++ rustc-1.75.0-src/src/tools/cargo/src/cargo/core/compiler/job_queue/mod.rs
-@@ -962,8 +962,33 @@ impl<'cfg> DrainState<'cfg> {
-                     // Output an empty line.
-                     writeln!(bcx.config.shell().err())?;
-                 }
--            }
--        }
-+//dontTODO: use this on normal 'cargo build' warnings too! ie. CARGO_PEDANTIC=0 to disable error-ing on warnings there too!
-+                let env_name="CARGO_PEDANTIC"; // XXX: if it's unset or set to empty then it's on/enabled !
-+                let mut is_on:bool=true;
-+                use std::env;
-+                static DISABLED_VALUES: &[&str] = &["0", "off", "no", "disabled"];
-+                let env_val=env::var(env_name).unwrap_or(String::new());
-+                if !env_val.is_empty() {
-+                    let env_val=env_val.to_lowercase(); //TODO: shadowed rather than mut, which is better ?!
-+//                    use once_cell::sync::Lazy;
-+//                    static DISABLED_VALUES: Lazy<Vec<&'static str>> = Lazy::new(|| {
-+//                        vec!["0", "off", "no", "disabled"]
-+//                    });
-+//                    use lazy_static::lazy_static;
-+//                    lazy_static! {
-+//                        static ref DISABLED_VALUES: Vec<&'static str> = vec!["0", "off", "no", "disabled"];
-+//                    };
-+                    if DISABLED_VALUES.iter().any(|v| v == &env_val) {
-+                        is_on=false;
-+                    };
-+                };//else, is empty or unset, thus is on.
-+                if is_on {
-+                    let values_str = DISABLED_VALUES.iter().map(|v| format!("\"{}\"", v)).collect::<Vec<String>>().join(", ");
-+                    use anyhow::bail;
-+                    bail!("Treating the above cargo warnings as errors! So this effectively treated any child cargos(or any job_queue things, like running gcc compiler lookslike) (eg. due to cargo build --jobs 12) having rustc or cargo warnings as cargo warnings in parent - which means compilation of rust from source fails due to libssh2-sys having some warnings like this: warning: libssh2-sys@0.3.0: libssh2/src/hostkey.c:403:5: warning: 'RSA_free' is deprecated: Since OpenSSL 3.0 [-Wdeprecated-declarations]. So considering we don't want this to fail, for now, FIXME: we comment out these two lines in this patch. TODO: find a way to replicate this locally to test and see if a libssh2-sys replica will show cargo warnings in child if new keys are added in its Config.toml you can prevent this error from exiting by having env var '{}' set to any of the following(case insensitive) values: {}", env_name, values_str);
-+                };
-+            };
-+        };
- 
-         Ok(())
-     }
 Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/core/workspace.rs
 ===================================================================
 --- .orig/var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/core/workspace.rs
@@ -349,3 +309,56 @@ Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/
 +    }
      return Ok(());
  }
+Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/core/compiler/job_queue/mod.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/core/compiler/job_queue/mod.rs
++++ rustc-1.75.0-src/src/tools/cargo/src/cargo/core/compiler/job_queue/mod.rs
+@@ -962,8 +962,46 @@ impl<'cfg> DrainState<'cfg> {
+                     // Output an empty line.
+                     writeln!(bcx.config.shell().err())?;
+                 }
+-            }
+-        }
++                //TODO: do this for the other 3 places(seen in patch) too, with their own env.vars!
++                let env_name="CARGO_DONT_ERR_ON_CARGO_WARNINGS_MADE_DURING_CARGO_JOBS";
++                // XXX: if it's set to anything other than '0' or 'off' or 'disabled' etc.,
++                // then it's on/enabled aka it doesn't err on warnings!
++                // Sometimes it's set and you can't unset it, but you can set it to something
++                // so we must allow setting it to something to disable it.
++                // So if it's unset or set to '0' etc., then it's off aka it does err on warnings
++                // (ie. by default it does)
++                let mut should_err:bool=true;
++                use std::env;
++                //static DISABLED_VALUES: &[&str] = &["0", "off", "no", "disabled", "err", "error"];
++                const C_DISABLED_VALUES: [&str; 6] = ["0", "off", "no", "disabled", "err", "error"];
++                static DISABLED_VALUES_REF: &[&str] = &C_DISABLED_VALUES;
++                let env_val:String=env::var(env_name).unwrap_or(String::new());//get value or as empty String
++                //if env::var(env_name).is_ok() {
++                if !env_val.is_empty() {
++                    let env_val=env_val.to_lowercase(); //TODO: shadowed rather than mut, which is better ?!
++//                    use once_cell::sync::Lazy;
++//                    static DISABLED_VALUES: Lazy<Vec<&'static str>> = Lazy::new(|| {
++//                        vec!["0", "off", "no", "disabled"]
++//                    });
++//                    use lazy_static::lazy_static;
++//                    lazy_static! {
++//                        static ref DISABLED_VALUES: Vec<&'static str> = vec!["0", "off", "no", "disabled"];
++//                    };
++                    if ! DISABLED_VALUES_REF.iter().any(|v| v == &env_val) {
++                        // if it's set to any of the disabled values, then it's like it's unset aka
++                        // do err on warnings!
++                        // but if it's set to anything else like '1' or 'randomstring' then it's
++                        // set to on aka do NOT err on warnings!
++                        should_err=false;
++                    };
++                };//else, is empty or unset, thus is on.
++                if should_err {
++                    let values_str = DISABLED_VALUES_REF.iter().map(|v| format!("\"{}\"", v)).collect::<Vec<String>>().join(", ");
++                    use anyhow::bail;
++                    bail!("Treating the above cargo warnings as errors! So this effectively treated any child cargos(or any job_queue things(I honestly don't know what really), like running gcc compiler lookslike) (eg. due to cargo build --jobs 12) having rustc or cargo warnings as cargo warnings in parent - which means compilation of rust from source fails due to libssh2-sys having some warnings like this: warning: libssh2-sys@0.3.0: libssh2/src/hostkey.c:403:5: warning: 'RSA_free' is deprecated: Since OpenSSL 3.0 [-Wdeprecated-declarations]. So considering we don't want this to fail, for now, FIXME: we comment out these two lines in this patch. TODO: find a way to replicate this locally to test and see if a libssh2-sys replica will show cargo warnings in child if new keys are added in its Config.toml!\nYou can prevent this error from exiting by having env var '{}' set to any value(currently is set to '{}') except any of the following(case insensitive) values(which make it act as if it's unset aka it will err on warnings): {}", env_name, env_val, values_str);
++                };
++            };
++        };
+ 
+         Ok(())
+     }
