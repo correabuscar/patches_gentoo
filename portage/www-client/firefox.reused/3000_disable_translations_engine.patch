@@ -1,0 +1,28 @@
+
+avoid seeing this spam when wasm is disabled:
+console.error: (new ReferenceError("WebAssembly is not defined", "resource://gre/actors/TranslationsParent.sys.mjs", 2620))
+
+alternatively you can just set to false about:config value for key 'browser.translations.enable'
+
+Index: /var/tmp/portage/www-client/firefox-123.0/work/firefox-123.0/toolkit/components/translations/actors/TranslationsParent.sys.mjs
+===================================================================
+--- .orig/var/tmp/portage/www-client/firefox-123.0/work/firefox-123.0/toolkit/components/translations/actors/TranslationsParent.sys.mjs
++++ firefox-123.0/toolkit/components/translations/actors/TranslationsParent.sys.mjs
+@@ -2617,7 +2617,7 @@ export class TranslationsParent extends
+  * Validate some simple Wasm that uses a SIMD operation.
+  */
+ function detectSimdSupport() {
+-  return WebAssembly.validate(
++  return false; /*WebAssembly.validate(
+     new Uint8Array(
+       // ```
+       // ;; Detect SIMD support.
+@@ -2639,7 +2639,7 @@ function detectSimdSupport() {
+         0xfd, 0x0f, 0xfd, 0x62, 0x0b
+       ]
+     )
+-  );
++  );*/
+ }
+ 
+ /**
