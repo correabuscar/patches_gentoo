@@ -1,0 +1,53 @@
+after Ctrl+V aka paste password into last active non-keepassx window, re-show the keepass window so that an alt+tab would focus it, rather than (w/o this patch) having to find it in taskbar and clicking on it to unminimize it!
+
+doc: https://doc.qt.io/qt-5/qwidget.html
+
+#This was for keepassx(not xc):
+#diff --git a/src/autotype/AutoType.cpp b/src/autotype/AutoType.cpp
+#index 8032c27..b15d4bc 100644
+#--- a/src/autotype/AutoType.cpp
+#+++ b/src/autotype/AutoType.cpp
+#@@ -167,6 +167,9 @@ void AutoType::performAutoType(const Entry* entry, QWidget* hideWindow, const QS
+#         QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
+#     }
+# 
+#+    if (hideWindow) {
+#+        hideWindow->showNormal();
+#+    }
+#     m_inAutoType = false;
+# }
+# 
+Index: /var/tmp/portage/app-admin/keepassxc-9999/work/keepassxc-9999/src/autotype/AutoType.cpp
+===================================================================
+--- .orig/var/tmp/portage/app-admin/keepassxc-9999/work/keepassxc-9999/src/autotype/AutoType.cpp
++++ keepassxc-9999/src/autotype/AutoType.cpp
+@@ -295,7 +295,7 @@ void AutoType::executeAutoTypeActions(co
+         m_plugin->hideOwnWindow();
+ #else
+         if (getMainWindow()) {
+-            getMainWindow()->minimizeOrHide();
++            getMainWindow()->minimizeOrHide();//so we do wanna hide it during autotype, right.
+         }
+ #endif
+     } else {
+@@ -336,9 +336,11 @@ void AutoType::executeAutoTypeActions(co
+ 
+             if (!result.canRetry() || i == max_retries) {
+                 if (getMainWindow()) {
++                    //this brings main window to front and focuses it
+                     MessageBox::critical(getMainWindow(), tr("Auto-Type Error"), result.errorString());
+                 }
+                 emit autotypeRejected();
++                //so no need to unhide it here too
+                 m_inAutoType.unlock();
+                 return;
+             }
+@@ -351,6 +353,8 @@ void AutoType::executeAutoTypeActions(co
+     m_windowTitleForGlobal.clear();
+ 
+     emit autotypePerformed();
++    //getMainWindow()->show(); // no effect
++    getMainWindow()->bringToFront(); // unhide it - works but makes it active/focused too
+     m_inAutoType.unlock();
+ }
+ 
