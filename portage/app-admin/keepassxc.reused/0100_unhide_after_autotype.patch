@@ -5,6 +5,9 @@ _/- //so that an alt+tab would focus it, (qt4 keepassx only via showNormal())
 rather than (w/o this patch) having to find it in taskbar and clicking on it to unminimize it!
 (alt+tab also not working as it puts it last in list, so alt+shift+tab would work!)
 
+on kwin it doesn't focus it so you can alt+tab to it.
+on xfwm4 though it does, so u can alt+tab back to the autotype window.
+
 doc: https://doc.qt.io/qt-5/qwidget.html
 
 #This was for keepassx(not xc):
@@ -67,8 +70,8 @@ Index: /var/tmp/portage/app-admin/keepassxc-9999/work/keepassxc-9999/src/autotyp
 -            getMainWindow()->minimizeOrHide();
 +          //we don't want to minimize it because restoring it makes it gain focus
 +            getMainWindow()->minimizeOrHide();//so we do wanna hide it during autotype, right. this does just minimize, usually!
-+          //so we hide it (can't see it for alt+tab purposes!)
-+            getMainWindow()->hide(); //can't find it in taskbar or alt+tab! this is very bad unless show() happens soon!
++          //so we hide it (can't see it for alt+tab purposes!) - XXX: don't hide() because it re-aranges it on kwin at the end of alt+tab list when it's later show()n thus u've to alt+shift+tab to it (as it's also unfocused there)
++            //getMainWindow()->hide(); //can't find it in taskbar or alt+tab! this is very bad unless show() happens soon!
 +            //^ has same effect as minimize above, odd, so we leave it with minimize then.
          }
  #endif
