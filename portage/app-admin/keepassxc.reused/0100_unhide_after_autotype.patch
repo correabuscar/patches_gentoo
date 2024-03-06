@@ -1,4 +1,9 @@
-after Ctrl+V aka paste password into last active non-keepassx window, re-show the keepass window so that an alt+tab would focus it, rather than (w/o this patch) having to find it in taskbar and clicking on it to unminimize it!
+after Ctrl+V aka paste password into last active non-keepassx window, re-show the keepass window 
+_/- //so that an alt+tab would focus it, (qt4 keepassx only via showNormal())
+ \- focused(with this patch) - can't show it unfocused, it will focus it no matter what!
+
+rather than (w/o this patch) having to find it in taskbar and clicking on it to unminimize it!
+(alt+tab also not working as it puts it last in list, so alt+shift+tab would work!)
 
 doc: https://doc.qt.io/qt-5/qwidget.html
 
@@ -17,20 +22,66 @@ doc: https://doc.qt.io/qt-5/qwidget.html
 #     m_inAutoType = false;
 # }
 # 
+#Index: /var/tmp/portage/app-admin/keepassxc-9999/work/keepassxc-9999/src/autotype/AutoType.cpp
+#===================================================================
+#--- .orig/var/tmp/portage/app-admin/keepassxc-9999/work/keepassxc-9999/src/autotype/AutoType.cpp
+#+++ keepassxc-9999/src/autotype/AutoType.cpp
+#@@ -295,7 +295,7 @@ void AutoType::executeAutoTypeActions(co
+#         m_plugin->hideOwnWindow();
+# #else
+#         if (getMainWindow()) {
+#-            getMainWindow()->minimizeOrHide();
+#+            getMainWindow()->minimizeOrHide();//so we do wanna hide it during autotype, right.
+#         }
+# #endif
+#     } else {
+#@@ -336,9 +336,11 @@ void AutoType::executeAutoTypeActions(co
+# 
+#             if (!result.canRetry() || i == max_retries) {
+#                 if (getMainWindow()) {
+#+                    //this brings main window to front and focuses it
+#                     MessageBox::critical(getMainWindow(), tr("Auto-Type Error"), result.errorString());
+#                 }
+#                 emit autotypeRejected();
+#+                //so no need to unhide it here too
+#                 m_inAutoType.unlock();
+#                 return;
+#             }
+#@@ -351,6 +353,8 @@ void AutoType::executeAutoTypeActions(co
+#     m_windowTitleForGlobal.clear();
+# 
+#     emit autotypePerformed();
+#+    //getMainWindow()->show(); // no effect
+#+    getMainWindow()->bringToFront(); // unhide it - works but makes it active/focused too
+#     m_inAutoType.unlock();
+# }
+# 
 Index: /var/tmp/portage/app-admin/keepassxc-9999/work/keepassxc-9999/src/autotype/AutoType.cpp
 ===================================================================
 --- .orig/var/tmp/portage/app-admin/keepassxc-9999/work/keepassxc-9999/src/autotype/AutoType.cpp
 +++ keepassxc-9999/src/autotype/AutoType.cpp
-@@ -295,7 +295,7 @@ void AutoType::executeAutoTypeActions(co
+@@ -295,7 +295,11 @@ void AutoType::executeAutoTypeActions(co
          m_plugin->hideOwnWindow();
  #else
          if (getMainWindow()) {
 -            getMainWindow()->minimizeOrHide();
-+            getMainWindow()->minimizeOrHide();//so we do wanna hide it during autotype, right.
++          //we don't want to minimize it because restoring it makes it gain focus
++            getMainWindow()->minimizeOrHide();//so we do wanna hide it during autotype, right. this does just minimize, usually!
++          //so we hide it (can't see it for alt+tab purposes!)
++            getMainWindow()->hide(); //can't find it in taskbar or alt+tab! this is very bad unless show() happens soon!
++            //^ has same effect as minimize above, odd, so we leave it with minimize then.
          }
  #endif
      } else {
-@@ -336,9 +336,11 @@ void AutoType::executeAutoTypeActions(co
+@@ -320,6 +324,7 @@ void AutoType::executeAutoTypeActions(co
+         if (m_plugin->activeWindow() != window) {
+             qWarning("Active window changed, interrupting auto-type.");
+             emit autotypeRejected();
++            getMainWindow()->show();//only needed when we tested with hide() above
+             m_inAutoType.unlock();
+             return;
+         }
+@@ -336,9 +341,12 @@ void AutoType::executeAutoTypeActions(co
  
              if (!result.canRetry() || i == max_retries) {
                  if (getMainWindow()) {
@@ -38,16 +89,30 @@ Index: /var/tmp/portage/app-admin/keepassxc-9999/work/keepassxc-9999/src/autotyp
                      MessageBox::critical(getMainWindow(), tr("Auto-Type Error"), result.errorString());
                  }
                  emit autotypeRejected();
-+                //so no need to unhide it here too
++                //so no need to restore it from being minimized here, however, if it's hide() then we've to show()
++                getMainWindow()->show();//only needed when we tested with hide() above
                  m_inAutoType.unlock();
                  return;
              }
-@@ -351,6 +353,8 @@ void AutoType::executeAutoTypeActions(co
+@@ -350,7 +358,20 @@ void AutoType::executeAutoTypeActions(co
+     m_windowForGlobal = 0;
      m_windowTitleForGlobal.clear();
  
-     emit autotypePerformed();
+-    emit autotypePerformed();
++    emit autotypePerformed();//nothing seems to catch this, so nothing else happens.
 +    //getMainWindow()->show(); // no effect
-+    getMainWindow()->bringToFront(); // unhide it - works but makes it active/focused too
++    //getMainWindow()->bringToFront(); // unhide it - works but makes it active/focused too
++    //getMainWindow()->hide(); //can't find it in taskbar or alt+tab!
++    //getMainWindow()->setWindowState((getMainWindow()->windowState() & ~Qt::WindowMinimized) | Qt::WindowNoState);// | Qt::WindowActive);
++    //unminimize
++    getMainWindow()->setWindowState(
++        //Qt::WindowNoState);//restores it and focuses it!
++        //Qt::WindowActive);//restores it and focuses it!
++      (getMainWindow()->windowState() & (~Qt::WindowMinimized)));
++    //(getMainWindow()->windowState() & (~Qt::WindowMinimized | ~Qt::WindowActive)));//no effect (still minimized)
++    // | Qt::WindowActive);
++    getMainWindow()->show(); //opposite of hide() above. Leaving it just in case a hide() happened before.
++    //we still get an actively focused main window after this, can't find a way to show it without activating it!
      m_inAutoType.unlock();
  }
  
