@@ -351,11 +351,11 @@ Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/
 +                        // set to on aka do NOT err on warnings!
 +                        should_err=false;
 +                    };
-+                };//else, is empty or unset, thus is on.
++                };//else, is empty or unset, thus is on. //FIXME: if it's set to empty it shouldn't err aka is off
 +                if should_err {
 +                    let values_str = DISABLED_VALUES_REF.iter().map(|v| format!("\"{}\"", v)).collect::<Vec<String>>().join(", ");
 +                    use anyhow::bail;
-+                    bail!("Treating the above cargo warnings as errors! So this effectively treated any child cargos(or any job_queue things(I honestly don't know what really), like running gcc compiler lookslike) (eg. due to cargo build --jobs 12) having rustc or cargo warnings as cargo warnings in parent - which means compilation of rust from source fails due to libssh2-sys having some warnings like this: warning: libssh2-sys@0.3.0: libssh2/src/hostkey.c:403:5: warning: 'RSA_free' is deprecated: Since OpenSSL 3.0 [-Wdeprecated-declarations]. So considering we don't want this to fail, for now, FIXME: we comment out these two lines in this patch. TODO: find a way to replicate this locally to test and see if a libssh2-sys replica will show cargo warnings in child if new keys are added in its Config.toml!\nYou can prevent this error from exiting by having env var '{}' set to any value(currently is set to '{}') except any of the following(case insensitive) values(which make it act as if it's unset aka it will err on warnings): {}", env_name, env_val, values_str);
++                    bail!("Treating the above cargo warnings as errors! So this effectively treated any child cargos(or any job_queue things(I honestly don't know what really), like running gcc compiler lookslike) (eg. due to cargo build --jobs 12) having rustc or cargo warnings as cargo warnings in parent - which means compilation of rust from source fails due to libssh2-sys having some warnings like this: warning: libssh2-sys@0.3.0: libssh2/src/hostkey.c:403:5: warning: 'RSA_free' is deprecated: Since OpenSSL 3.0 [-Wdeprecated-declarations]. So considering we don't want this to fail, for now, FIXME: we comment out these two lines in this patch. TODO: find a way to replicate this locally to test and see if a libssh2-sys replica will show cargo warnings in child if new keys are added in its Config.toml!\nYou can prevent this error from exiting by having env var '{}' set to any value except any of the following(case insensitive) values(which make it act as if it's unset aka it will err on warnings): {}", env_name, values_str);
 +                };
 +            };
 +        };
