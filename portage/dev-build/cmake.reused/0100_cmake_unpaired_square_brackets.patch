@@ -1,0 +1,41 @@
+Index: /var/tmp/portage/dev-build/cmake-3.28.3/work/cmake-3.28.3/Modules/CMakeParseImplicitIncludeInfo.cmake
+===================================================================
+--- .orig/var/tmp/portage/dev-build/cmake-3.28.3/work/cmake-3.28.3/Modules/CMakeParseImplicitIncludeInfo.cmake
++++ cmake-3.28.3/Modules/CMakeParseImplicitIncludeInfo.cmake
+@@ -181,9 +181,16 @@ function(cmake_parse_implicit_include_in
+   set(implicit_dirs_tmp)
+   set(log "")
+ 
++  # unpaired square brackets replace code from: https://gitlab.kitware.com/cmake/cmake/-/issues/19156#note_557314
++  string(REPLACE "?" "?0" text "${text}") #must be first
++  string(REPLACE "[" "?1" text "${text}")
++  string(REPLACE "]" "?2" text "${text}")
+   # go through each line of output...
+   string(REGEX REPLACE "\r*\n" ";" output_lines "${text}")
+   foreach(line IN LISTS output_lines)
++    string(REPLACE "?2" "]" line "${line}")
++    string(REPLACE "?1" "[" line "${line}")
++    string(REPLACE "?0" "?" line "${line}") #must be last
+     if(state STREQUAL start)
+       string(FIND "${line}" "#include \"...\" search starts here:" rv)
+       if(rv GREATER -1)
+Index: /var/tmp/portage/dev-build/cmake-3.28.3/work/cmake-3.28.3/Modules/CMakeParseImplicitLinkInfo.cmake
+===================================================================
+--- .orig/var/tmp/portage/dev-build/cmake-3.28.3/work/cmake-3.28.3/Modules/CMakeParseImplicitLinkInfo.cmake
++++ cmake-3.28.3/Modules/CMakeParseImplicitLinkInfo.cmake
+@@ -51,8 +51,15 @@ function(CMAKE_PARSE_IMPLICIT_LINK_INFO
+   set(linker_regex "^( *|.*[/\\])(${linker}|${startfile}|([^/\\]+-)?ld|collect2)[^/\\]*( |$)")
+   set(linker_exclude_regex "collect2 version |^[A-Za-z0-9_]+=|/ldfe ")
+   string(APPEND log "  link line regex: [${linker_regex}]\n")
++  # unpaired square brackets replace code from: https://gitlab.kitware.com/cmake/cmake/-/issues/19156#note_557314
++  string(REPLACE "?" "?0" text "${text}") #must be first
++  string(REPLACE "[" "?1" text "${text}")
++  string(REPLACE "]" "?2" text "${text}")
+   string(REGEX REPLACE "\r?\n" ";" output_lines "${text}")
+   foreach(line IN LISTS output_lines)
++    string(REPLACE "?2" "]" line "${line}")
++    string(REPLACE "?1" "[" line "${line}")
++    string(REPLACE "?0" "?" line "${line}") #must be last
+     set(cmd)
+     if("${line}" MATCHES "${linker_regex}" AND
+         NOT "${line}" MATCHES "${linker_exclude_regex}")
