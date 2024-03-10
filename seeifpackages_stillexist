@@ -1,0 +1,6 @@
+#
+set -e
+pushd portage
+equery m $(find . -mindepth 2 -maxdepth 2 \! -type f -a -printf '%P\n' | grep -vE '(\.reused|-[0-9\.]+)') >/dev/null
+popd
+echo "if some packages don't exist, it's likely they were moved so you've to move the patches too or else they're unpatched! sneaky sneaky:)"
