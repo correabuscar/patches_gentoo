@@ -1,0 +1,13 @@
+see: 0100_cmake_unpaired_square_brackets.patch
+Index: /var/tmp/portage/dev-build/cmake-3.28.3/work/cmake-3.28.3/Modules/CMakeParseImplicitIncludeInfo.cmake
+===================================================================
+--- .orig/var/tmp/portage/dev-build/cmake-3.28.3/work/cmake-3.28.3/Modules/CMakeParseImplicitIncludeInfo.cmake
++++ cmake-3.28.3/Modules/CMakeParseImplicitIncludeInfo.cmake
+@@ -260,6 +260,7 @@ function(cmake_parse_implicit_include_in
+     string(APPEND log "  implicit include dirs: [${implicit_dirs}]\n")
+   else()
+     string(APPEND log "  warn: unable to parse implicit include dirs!\n")
++    message(FATAL_ERROR "Exiting due to warning about unable to parse implicit include dirs! we don't want this to go unnoticed. You might wanna check implicit link dirs too as they shouldn't be empty in CMakeCXXCompiler.cmake (in build/CMakeFiles/3.28.2/ dir, as an example) and check the log CMakeConfigureLog.yaml in ../ because if they're empty then you get some missing .so when executing the exe, ie. you may hit this issue: https://gitlab.kitware.com/cmake/cmake/-/issues/19156#note_1493026")
+   endif()
+ 
+   # Return results.
