@@ -1,0 +1,55 @@
+bunch of tests here should fail: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/library/core/tests/iter/range.rs
+
+modify 3 functions to panic when range is exhausted due to iterator being exhausted
+should catch some bugs that the programmer induced in their code!
+
+Not patching is_empty() which is apparently used to determine if the range has been exhausted.
+
+Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/library/core/src/ops/range.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/library/core/src/ops/range.rs
++++ rustc-1.75.0-src/library/core/src/ops/range.rs
+@@ -401,6 +401,10 @@ impl<Idx> RangeInclusive<Idx> {
+     #[rustc_const_stable(feature = "const_inclusive_range_methods", since = "1.32.0")]
+     #[inline]
+     pub const fn start(&self) -> &Idx {
++        if self.exhausted {
++            panic!("Called start() on an exhaused range! Programmer-logic bug detected!");
++            //panic!("Called start() on an exhaused range! Programmer-logic bug detected! start()=='{:?}'",&self.start); //doesn't implement Debug
++        }
+         &self.start
+     }
+ 
+@@ -426,6 +430,10 @@ impl<Idx> RangeInclusive<Idx> {
+     #[rustc_const_stable(feature = "const_inclusive_range_methods", since = "1.32.0")]
+     #[inline]
+     pub const fn end(&self) -> &Idx {
++        if self.exhausted {
++            panic!("Called end() on an exhaused range! Programmer-logic bug detected!");
++            //panic!("Called end() on an exhaused range! Programmer-logic bug detected! end()=='{:?}'",&self.end); // Idx doesn't implement Debug!
++        }
+         &self.end
+     }
+ 
+@@ -511,6 +519,11 @@ impl<Idx: PartialOrd<Idx>> RangeInclusiv
+         Idx: PartialOrd<U>,
+         U: ?Sized + PartialOrd<Idx>,
+     {
++        if self.exhausted {
++            panic!("Called contains(..) on an exhaused range! Programmer-logic bug detected!");
++            //can't print 'item' here due to we have no trait requirement for its type U to
++            //implement Debug (or Display)
++        }
+         <Self as RangeBounds<Idx>>::contains(self, item)
+     }
+ 
+#@@ -543,6 +556,9 @@ impl<Idx: PartialOrd<Idx>> RangeInclusiv
+#     #[stable(feature = "range_is_empty", since = "1.47.0")]
+#     #[inline]
+#     pub fn is_empty(&self) -> bool {
+#+        if self.exhausted {
+#+            panic!("Called is_empty() on an exhaused range! Programmer-logic bug detected!");
+#+        }
+#         self.exhausted || !(self.start <= self.end)
+#     }
+# }
