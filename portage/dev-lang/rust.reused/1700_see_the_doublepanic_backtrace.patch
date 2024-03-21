@@ -1,5 +1,6 @@
 when a double panic happens, imma need to see its backtrace too!
 FIXME: use static bool to prevent recursion maybe? we'll do this if i ever hit this.
+using force_capture instead of capture() else might get "backtrace disabled" instead!
 
 Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/library/std/src/panicking.rs
 ===================================================================
@@ -11,7 +12,7 @@ Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/library/st
                  // - perhaps that is causing the recursive panics.
 -                rtprintpanic!("thread panicked while processing panic. aborting.\n");
 +                rtprintpanic!("thread panicked while processing panic. aborting. msg='{:?}' loc='{:?}'\n",message, location);
-+                println!("{}", crate::backtrace::Backtrace::capture());
++                println!("{}", crate::backtrace::Backtrace::force_capture());
              }
              panic_count::MustAbort::AlwaysAbort => {
                  // Unfortunately, this does not print a backtrace, because creating
