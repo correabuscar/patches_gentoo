@@ -1,0 +1,17 @@
+when a double panic happens, imma need to see its backtrace too!
+FIXME: use static bool to prevent recursion maybe? we'll do this if i ever hit this.
+
+Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/library/std/src/panicking.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/library/std/src/panicking.rs
++++ rustc-1.75.0-src/library/std/src/panicking.rs
+@@ -746,7 +746,8 @@ fn rust_panic_with_hook(
+             panic_count::MustAbort::PanicInHook => {
+                 // Don't try to print the message in this case
+                 // - perhaps that is causing the recursive panics.
+-                rtprintpanic!("thread panicked while processing panic. aborting.\n");
++                rtprintpanic!("thread panicked while processing panic. aborting. msg='{:?}' loc='{:?}'\n",message, location);
++                println!("{}", crate::backtrace::Backtrace::capture());
+             }
+             panic_count::MustAbort::AlwaysAbort => {
+                 // Unfortunately, this does not print a backtrace, because creating
