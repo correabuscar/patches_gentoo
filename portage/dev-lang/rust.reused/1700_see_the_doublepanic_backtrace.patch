@@ -4,6 +4,8 @@ using force_capture instead of capture() else might get "backtrace disabled" ins
 
 note: https://github.com/rust-lang/rust/pull/110975
 
+must use rtprintpanic! instead of println! (but could prolly use eprintln! which doesn't alloc) because the latter allocs 1024 bytes when std::io::stdout() gets accessed first time. (not so for stderr() tho, in rust 1.75.0)
+
 Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/library/std/src/panicking.rs
 ===================================================================
 --- .orig/var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/library/std/src/panicking.rs
@@ -14,7 +16,7 @@ Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/library/st
                  // - perhaps that is causing the recursive panics.
 -                rtprintpanic!("thread panicked while processing panic. aborting.\n");
 +                rtprintpanic!("thread panicked while processing panic. aborting. msg='{:?}' loc='{:?}'\n",message, location);
-+                println!("{}", crate::backtrace::Backtrace::force_capture());
++                rtprintpanic!("{}", crate::backtrace::Backtrace::force_capture());
              }
              panic_count::MustAbort::AlwaysAbort => {
                  // Unfortunately, this does not print a backtrace, because creating
