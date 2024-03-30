@@ -1,3 +1,10 @@
+for firefox 123.0:
+tab_text doesn't see to affect anything.
+tab_selected is the background color of the currently selected/active tab; its text is white tho (can't change apparently).
+tab_background_text is the text color of the other non-active tabs in the list.
+
+all are explained here: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/theme
+====
 updated for firefox 89.0
 
 //^ thanks for the info to Kwan on https://chat.mozilla.org/#/room/#fx-desktop-community:mozilla.org
@@ -49,16 +56,33 @@ Index: /var/tmp/portage/www-client/firefox-89.0/work/firefox-89.0/browser/themes
        "tab_text": "rgb(21,20,26)",
        "icons": "rgb(91,91,102)",
        "frame": "#f0f0f4",
+#Index: /var/tmp/portage/www-client/firefox-123.0/work/firefox-123.0/browser/themes/addons/dark/manifest.json
+#===================================================================
+#--- .orig/var/tmp/portage/www-client/firefox-123.0/work/firefox-123.0/browser/themes/addons/dark/manifest.json
+#+++ firefox-123.0/browser/themes/addons/dark/manifest.json
+#@@ -17,7 +17,7 @@
+#   "theme": {
+#     "colors": {
+#       "tab_background_text": "#fbfbfe",
+#-      "tab_selected": "rgb(66,65,77)",
+#+      "tab_selected": "orange",
+#       "tab_text": "rgb(251,251,254)",
+#       "icons": "rgb(251,251,254)",
+#       "frame": "rgb(28, 27, 34)",
 Index: /var/tmp/portage/www-client/firefox-123.0/work/firefox-123.0/browser/themes/addons/dark/manifest.json
 ===================================================================
 --- .orig/var/tmp/portage/www-client/firefox-123.0/work/firefox-123.0/browser/themes/addons/dark/manifest.json
 +++ firefox-123.0/browser/themes/addons/dark/manifest.json
-@@ -17,7 +17,7 @@
+@@ -16,9 +16,9 @@
+ 
    "theme": {
      "colors": {
-       "tab_background_text": "#fbfbfe",
+-      "tab_background_text": "#fbfbfe",
 -      "tab_selected": "rgb(66,65,77)",
-+      "tab_selected": "orange",
-       "tab_text": "rgb(251,251,254)",
+-      "tab_text": "rgb(251,251,254)",
++      "tab_background_text": "#fbfbfe",
++      "tab_selected": "rgb(64,42,0)",
++      "tab_text": "rgb(251,251,254)",
        "icons": "rgb(251,251,254)",
        "frame": "rgb(28, 27, 34)",
+       "frame_inactive": "rgb(31, 30, 37)",
