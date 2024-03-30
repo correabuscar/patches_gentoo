@@ -1,0 +1,14 @@
+Calculating dependencies  !!! /etc/portage/package.env references non-existent file: /etc/portage/env/www-client/firefox.conf2
+
+Index: /var/tmp/portage/sys-apps/portage-3.0.63/work/portage-3.0.63/lib/portage/package/ebuild/config.py
+===================================================================
+--- .orig/var/tmp/portage/sys-apps/portage-3.0.63/work/portage-3.0.63/lib/portage/package/ebuild/config.py
++++ portage-3.0.63/lib/portage/package/ebuild/config.py
+@@ -2292,6 +2292,7 @@ class config:
+                     % (os.path.join(abs_user_config, "package.env"), penvfile),
+                     noiselevel=-1,
+                 )
++                raise Exception(_("Should not continue at this point, fix the path to make sure it's correct!"))
+             else:
+                 for k, v in penvconfig.items():
+                     if k in protected_keys or k in non_user_variables:
