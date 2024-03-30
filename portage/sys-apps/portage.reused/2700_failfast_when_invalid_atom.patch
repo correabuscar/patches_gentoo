@@ -1,0 +1,14 @@
+eg. --- Invalid atom in /etc/portage/package.env/package.env.ALL: sys-libs/compiler-rt-sanitizers-11.0.0
+
+Index: /var/tmp/portage/sys-apps/portage-3.0.63/work/portage-3.0.63/lib/portage/util/__init__.py
+===================================================================
+--- .orig/var/tmp/portage/sys-apps/portage-3.0.63/work/portage-3.0.63/lib/portage/util/__init__.py
++++ portage-3.0.63/lib/portage/util/__init__.py
+@@ -552,6 +552,7 @@ def grabdict_package(
+                 writemsg(
+                     _("--- Invalid atom in %s: %s\n") % (filename, e), noiselevel=-1
+                 )
++                raise
+             else:
+                 if not allow_use and k.use:
+                     writemsg(
