@@ -49,3 +49,16 @@ Index: /var/tmp/portage/www-client/firefox-89.0/work/firefox-89.0/browser/themes
        "tab_text": "rgb(21,20,26)",
        "icons": "rgb(91,91,102)",
        "frame": "#f0f0f4",
+Index: /var/tmp/portage/www-client/firefox-123.0/work/firefox-123.0/browser/themes/addons/dark/manifest.json
+===================================================================
+--- .orig/var/tmp/portage/www-client/firefox-123.0/work/firefox-123.0/browser/themes/addons/dark/manifest.json
++++ firefox-123.0/browser/themes/addons/dark/manifest.json
+@@ -17,7 +17,7 @@
+   "theme": {
+     "colors": {
+       "tab_background_text": "#fbfbfe",
+-      "tab_selected": "rgb(66,65,77)",
++      "tab_selected": "orange",
+       "tab_text": "rgb(251,251,254)",
+       "icons": "rgb(251,251,254)",
+       "frame": "rgb(28, 27, 34)",
