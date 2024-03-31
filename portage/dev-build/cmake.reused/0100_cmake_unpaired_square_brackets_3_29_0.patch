@@ -1,0 +1,77 @@
+updated for cmake 3.29.0
+This patch is needed on nixos when compiling (at least) keepassxc with ccache because there in its extraConfig if you use colors or just randomly output something even on stderr that contains unbalanced square brackets("[" and "]") (eg. echo ']' 1>&2) then while your build won't fail, there will be a 'warn' message (two actually, one for C one for CXX) in CMakeConfigureLog.yaml, your resulting exe will fail with `keepassxc: error while loading shared libraries: libQt5Svg.so.5: cannot open shared object file: No such file or directory`
+
+While the second half of this patch(for Link) is enough to fix that ^, the resulting .cmake files generated inside the project build dir aren't the same without the first half of the patch. So both are needed.
+
+Took a few days to get to the bottom of this and navigate the nixos world(as a noobie) with much help/moral support from unkn, (thanks!) without whom I wouldn't have been able to track this down otherwise.
+
+The code in the patch that works around the cmake feature[1][2] was made by Andrey[3], I just fixed the order of the '?0' replacing for 'line'.
+
+[1] https://cmake.org/cmake/help/v3.0/manual/cmake-language.7.html#lists
+[2] https://cmake.org/cmake/help/v3.0/manual/cmake-language.7.html#bracket-argument
+[3] https://gitlab.kitware.com/cmake/cmake/-/issues/19156#note_557314
+
+Some more about it: the extraConfig string in ccache.nix (see nixpkgs) allows execution of (say bash) commands, and any output (stdout/stderr) does get processed by cmake (when building keepassxc) and most is ignored (see 'ignored line:' in CMakeConfigureLog.yaml)
+
+Index: /var/tmp/portage/dev-build/cmake-3.28.3/work/cmake-3.28.3/Modules/CMakeParseImplicitIncludeInfo.cmake
+===================================================================
+--- .orig/var/tmp/portage/dev-build/cmake-3.28.3/work/cmake-3.28.3/Modules/CMakeParseImplicitIncludeInfo.cmake
++++ cmake-3.28.3/Modules/CMakeParseImplicitIncludeInfo.cmake
+@@ -181,9 +181,16 @@ function(cmake_parse_implicit_include_in
+   set(implicit_dirs_tmp)
+   set(log "")
+ 
++  # unpaired square brackets replace code from: https://gitlab.kitware.com/cmake/cmake/-/issues/19156#note_557314
++  string(REPLACE "?" "?0" text "${text}") #must be first
++  string(REPLACE "[" "?1" text "${text}")
++  string(REPLACE "]" "?2" text "${text}")
+   # go through each line of output...
+   string(REGEX REPLACE "\r*\n" ";" output_lines "${text}")
+   foreach(line IN LISTS output_lines)
++    string(REPLACE "?2" "]" line "${line}")
++    string(REPLACE "?1" "[" line "${line}")
++    string(REPLACE "?0" "?" line "${line}") #must be last
+     if(state STREQUAL start)
+       string(FIND "${line}" "#include \"...\" search starts here:" rv)
+       if(rv GREATER -1)
+#Index: /var/tmp/portage/dev-build/cmake-3.28.3/work/cmake-3.28.3/Modules/CMakeParseImplicitLinkInfo.cmake
+#===================================================================
+#--- .orig/var/tmp/portage/dev-build/cmake-3.28.3/work/cmake-3.28.3/Modules/CMakeParseImplicitLinkInfo.cmake
+#+++ cmake-3.28.3/Modules/CMakeParseImplicitLinkInfo.cmake
+#@@ -51,8 +51,15 @@ function(CMAKE_PARSE_IMPLICIT_LINK_INFO
+#   set(linker_regex "^( *|.*[/\\])(${linker}|${startfile}|([^/\\]+-)?ld|collect2)[^/\\]*( |$)")
+#   set(linker_exclude_regex "collect2 version |^[A-Za-z0-9_]+=|/ldfe ")
+#   string(APPEND log "  link line regex: [${linker_regex}]\n")
+#+  # unpaired square brackets replace code from: https://gitlab.kitware.com/cmake/cmake/-/issues/19156#note_557314
+#+  string(REPLACE "?" "?0" text "${text}") #must be first
+#+  string(REPLACE "[" "?1" text "${text}")
+#+  string(REPLACE "]" "?2" text "${text}")
+#   string(REGEX REPLACE "\r?\n" ";" output_lines "${text}")
+#   foreach(line IN LISTS output_lines)
+#+    string(REPLACE "?2" "]" line "${line}")
+#+    string(REPLACE "?1" "[" line "${line}")
+#+    string(REPLACE "?0" "?" line "${line}") #must be last
+#     set(cmd)
+#     if("${line}" MATCHES "${linker_regex}" AND
+#         NOT "${line}" MATCHES "${linker_exclude_regex}")
+
+Index: /var/tmp/portage/dev-build/cmake-3.29.0/work/cmake-3.29.0/Modules/CMakeParseImplicitLinkInfo.cmake
+===================================================================
+--- .orig/var/tmp/portage/dev-build/cmake-3.29.0/work/cmake-3.29.0/Modules/CMakeParseImplicitLinkInfo.cmake
++++ cmake-3.29.0/Modules/CMakeParseImplicitLinkInfo.cmake
+@@ -83,8 +83,15 @@ function(cmake_parse_implicit_link_info2
+   if(EXTRA_PARSE_COMPUTE_LINKER)
+     string(APPEND log "  linker tool regex: [${linker_tool_regex}]\n")
+   endif()
++  # unpaired square brackets replace code from: https://gitlab.kitware.com/cmake/cmake/-/issues/19156#note_557314
++  string(REPLACE "?" "?0" text "${text}") #must be first
++  string(REPLACE "[" "?1" text "${text}")
++  string(REPLACE "]" "?2" text "${text}")
+   string(REGEX REPLACE "\r?\n" ";" output_lines "${text}")
+   foreach(line IN LISTS output_lines)
++    string(REPLACE "?2" "]" line "${line}")
++    string(REPLACE "?1" "[" line "${line}")
++    string(REPLACE "?0" "?" line "${line}") #must be last
+     if(EXTRA_PARSE_COMPUTE_LINKER AND
+         NOT linker_tool AND NOT "${line}" MATCHES "${linker_tool_exclude_regex}")
+       if("${line}" MATCHES "exec: ([^()]*/(${linker}))") # IBM XL as nvcc host compiler
