@@ -1,3 +1,4 @@
+from https://github.com/curl/curl/pull/13251
 From 6b88865e264a3d7a85f8a0dafa5e9be5af8ba9f2 Mon Sep 17 00:00:00 2001
 From: Daniel McCarney <daniel@binaryparadox.net>
 Date: Sun, 31 Mar 2024 16:19:10 -0400
