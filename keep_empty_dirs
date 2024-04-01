@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+find ./portage/ -type d -empty -exec test ! -e "{}/.gitkeep" \; -exec touch {}/.gitkeep \;
