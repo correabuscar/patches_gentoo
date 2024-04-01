@@ -1,0 +1,74 @@
+ignore /dev/null when debug is used
+
+but i don't remember how debug was used, maybe by setting a log file via CCACHE_LOGFILE= env. var
+and also enabling CCACHE_DEBUG=1
+this would create multiple files based on the name of the log file, i think
+which would be bad if CCACHE_LOGFILE=/dev/null
+
+Index: /var/tmp/portage/dev-util/ccache-4.8/work/ccache-4.8/src/ccache.cpp
+===================================================================
+--- ccache-4.8/src/ccache.cpp
++++ /var/tmp/portage/dev-util/ccache-4.8/work/ccache-4.8/src/ccache.cpp
+@@ -2140,7 +2140,7 @@ do_cache_compilation(Context& ctx, const
+ static void
+ log_result_to_debug_log(Context& ctx)
+ {
+-  if (ctx.config.log_file().empty() && !ctx.config.debug()) {
++  if ((ctx.config.log_file().empty() && !ctx.config.debug()) || (ctx.config.debug()&&(std::string("/dev/null").compare(ctx.args_info.output_obj) == 0))) { //FIXME: shouldn't I use ctx.config.log_file() ?
+     return;
+   }
+ 
+Index: /var/tmp/portage/dev-util/ccache-4.9.1/work/ccache-4.9.1/src/ccache.cpp
+===================================================================
+--- .orig/var/tmp/portage/dev-util/ccache-4.9.1/work/ccache-4.9.1/src/ccache.cpp
++++ ccache-4.9.1/src/ccache.cpp
+@@ -224,9 +224,10 @@ init_hash_debug(Context& ctx,
+                 char type,
+                 std::string_view section_name,
+                 FILE* debug_text_file)
+ {
+-  if (!ctx.config.debug() || ctx.config.debug_level() < 2) {
++  if ((!ctx.config.debug()) || (std::string("/dev/null").compare(ctx.args_info.output_obj) == 0)
++      || (ctx.config.debug_level() < 2) ) {
+     return;
+   }
+ 
+   const auto path = prepare_debug_path(ctx.apparent_cwd,
+@@ -2323,9 +2324,9 @@ finalize_at_exit(Context& ctx)
+     LOG("Error while finalizing stats: {}", e.what());
+   }
+ 
+   // Dump log buffer last to not lose any logs.
+-  if (ctx.config.debug() && !ctx.args_info.output_obj.empty()) {
++  if (ctx.config.debug() && (!ctx.args_info.output_obj.empty() && (std::string("/dev/null").compare(ctx.args_info.output_obj) != 0) )) {
+     util::logging::dump_log(prepare_debug_path(ctx.apparent_cwd,
+                                                ctx.config.debug_dir(),
+                                                ctx.time_of_invocation,
+                                                ctx.args_info.output_obj,
+@@ -2526,9 +2527,10 @@ do_cache_compilation(Context& ctx)
+ 
+   LOG("Object file: {}", ctx.args_info.output_obj);
+   MTR_META_THREAD_NAME(ctx.args_info.output_obj.c_str());
+ 
+-  if (ctx.config.debug() && ctx.config.debug_level() >= 2) {
++  if (ctx.config.debug() && ctx.config.debug_level() >= 2
++    && (std::string("/dev/null").compare(ctx.args_info.output_obj) != 0) ) {
+     const auto path = prepare_debug_path(ctx.apparent_cwd,
+                                          ctx.config.debug_dir(),
+                                          ctx.time_of_invocation,
+                                          ctx.args_info.orig_output_obj,
+Index: /var/tmp/portage/dev-util/ccache-4.9.1-r1/work/ccache-4.9.1/src/ccache.cpp
+===================================================================
+--- .orig/var/tmp/portage/dev-util/ccache-4.9.1-r1/work/ccache-4.9.1/src/ccache.cpp
++++ ccache-4.9.1/src/ccache.cpp
+@@ -2221,9 +2221,9 @@ initialize(Context& ctx, const char* con
+     LOG_RAW("Error: tracing is not enabled!");
+ #endif
+   }
+ 
+-  if (!ctx.config.log_file().empty() || ctx.config.debug()) {
++  if ((!ctx.config.log_file().empty() || ctx.config.debug())&&(std::string("/dev/null").compare(ctx.args_info.output_obj) != 0)) { //FIXME: shouldn't I use ctx.config.log_file() ?
+     ctx.config.visit_items([&ctx](const std::string& key,
+                                   const std::string& value,
+                                   const std::string& origin) {
+       const auto& log_value =
