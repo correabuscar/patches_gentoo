@@ -1,0 +1,35 @@
+
+Index: /var/tmp/portage/www-client/firefox-118.0.1/work/firefox-118.0.1/browser/modules/AboutNewTab.sys.mjs
+===================================================================
+--- .orig/var/tmp/portage/www-client/firefox-118.0.1/work/firefox-118.0.1/browser/modules/AboutNewTab.sys.mjs
++++ firefox-118.0.1/browser/modules/AboutNewTab.sys.mjs
+#@@ -12,7 +12,7 @@ ChromeUtils.defineESModuleGetters(lazy,
+# });
+# 
+# XPCOMUtils.defineLazyModuleGetters(lazy, {
+#-  ActivityStream: "resource://activity-stream/lib/ActivityStream.sys.mjs",
+#+  //ActivityStream: "resource://activity-stream/lib/ActivityStream.sys.mjs",
+# });
+# 
+# const ABOUT_URL = "about:newtab";
+@@ -146,6 +146,7 @@ export const AboutNewTab = {
+    * onBrowserReady - Continues the initialization of Activity Stream after browser is ready.
+    */
+   onBrowserReady() {
++    return;
+     if (this.activityStream && this.activityStream.initialized) {
+       return;
+     }
+Index: /var/tmp/portage/www-client/firefox-124.0.1/work/firefox-124.0.1/browser/modules/AboutNewTab.sys.mjs
+===================================================================
+--- .orig/var/tmp/portage/www-client/firefox-124.0.1/work/firefox-124.0.1/browser/modules/AboutNewTab.sys.mjs
++++ firefox-124.0.1/browser/modules/AboutNewTab.sys.mjs
+@@ -8,7 +8,7 @@ import { XPCOMUtils } from "resource://g
+ const lazy = {};
+ 
+ ChromeUtils.defineESModuleGetters(lazy, {
+-  ActivityStream: "resource://activity-stream/lib/ActivityStream.sys.mjs",
++  //ActivityStream: "resource://activity-stream/lib/ActivityStream.sys.mjs",
+   ObjectUtils: "resource://gre/modules/ObjectUtils.sys.mjs",
+ });
+ 
