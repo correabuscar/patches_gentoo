@@ -1,0 +1,113 @@
+https://bugs.archlinux.org/task/64900
+running VirtualBox will always attempt to https to update.virtualbox.org
+
+don't use never\c in 2 places, or it will crash upon save of prefs at this point:
+   /* Save 'period' value: */
+    comAgent.SetCheckFrequency(s_days.at(m_enmUpdatePeriod).length);
+in VirtualBox-7.0.14/src/VBox/Frontends/VirtualBox/src/networking/UIUpdateDefs.cpp:277
+
+so let's hope this doesn't set it to 1 day
+ 
+Index: /var/tmp/portage/app-emulation/virtualbox-7.0.2/work/VirtualBox-7.0.2/src/VBox/Frontends/VirtualBox/src/networking/UIUpdateDefs.cpp
+===================================================================
+--- VirtualBox-7.0.2/src/VBox/Frontends/VirtualBox/src/networking/UIUpdateDefs.cpp
++++ VirtualBox-7.0.2/src/VBox/Frontends/VirtualBox/src/networking/UIUpdateDefs.cpp
+@@ -90,7 +90,7 @@ VBoxUpdateData::VBoxUpdateData(const QSt
+         return;
+ 
+     /* Check is enabled in all cases besides 'never': */
+-    m_fCheckEnabled = true;
++    m_fCheckEnabled = false;//true;
+ 
+ #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+     const QStringList parser = m_strData.split(", ", Qt::SkipEmptyParts);
+@@ -104,8 +104,8 @@ VBoxUpdateData::VBoxUpdateData(const QSt
+         if (s_days.isEmpty())
+             populate();
+         m_enmUpdatePeriod = (UpdatePeriodType)s_days.indexOf(VBoxUpdateDay(QString(), parser.at(0), 0));
+-        if (m_enmUpdatePeriod == UpdatePeriodType_Never)
+-            m_enmUpdatePeriod = UpdatePeriodType_1Day;
++        if (m_enmUpdatePeriod == UpdatePeriodType_Never)
++            m_enmUpdatePeriod = UpdatePeriodType_1Day;
+     }
+ 
+     /* Parse 'date' value: */
+@@ -128,16 +128,16 @@ VBoxUpdateData::VBoxUpdateData(const QSt
+     }
+ 
+     /* Decide whether we need to check: */
+-    m_fCheckRequired =    (QDate::currentDate() >= date())
++    m_fCheckRequired = false; /*   (QDate::currentDate() >= date())
+                        && (   !version().isValid()
+-                           || version() != UIVersion(uiCommon().vboxVersionStringNormalized()));
++                           || version() != UIVersion(uiCommon().vboxVersionStringNormalized())); */
+ }
+ 
+ VBoxUpdateData::VBoxUpdateData(bool fCheckEnabled, UpdatePeriodType enmUpdatePeriod, KUpdateChannel enmUpdateChannel)
+     : m_strData("never")
+-    , m_fCheckEnabled(fCheckEnabled)
++    , m_fCheckEnabled(false)//fCheckEnabled)
+     , m_fCheckRequired(false)
+-    , m_enmUpdatePeriod(enmUpdatePeriod)
++    , m_enmUpdatePeriod(enmUpdatePeriod)
+     , m_enmUpdateChannel(enmUpdateChannel)
+ {
+     /* Skip 'check disabled' case: */
+@@ -187,13 +187,13 @@ bool VBoxUpdateData::load(const CHost &c
+     }
+ 
+     /* Fetch whether agent is enabled: */
+-    const BOOL fEnabled = comAgent.GetEnabled();
++    /*const BOOL fEnabled = comAgent.GetEnabled();
+     if (!comAgent.isOk())
+     {
+         UINotificationMessage::cannotAcquireUpdateAgentParameter(comAgent);
+         return false;
+-    }
+-    m_fCheckEnabled = fEnabled;
++    }*/
++    m_fCheckEnabled = false;//fEnabled;
+ 
+     /* Fetch 'period' value: */
+     const ULONG uFrequency = comAgent.GetCheckFrequency();
+@@ -234,13 +234,13 @@ bool VBoxUpdateData::load(const CHost &c
+     m_version = strVersion;
+ 
+     /* Fetch whether we need to check: */
+-    const BOOL fNeedToCheck = comAgent.GetIsCheckNeeded();
++    /*const BOOL fNeedToCheck = comAgent.GetIsCheckNeeded();
+     if (!comAgent.isOk())
+     {
+         UINotificationMessage::cannotAcquireUpdateAgentParameter(comAgent);
+         return false;
+-    }
+-    m_fCheckRequired = fNeedToCheck;
++    }*/
++    m_fCheckRequired = false; //fNeedToCheck;
+ 
+     /* Optional stuff goes last; Fetch supported update channels: */
+     const QVector<KUpdateChannel> supportedUpdateChannels = comAgent.GetSupportedChannels();
+@@ -266,7 +266,7 @@ bool VBoxUpdateData::save(const CHost &c
+     }
+ 
+     /* Save whether agent is enabled: */
+-    comAgent.SetEnabled(m_fCheckEnabled);
++    comAgent.SetEnabled(false);//m_fCheckEnabled);
+     if (!comAgent.isOk())
+     {
+         UINotificationMessage::cannotChangeUpdateAgentParameter(comAgent);
+@@ -295,12 +295,12 @@ bool VBoxUpdateData::save(const CHost &c
+ 
+ bool VBoxUpdateData::isCheckEnabled() const
+ {
+-    return m_fCheckEnabled;
++    return false;//m_fCheckEnabled;
+ }
+ 
+ bool VBoxUpdateData::isCheckRequired() const
+ {
+-    return m_fCheckRequired;
++    return false;//m_fCheckRequired;
+ }
+ 
+ QString VBoxUpdateData::data() const
