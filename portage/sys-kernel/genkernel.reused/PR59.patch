@@ -1,6 +1,6 @@
 https://github.com/gentoo/genkernel/pull/59
 
-From 43a3b450c22875fa3b553652247191e5c51eebbb Mon Sep 17 00:00:00 2001
+From 9211388fa51f68813fc75ca97b16fcf7ec29c25e Mon Sep 17 00:00:00 2001
 From: Louis Sautier <sautier.louis@gmail.com>
 Date: Sun, 7 Apr 2024 00:18:59 +0200
 Subject: [PATCH] initramfs: fix busybox 1.36.1 build witk kernel 6.8
@@ -17,12 +17,12 @@ Signed-off-by: Louis Sautier <sautier.louis@gmail.com>
 
 diff --git a/patches/busybox/1.36.1/busybox-1.36.1-kernel-6.8.patch b/patches/busybox/1.36.1/busybox-1.36.1-kernel-6.8.patch
 new file mode 100644
-index 00000000..e473bc5a
+index 00000000..7e7b873d
 --- /dev/null
 +++ b/patches/busybox/1.36.1/busybox-1.36.1-kernel-6.8.patch
 @@ -0,0 +1,53 @@
 +http://lists.busybox.net/pipermail/busybox/2024-March/090678.html
-+https://bugs.gentoo.org/926872
++https://bugs.gentoo.org/928573
 +
 +Linux v6.8-rc1 removed the definitions related to CBQ making tc fail to
 +build. Add some #ifdefs to handle this missing support.
@@ -35,7 +35,7 @@ index 00000000..e473bc5a
 ++
 ++#ifndef TCA_CBQ_MAX
 ++/*
-++ * Linux v6.8-rc1~131^2~60^2^2 removed the uapi definitions for CBQ.
+++ * Linux v6.8-rc1 removed the uapi definitions for CBQ.
 ++ * See https://git.kernel.org/linus/33241dca48626
 ++ */
 ++#else
