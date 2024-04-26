@@ -1,0 +1,81 @@
+after Ctrl+V aka paste password into last active non-keepassx window, re-show the keepass window 
+_/- //so that an alt+tab would focus it, (qt4 keepassx only via showNormal())
+ \- focused(with this patch) - can't show it unfocused, it will focus it no matter what!
+
+rather than (w/o this patch) having to find it in taskbar and clicking on it to unminimize it!
+(alt+tab also not working as it puts it last in list, so alt+shift+tab would work!)
+
+on kwin it doesn't focus it so you can alt+tab to it.
+on xfwm4 though it does, so u can alt+tab back to the autotype window.
+
+doc: https://doc.qt.io/qt-5/qwidget.html
+
+Index: /var/tmp/portage/app-admin/keepassxc-9999/work/keepassxc-9999/src/autotype/AutoType.cpp
+===================================================================
+--- .orig/var/tmp/portage/app-admin/keepassxc-9999/work/keepassxc-9999/src/autotype/AutoType.cpp
++++ keepassxc-9999/src/autotype/AutoType.cpp
+@@ -295,7 +295,11 @@ void AutoType::executeAutoTypeActions(co
+         m_plugin->hideOwnWindow();
+ #else
+         if (getMainWindow()) {
+-            getMainWindow()->minimizeOrHide();
++          //we don't want to minimize it because restoring it makes it gain focus
++            getMainWindow()->minimizeOrHide();//so we do wanna hide it during autotype, right. this does just minimize, usually!
++          //so we hide it (can't see it for alt+tab purposes!) - XXX: don't hide() because it re-aranges it on kwin at the end of alt+tab list when it's later show()n thus u've to alt+shift+tab to it (as it's also unfocused there)
++            //getMainWindow()->hide(); //can't find it in taskbar or alt+tab! this is very bad unless show() happens soon!
++            //^ has same effect as minimize above, odd, so we leave it with minimize then.
+         }
+ #endif
+     } else {
+
+this commit changed things:
+https://github.com/keepassxreboot/keepassxc/commit/35af1c6695ab7a91981e45cf6789ce22f231665e
+and requires these changes (not fully vetted):
+
+Index: /var/tmp/portage/app-admin/keepassxc-9999/work/keepassxc-9999/src/autotype/AutoType.cpp
+===================================================================
+--- .orig/var/tmp/portage/app-admin/keepassxc-9999/work/keepassxc-9999/src/autotype/AutoType.cpp
++++ keepassxc-9999/src/autotype/AutoType.cpp
+@@ -325,6 +325,7 @@ void AutoType::executeAutoTypeActions(co
+         // Cancel Auto-Type if the active window changed
+         if (m_plugin->activeWindow() != window) {
+             qWarning("Active window changed, interrupting auto-type.");
++            getMainWindow()->show();//only needed when we tested with hide() above
+             break;
+         }
+ 
+@@ -341,6 +342,7 @@ void AutoType::executeAutoTypeActions(co
+ 
+             if (!result.canRetry() || i == max_retries) {
+                 if (getMainWindow()) {
++                    //this brings main window to front and focuses it
+                     MessageBox::critical(getMainWindow(), tr("Auto-Type Error"), result.errorString());
+                 }
+                 failed = true;
+@@ -352,11 +354,26 @@ void AutoType::executeAutoTypeActions(co
+ 
+         // Last action failed to complete, cancel the rest of the sequence
+         if (failed) {
++          //so no need to restore it from being minimized here, however, if it's hide() then we've to show()
++          getMainWindow()->show();//only needed when we tested with hide() above
+             break;
+         }
+     }
+ 
+     resetAutoTypeState();
++    //getMainWindow()->show(); // no effect
++    //getMainWindow()->bringToFront(); // unhide it - works but makes it active/focused too
++    //getMainWindow()->hide(); //can't find it in taskbar or alt+tab!
++    //getMainWindow()->setWindowState((getMainWindow()->windowState() & ~Qt::WindowMinimized) | Qt::WindowNoState);// | Qt::WindowActive);
++    //unminimize
++    getMainWindow()->setWindowState(
++        //Qt::WindowNoState);//restores it and focuses it!
++        //Qt::WindowActive);//restores it and focuses it!
++      (getMainWindow()->windowState() & (~Qt::WindowMinimized)));
++    //(getMainWindow()->windowState() & (~Qt::WindowMinimized | ~Qt::WindowActive)));//no effect (still minimized)
++    // | Qt::WindowActive);
++    getMainWindow()->show(); //opposite of hide() above. Leaving it just in case a hide() happened before.
++    //we still get an actively focused main window after this, can't find a way to show it without activating it!
+     m_inAutoType.unlock();
+     emit autotypeFinished();
+ }
