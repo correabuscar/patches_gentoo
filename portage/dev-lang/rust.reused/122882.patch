@@ -1,0 +1,110 @@
+From c2e5ee40b699608128654f2b67e0fafa8e1ec8dc Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?John=20K=C3=A5re=20Alsaker?= <john.kare.alsaker@gmail.com>
+Date: Fri, 22 Mar 2024 16:01:31 +0100
+Subject: [PATCH] Avoid a panic in `set_output_capture` in the default panic
+ handler
+
+---
+ library/std/src/io/mod.rs    |  6 +++---
+ library/std/src/io/stdio.rs  | 24 ++++++++++++++++++++++--
+ library/std/src/panicking.rs |  8 ++++----
+ 3 files changed, 29 insertions(+), 9 deletions(-)
+
+diff --git a/library/std/src/io/mod.rs b/library/std/src/io/mod.rs
+index 10bf9c51d16aa..19414ef7a8b32 100644
+--- a/library/std/src/io/mod.rs
++++ b/library/std/src/io/mod.rs
+@@ -311,14 +311,14 @@ pub use self::buffered::WriterPanicked;
+ #[unstable(feature = "raw_os_error_ty", issue = "107792")]
+ pub use self::error::RawOsError;
+ pub(crate) use self::stdio::attempt_print_to_stderr;
+-#[unstable(feature = "internal_output_capture", issue = "none")]
+-#[doc(no_inline, hidden)]
+-pub use self::stdio::set_output_capture;
+ #[stable(feature = "is_terminal", since = "1.70.0")]
+ pub use self::stdio::IsTerminal;
+ #[unstable(feature = "print_internals", issue = "none")]
+ #[doc(hidden)]
+ pub use self::stdio::{_eprint, _print};
++#[unstable(feature = "internal_output_capture", issue = "none")]
++#[doc(no_inline, hidden)]
++pub use self::stdio::{set_output_capture, try_set_output_capture};
+ #[stable(feature = "rust1", since = "1.0.0")]
+ pub use self::{
+     buffered::{BufReader, BufWriter, IntoInnerError, LineWriter},
+diff --git a/library/std/src/io/stdio.rs b/library/std/src/io/stdio.rs
+index 8f60b3b15356f..cb55d488b0c33 100644
+--- a/library/std/src/io/stdio.rs
++++ b/library/std/src/io/stdio.rs
+@@ -15,6 +15,7 @@ use crate::panic::{RefUnwindSafe, UnwindSafe};
+ use crate::sync::atomic::{AtomicBool, Ordering};
+ use crate::sync::{Arc, Mutex, MutexGuard, OnceLock, ReentrantLock, ReentrantLockGuard};
+ use crate::sys::stdio;
++use crate::thread::AccessError;
+ 
+ type LocalStream = Arc<Mutex<Vec<u8>>>;
+ 
+@@ -1054,12 +1055,31 @@ impl fmt::Debug for StderrLock<'_> {
+ )]
+ #[doc(hidden)]
+ pub fn set_output_capture(sink: Option<LocalStream>) -> Option<LocalStream> {
++    try_set_output_capture(sink).expect(
++        "cannot access a Thread Local Storage value \
++         during or after destruction",
++    )
++}
++
++/// Tries to set the thread-local output capture buffer and returns the old one.
++/// This may fail once thread-local destructors are called. It's used in panic
++/// handling instead of `set_output_capture`.
++#[unstable(
++    feature = "internal_output_capture",
++    reason = "this function is meant for use in the test crate \
++    and may disappear in the future",
++    issue = "none"
++)]
++#[doc(hidden)]
++pub fn try_set_output_capture(
++    sink: Option<LocalStream>,
++) -> Result<Option<LocalStream>, AccessError> {
+     if sink.is_none() && !OUTPUT_CAPTURE_USED.load(Ordering::Relaxed) {
+         // OUTPUT_CAPTURE is definitely None since OUTPUT_CAPTURE_USED is false.
+-        return None;
++        return Ok(None);
+     }
+     OUTPUT_CAPTURE_USED.store(true, Ordering::Relaxed);
+-    OUTPUT_CAPTURE.with(move |slot| slot.replace(sink))
++    OUTPUT_CAPTURE.try_with(move |slot| slot.replace(sink))
+ }
+ 
+ /// Write `args` to the capture buffer if enabled and possible, or `global_s`
+diff --git a/library/std/src/panicking.rs b/library/std/src/panicking.rs
+index b0bcab7994c76..16da69294d6fe 100644
+--- a/library/std/src/panicking.rs
++++ b/library/std/src/panicking.rs
+@@ -25,11 +25,11 @@ use crate::sys_common::thread_info;
+ use crate::thread;
+ 
+ #[cfg(not(test))]
+-use crate::io::set_output_capture;
++use crate::io::try_set_output_capture;
+ // make sure to use the stderr output configured
+ // by libtest in the real copy of std
+ #[cfg(test)]
+-use realstd::io::set_output_capture;
++use realstd::io::try_set_output_capture;
+ 
+ // Binary interface to the panic runtime that the standard library depends on.
+ //
+@@ -285,9 +285,9 @@ fn default_hook(info: &PanicInfo<'_>) {
+         }
+     };
+ 
+-    if let Some(local) = set_output_capture(None) {
++    if let Ok(Some(local)) = try_set_output_capture(None) {
+         write(&mut *local.lock().unwrap_or_else(|e| e.into_inner()));
+-        set_output_capture(Some(local));
++        try_set_output_capture(Some(local)).ok();
+     } else if let Some(mut out) = panic_output() {
+         write(&mut out);
+     }
