@@ -4,9 +4,8 @@ https://github.com/aristocratos/btop/issues/47#issuecomment-2056046776
 
 and the next comment is the one i hope also got fixed?! but can't really know
 
-
 diff --git a/src/btop.cpp b/src/btop.cpp
-index 8eae107..97605b5 100644
+index 8eae107..b058017 100644
 --- a/src/btop.cpp
 +++ b/src/btop.cpp
 @@ -56,6 +56,10 @@ tab-size = 4
@@ -41,7 +40,7 @@ index 8eae107..97605b5 100644
  //* Manages secondary thread for collection and drawing of boxes
  namespace Runner {
  	atomic<bool> active (false);
-+	atomic<bool> activated_once (false);
++	//atomic<bool> activated_once (false);
  	atomic<bool> stopping (false);
  	atomic<bool> waiting (false);
  	atomic<bool> redraw (false);
@@ -51,10 +50,10 @@ index 8eae107..97605b5 100644
  		atomic_wait_for(active, true, 5000);
 -		if (active) {
 +		//^ so that waits for 5 sec or until active becomes 'true', whichever's first.
-+		if (!activated_once) {//FIXME: remove this, was emulating this: https://github.com/aristocratos/btop/issues/47#issuecomment-2056046776  which requires pressing 'q' to quit, once this happens.
-+			active=true;
-+			activated_once=true;
-+		}
++		//if (!activated_once) {//FIXME: remove this, was emulating this: https://github.com/aristocratos/btop/issues/47#issuecomment-2056046776  which requires pressing 'q' to quit, once this happens.
++		//	active=true;
++		//	activated_once=true;
++		//}
 +		bool expected_active=true;
 +		if (active.compare_exchange_strong(expected_active, false)) {
 +			//^ true return means was changed from 'true' to 'false'
@@ -64,7 +63,7 @@ index 8eae107..97605b5 100644
 -			active = false;
  			// exit(1);
  			pthread_cancel(Runner::runner_id);
-+			sleep_ms(1000);//TODO: ^ that's async, do we need to wait at all before creating new?
++			sleep_ms(2000);//TODO: ^ that's async, do we need to wait at all before creating new? just gonna wait to be sure, for now.
  			if (pthread_create(&Runner::runner_id, nullptr, &Runner::_runner, nullptr) != 0) {
 +				Logger::error("Failed to re-create _runner thread!1!");
  				Global::exit_error_msg = "Failed to re-create _runner thread!";
@@ -81,7 +80,7 @@ index 8eae107..97605b5 100644
  		if (stopping or Global::resized) return;
  
  		if (box == "overlay") {
-@@ -849,29 +877,60 @@ namespace Runner {
+@@ -849,29 +877,62 @@ namespace Runner {
  
  	//* Stops any work being done in runner thread and checks for thread errors
  	void stop() {
@@ -137,6 +136,8 @@ index 8eae107..97605b5 100644
 +			Logger::error("stop() waited for active=true");
 +		} else {
 +			//so this is ret==0, but could be different i guess, that's just what i saw so far!
++			//so ret==BUSY above gets hit on 'q' quit unless the runner thread got restarted at least once
++			//so to get ret==0 the runner thread must've restarted 1+ times.
 +			//Logger::error("stop() a different ret=",ret);
 +			Logger::log_write(Logger::ERROR, "stop() a different ret=" + std::to_string(ret));
 +			thread_trigger();
