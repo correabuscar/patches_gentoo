@@ -1,0 +1,68 @@
+From f3e28876b6e0b80cc35bf4a7bd854ce1035ea985 Mon Sep 17 00:00:00 2001
+From: Alexander Potapenko <glider@google.com>
+Date: Wed, 27 Mar 2024 16:23:40 +0100
+Subject: [PATCH] lib/test_bitmap: use pr_info() for non-error messages
+
+pr_err() messages may be treated as errors by some log readers, so let
+us only use them for test failures. For non-error messages, replace them
+with pr_info().
+
+Suggested-by: Alexander Lobakin <aleksander.lobakin@intel.com>
+Signed-off-by: Alexander Potapenko <glider@google.com>
+Acked-by: Yury Norov <yury.norov@gmail.com>
+Signed-off-by: Yury Norov <yury.norov@gmail.com>
+Signed-off-by: Alexander Lobakin <aleksander.lobakin@intel.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+---
+ lib/test_bitmap.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/lib/test_bitmap.c b/lib/test_bitmap.c
+index 9198e93b798558..2870373d94d0d6 100644
+--- a/lib/test_bitmap.c
++++ b/lib/test_bitmap.c
+@@ -548,7 +548,7 @@ static void __init test_bitmap_parselist(void)
+ 		}
+ 
+ 		if (ptest.flags & PARSE_TIME)
+-			pr_err("parselist: %d: input is '%s' OK, Time: %llu\n",
++			pr_info("parselist: %d: input is '%s' OK, Time: %llu\n",
+ 					i, ptest.in, time);
+ 
+ #undef ptest
+@@ -587,7 +587,7 @@ static void __init test_bitmap_printlist(void)
+ 		goto out;
+ 	}
+ 
+-	pr_err("bitmap_print_to_pagebuf: input is '%s', Time: %llu\n", buf, time);
++	pr_info("bitmap_print_to_pagebuf: input is '%s', Time: %llu\n", buf, time);
+ out:
+ 	kfree(buf);
+ 	kfree(bmap);
+@@ -665,7 +665,7 @@ static void __init test_bitmap_parse(void)
+ 		}
+ 
+ 		if (test.flags & PARSE_TIME)
+-			pr_err("parse: %d: input is '%s' OK, Time: %llu\n",
++			pr_info("parse: %d: input is '%s' OK, Time: %llu\n",
+ 					i, test.in, time);
+ 	}
+ }
+#@@ -1421,7 +1421,7 @@ static void __init test_bitmap_read_perf(void)
+# 		}
+# 	}
+# 	time = ktime_get() - time;
+#-	pr_err("Time spent in %s:\t%llu\n", __func__, time);
+#+	pr_info("Time spent in %s:\t%llu\n", __func__, time);
+# }
+# 
+# static void __init test_bitmap_write_perf(void)
+#@@ -1443,7 +1443,7 @@ static void __init test_bitmap_write_perf(void)
+# 		}
+# 	}
+# 	time = ktime_get() - time;
+#-	pr_err("Time spent in %s:\t%llu\n", __func__, time);
+#+	pr_info("Time spent in %s:\t%llu\n", __func__, time);
+# }
+# 
+# #undef TEST_BIT_LEN
