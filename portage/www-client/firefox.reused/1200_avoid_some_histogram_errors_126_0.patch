@@ -1,0 +1,167 @@
+Index: /var/tmp/portage/www-client/firefox-126.0/work/firefox-126.0/browser/components/sessionstore/SessionStore.sys.mjs
+===================================================================
+--- firefox-126.0/browser/components/sessionstore/SessionStore.sys.mjs
++++ firefox-126.0/browser/components/sessionstore/SessionStore.sys.mjs
+@@ -152,7 +152,6 @@ const kLastIndex = Number.MAX_SAFE_INTEG
+ 
+ import { PrivateBrowsingUtils } from "resource://gre/modules/PrivateBrowsingUtils.sys.mjs";
+ 
+-import { TelemetryTimestamps } from "resource://gre/modules/TelemetryTimestamps.sys.mjs";
+ import { XPCOMUtils } from "resource://gre/modules/XPCOMUtils.sys.mjs";
+ import { AppConstants } from "resource://gre/modules/AppConstants.sys.mjs";
+ import { GlobalState } from "resource:///modules/sessionstore/GlobalState.sys.mjs";
+@@ -1035,7 +1034,6 @@ var SessionStoreInternal = {
+       throw new Error("SessionStore.init() must only be called once!");
+     }
+ 
+-    TelemetryTimestamps.add("sessionRestoreInitialized");
+     OBSERVING.forEach(function (aTopic) {
+       Services.obs.addObserver(this, aTopic, true);
+     }, this);
+@@ -1043,16 +1041,12 @@ var SessionStoreInternal = {
+     this._initPrefs();
+     this._initialized = true;
+ 
+-    Services.telemetry
+-      .getHistogramById("FX_SESSION_RESTORE_PRIVACY_LEVEL")
+-      .add(Services.prefs.getIntPref("browser.sessionstore.privacy_level"));
+   },
+ 
+   /**
+    * Initialize the session using the state provided by SessionStartup
+    */
+   initSession() {
+-    TelemetryStopwatch.start("FX_SESSION_RESTORE_STARTUP_INIT_SESSION_MS");
+     let state;
+     let ss = lazy.SessionStartup;
+ 
+@@ -1078,11 +1072,6 @@ var SessionStoreInternal = {
+           if (remainingState.windows.length) {
+             LastSession.setState(remainingState);
+           }
+-          Services.telemetry.keyedScalarAdd(
+-            "browser.engagement.sessionrestore_interstitial",
+-            "deferred_restore",
+-            1
+-          );
+         } else {
+           // Get the last deferred session in case the user still wants to
+           // restore it
+@@ -1109,11 +1098,6 @@ var SessionStoreInternal = {
+             } else if (
+               this._hasSingleTabWithURL(state.windows, "about:welcomeback")
+             ) {
+-              Services.telemetry.keyedScalarAdd(
+-                "browser.engagement.sessionrestore_interstitial",
+-                "shown_only_about_welcomeback",
+-                1
+-              );
+               // On a single about:welcomeback URL that crashed, replace about:welcomeback
+               // with about:sessionrestore, to make clear to the user that we crashed.
+               state.windows[0].tabs[0].entries[0].url = "about:sessionrestore";
+@@ -1126,11 +1110,6 @@ var SessionStoreInternal = {
+ 
+           // If we didn't use about:sessionrestore, record that:
+           if (!restoreAsCrashed) {
+-            Services.telemetry.keyedScalarAdd(
+-              "browser.engagement.sessionrestore_interstitial",
+-              "autorestore",
+-              1
+-            );
+ 
+             this._removeExplicitlyClosedTabs(state);
+           }
+@@ -1172,7 +1151,6 @@ var SessionStoreInternal = {
+       this._prefBranch.setBoolPref("sessionstore.resume_session_once", false);
+     }
+ 
+-    TelemetryStopwatch.finish("FX_SESSION_RESTORE_STARTUP_INIT_SESSION_MS");
+     return state;
+   },
+ 
+@@ -1420,9 +1398,6 @@ var SessionStoreInternal = {
+           return null;
+         }
+ 
+-        TelemetryStopwatch.start(
+-          "FX_SESSION_RESTORE_COLLECT_SESSION_HISTORY_MS"
+-        );
+ 
+         let fromIndex = collectFull ? -1 : this._fromIndex;
+         this._fromIndex = kNoIndex;
+@@ -1444,9 +1419,6 @@ var SessionStoreInternal = {
+           });
+         }
+ 
+-        TelemetryStopwatch.finish(
+-          "FX_SESSION_RESTORE_COLLECT_SESSION_HISTORY_MS"
+-        );
+ 
+         return historychange;
+       }
+@@ -1817,7 +1789,6 @@ var SessionStoreInternal = {
+           );
+           this._deferredAllWindowsRestored.resolve();
+         } else {
+-          TelemetryTimestamps.add("sessionRestoreRestoring");
+           this._restoreCount = aInitialState.windows
+             ? aInitialState.windows.length
+             : 0;
+@@ -2008,13 +1979,7 @@ var SessionStoreInternal = {
+           if (initialState) {
+             Services.obs.notifyObservers(null, NOTIFY_RESTORING_ON_STARTUP);
+           }
+-          TelemetryStopwatch.start(
+-            "FX_SESSION_RESTORE_STARTUP_ONLOAD_INITIAL_WINDOW_MS"
+-          );
+           this.initializeWindow(aWindow, initialState);
+-          TelemetryStopwatch.finish(
+-            "FX_SESSION_RESTORE_STARTUP_ONLOAD_INITIAL_WINDOW_MS"
+-          );
+ 
+           // Let everyone know we're done.
+           this._deferredInitialized.resolve();
+@@ -4551,7 +4516,6 @@ var SessionStoreInternal = {
+ 
+     var activeWindow = this._getTopWindow();
+ 
+-    TelemetryStopwatch.start("FX_SESSION_RESTORE_COLLECT_ALL_WINDOWS_DATA_MS");
+     if (lazy.RunState.isRunning) {
+       // update the data for all windows with activities since the last save operation.
+       let index = 0;
+@@ -4570,7 +4534,6 @@ var SessionStoreInternal = {
+       }
+       DirtyWindows.clear();
+     }
+-    TelemetryStopwatch.finish("FX_SESSION_RESTORE_COLLECT_ALL_WINDOWS_DATA_MS");
+ 
+     // An array that at the end will hold all current window data.
+     var total = [];
+@@ -4804,7 +4767,6 @@ var SessionStoreInternal = {
+       this.onLoad(aWindow);
+     }
+ 
+-    TelemetryStopwatch.start("FX_SESSION_RESTORE_RESTORE_WINDOW_MS");
+ 
+     // We're not returning from this before we end up calling restoreTabs
+     // for this window, so make sure we send the SSWindowStateBusy event.
+@@ -4959,7 +4921,6 @@ var SessionStoreInternal = {
+     // set smoothScroll back to the original value
+     arrowScrollbox.smoothScroll = smoothScroll;
+ 
+-    TelemetryStopwatch.finish("FX_SESSION_RESTORE_RESTORE_WINDOW_MS");
+ 
+     this._setWindowStateReady(aWindow);
+ 
+@@ -6136,11 +6097,6 @@ var SessionStoreInternal = {
+       } else {
+         key = "shown_old_session";
+       }
+-      Services.telemetry.keyedScalarAdd(
+-        "browser.engagement.sessionrestore_interstitial",
+-        key,
+-        1
+-      );
+     }
+     return decision;
+   },
