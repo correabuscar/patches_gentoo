@@ -1,0 +1,37 @@
+thanks to Bruecki https://users.rust-lang.org/t/how-can-i-get-a-list-of-the-and-17-others-types-in-this-compilation-error/112458/3?u=correabuscar
+
+should avoid this:
+    = help: the following other types implement trait `Reconcile`:
+                bool
+                i8
+                i16
+                i32
+                i64
+                u8
+                u16
+                u32
+              and 17 others
+
+Index: /var/tmp/portage/dev-lang/rust-1.76.0-r1/work/rustc-1.76.0-src/compiler/rustc_trait_selection/src/traits/error_reporting/type_err_ctxt_ext.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.76.0-r1/work/rustc-1.76.0-src/compiler/rustc_trait_selection/src/traits/error_reporting/type_err_ctxt_ext.rs
++++ rustc-1.76.0-src/compiler/rustc_trait_selection/src/traits/error_reporting/type_err_ctxt_ext.rs
+@@ -2096,16 +2096,10 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for Ty
+                 })
+                 .collect();
+ 
+-            let end = if candidates.len() <= 9 { candidates.len() } else { 8 };
+             err.help(format!(
+-                "the following {other}types implement trait `{}`:{}{}",
++                "the following {other}types implement trait `{}`:{}",
+                 trait_ref.print_trait_sugared(),
+-                candidates[..end].join(""),
+-                if candidates.len() > 9 {
+-                    format!("\nand {} others", candidates.len() - 8)
+-                } else {
+-                    String::new()
+-                }
++                candidates.join(""),
+             ));
+             true
+         };
