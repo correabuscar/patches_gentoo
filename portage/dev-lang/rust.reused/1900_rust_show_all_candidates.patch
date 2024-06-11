@@ -1,3 +1,6 @@
+update: a patch was accepted for this here: https://github.com/rust-lang/rust/pull/126055
+so this now needs to get updated for that, whenever in the future.
+
 thanks to Bruecki https://users.rust-lang.org/t/how-can-i-get-a-list-of-the-and-17-others-types-in-this-compilation-error/112458/3?u=correabuscar
 
 should avoid this:
