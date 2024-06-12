@@ -1,0 +1,70 @@
+updated for 6.9.4 kernel
+updated for kernel 5.12.1
+
+tracking bug: https://bugzilla.kernel.org/show_bug.cgi?id=97631#c1
+
+
+diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
+index 9027a8c4219f..27961cf32d1c 100644
+--- a/include/linux/skbuff.h
++++ b/include/linux/skbuff.h
+@@ -931,6 +931,7 @@ static inline bool skb_pfmemalloc(const struct sk_buff *skb)
+  */
+ static inline struct dst_entry *skb_dst(const struct sk_buff *skb)
+ {
++  BUG_ON(NULL == skb);
+ 	/* If refdst was not refcounted, check we still are in a
+ 	 * rcu_read_lock section
+ 	 */
+#@@ -984,6 +985,7 @@ static inline bool skb_dst_is_noref(const struct sk_buff *skb)
+#  */
+# static inline struct rtable *skb_rtable(const struct sk_buff *skb)
+# {
+#+  BUG_ON(NULL == skb);
+# 	return (struct rtable *)skb_dst(skb);
+# }
+# 
+#for 6.9.4 kernel:
+Index: /var/tmp/portage/sys-kernel/gentoo-sources-6.9.4/work/linux-6.9.4-gentoo/include/net/route.h
+===================================================================
+--- .orig/var/tmp/portage/sys-kernel/gentoo-sources-6.9.4/work/linux-6.9.4-gentoo/include/net/route.h
++++ linux-6.9.4-gentoo/include/net/route.h
+@@ -85,6 +85,7 @@ struct rtable {
+  */
+ static inline struct rtable *skb_rtable(const struct sk_buff *skb)
+ {
++	BUG_ON(NULL == skb);
+ 	return dst_rtable(skb_dst(skb));
+ }
+ 
+#for 5.12.1 kernel:
+Index: /var/tmp/portage/sys-kernel/gentoo-sources-5.12.1/work/linux-5.12.1-gentoo/net/ipv4/netfilter/nf_reject_ipv4.c
+===================================================================
+--- linux-5.12.1-gentoo/net/ipv4/netfilter/nf_reject_ipv4.c
++++ mod/net/ipv4/netfilter/nf_reject_ipv4.c
+@@ -247,12 +247,23 @@ void nf_send_reset(struct net *net, stru
+ 	if (!oth)
+ 		return;
+ 
++  BUG_ON(NULL == oldskb);
+ 	if ((hook == NF_INET_PRE_ROUTING || hook == NF_INET_INGRESS) &&
+ 	    nf_reject_fill_skb_dst(oldskb) < 0)
+ 		return;
+ 
+-	if (skb_rtable(oldskb)->rt_flags & (RTCF_BROADCAST | RTCF_MULTICAST))
+-		return;
++	//if (skb_rtable(oldskb)->rt_flags & (RTCF_BROADCAST | RTCF_MULTICAST))
++	//	return;
++  //	replaced above 2 lines with:
++  struct rtable * tmp1=skb_rtable(oldskb);
++  if (NULL == tmp1) {
++    printk(KERN_CRIT "avoiding null ptr deref\n");
++    return;
++  }
++	if (tmp1->rt_flags & (RTCF_BROADCAST | RTCF_MULTICAST))
++ 		return;
++  // that ^ block
++
+ 
+ 	nskb = alloc_skb(sizeof(struct iphdr) + sizeof(struct tcphdr) +
+ 			 LL_MAX_HEADER, GFP_ATOMIC);
