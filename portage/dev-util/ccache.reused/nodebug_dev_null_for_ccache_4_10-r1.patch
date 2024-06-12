@@ -45,10 +45,49 @@ Index: /var/tmp/portage/dev-util/ccache-4.9.1/work/ccache-4.9.1/src/ccache.cpp
                                                 ctx.config.debug_dir(),
                                                 ctx.time_of_invocation,
                                                 ctx.args_info.output_obj,
-@@ -2526,9 +2527,10 @@ do_cache_compilation(Context& ctx)
+#@@ -2526,9 +2527,10 @@ do_cache_compilation(Context& ctx)
+# 
+#   LOG("Object file: {}", ctx.args_info.output_obj);
+#   MTR_META_THREAD_NAME(ctx.args_info.output_obj.c_str());
+# 
+#-  if (ctx.config.debug() && ctx.config.debug_level() >= 2) {
+#+  if (ctx.config.debug() && ctx.config.debug_level() >= 2
+#+    && (std::string("/dev/null").compare(ctx.args_info.output_obj) != 0) ) {
+#     const auto path = prepare_debug_path(ctx.apparent_cwd,
+#                                          ctx.config.debug_dir(),
+#                                          ctx.time_of_invocation,
+#                                          ctx.args_info.orig_output_obj,
+#Index: /var/tmp/portage/dev-util/ccache-4.9.1-r1/work/ccache-4.9.1/src/ccache.cpp
+#===================================================================
+#--- .orig/var/tmp/portage/dev-util/ccache-4.9.1-r1/work/ccache-4.9.1/src/ccache.cpp
+#+++ ccache-4.9.1/src/ccache/ccache.cpp
+#@@ -2221,9 +2221,9 @@ initialize(Context& ctx, const char* con
+#     LOG_RAW("Error: tracing is not enabled!");
+# #endif
+#   }
+# 
+#-  if (!ctx.config.log_file().empty() || ctx.config.debug()) {
+#+  if ((!ctx.config.log_file().empty() || ctx.config.debug())&&(std::string("/dev/null").compare(ctx.args_info.output_obj) != 0)) { //FIXME: shouldn't I use ctx.config.log_file() ?
+#     ctx.config.visit_items([&ctx](const std::string& key,
+#                                   const std::string& value,
+#                                   const std::string& origin) {
+#       const auto& log_value =
+Index: /var/tmp/portage/dev-util/ccache-4.10-r1/work/ccache-4.10/src/ccache/ccache.cpp
+===================================================================
+--- .orig/var/tmp/portage/dev-util/ccache-4.10-r1/work/ccache-4.10/src/ccache/ccache.cpp
++++ ccache-4.10/src/ccache/ccache.cpp
+@@ -2275,7 +2275,7 @@ initialize(Context& ctx, const char* con
+   LOG("Configuration file: {}", ctx.config.config_path());
+   LOG("System configuration file: {}", ctx.config.system_config_path());
+ 
+-  if (!ctx.config.log_file().empty() || ctx.config.debug()) {
++  if ((!ctx.config.log_file().empty() || ctx.config.debug())&&(std::string("/dev/null").compare(ctx.args_info.output_obj) != 0)) { //FIXME: shouldn't I use ctx.config.log_file() ?
+     ctx.config.visit_items([&ctx](const std::string& key,
+                                   const std::string& value,
+                                   const std::string& origin) {
+@@ -2584,7 +2584,8 @@ do_cache_compilation(Context& ctx)
  
    LOG("Object file: {}", ctx.args_info.output_obj);
-   MTR_META_THREAD_NAME(ctx.args_info.output_obj.c_str());
  
 -  if (ctx.config.debug() && ctx.config.debug_level() >= 2) {
 +  if (ctx.config.debug() && ctx.config.debug_level() >= 2
@@ -56,19 +95,3 @@ Index: /var/tmp/portage/dev-util/ccache-4.9.1/work/ccache-4.9.1/src/ccache.cpp
      const auto path = prepare_debug_path(ctx.apparent_cwd,
                                           ctx.config.debug_dir(),
                                           ctx.time_of_invocation,
-                                          ctx.args_info.orig_output_obj,
-Index: /var/tmp/portage/dev-util/ccache-4.9.1-r1/work/ccache-4.9.1/src/ccache.cpp
-===================================================================
---- .orig/var/tmp/portage/dev-util/ccache-4.9.1-r1/work/ccache-4.9.1/src/ccache.cpp
-+++ ccache-4.9.1/src/ccache/ccache.cpp
-@@ -2221,9 +2221,9 @@ initialize(Context& ctx, const char* con
-     LOG_RAW("Error: tracing is not enabled!");
- #endif
-   }
- 
--  if (!ctx.config.log_file().empty() || ctx.config.debug()) {
-+  if ((!ctx.config.log_file().empty() || ctx.config.debug())&&(std::string("/dev/null").compare(ctx.args_info.output_obj) != 0)) { //FIXME: shouldn't I use ctx.config.log_file() ?
-     ctx.config.visit_items([&ctx](const std::string& key,
-                                   const std::string& value,
-                                   const std::string& origin) {
-       const auto& log_value =
