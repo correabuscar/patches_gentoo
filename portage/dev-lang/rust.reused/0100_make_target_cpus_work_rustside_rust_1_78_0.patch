@@ -1,0 +1,113 @@
+needs llvm compiled with patch make_target_cpus_work_llvmside_68e1e29618b_2.patch
+
+notanymore://AND in file /etc/portage/env/dev-lang/rust this line:
+//CXXFLAGS="$CXXFLAGS -DHAVE_SYSTEMLLVM_PATCH_FOR_TARGET_CPUS"
+
+recompile both llvm and rust
+
+this patch not sure if it's still needed on rust 1.73.0 but I did it anyway, so didn't test w/o it
+
+to test try this:
+rustc -C target-cpu=help
+OR
+rustc --print target-cpus
+if fixed, should NOT show: "Target CPU help is not supported by this LLVM version."
+
+#Index: /var/tmp/portage/dev-lang/rust-1.48.0/work/rustc-1.48.0-src/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp
+#===================================================================
+#--- .orig/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp
+#+++ mod/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp
+#@@ -387,7 +387,7 @@ static Reloc::Model fromRust(LLVMRustRel
+#   report_fatal_error("Bad RelocModel.");
+# }
+# 
+#-#ifdef LLVM_RUSTLLVM
+#+#if 1 //#if defined(LLVM_RUSTLLVM) || defined(HAVE_SYSTEMLLVM_PATCH_FOR_TARGET_CPUS) // this is useless because CXXFLAGS are ignored here!
+# /// getLongestEntryLength - Return the length of the longest entry in the table.
+# template<typename KV>
+# static size_t getLongestEntryLength(ArrayRef<KV> Table) {
+#Index: /var/tmp/portage/dev-lang/rust-1.48.0/work/rustc-1.48.0-src/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp
+#===================================================================
+#--- .orig/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp
+#+++ mod/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp
+#@@ -440,6 +440,8 @@ extern "C" void LLVMRustPrintTargetFeatu
+# 
+# #else
+# 
+#+#error "how teh"
+#+
+# extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef) {
+#   printf("Target CPU help is not supported by this LLVM version.\n\n");
+# }
+
+#Index: /var/tmp/portage/dev-lang/rust-1.73.0/work/rustc-1.73.0-src/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp
+#===================================================================
+#--- .orig/var/tmp/portage/dev-lang/rust-1.73.0/work/rustc-1.73.0-src/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp
+#+++ rustc-1.73.0-src/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp
+#@@ -364,25 +364,28 @@ extern "C" void LLVMRustPrintTargetCPUs(
+# }
+# 
+# extern "C" size_t LLVMRustGetTargetFeaturesCount(LLVMTargetMachineRef TM) {
+#-#ifdef LLVM_RUSTLLVM
+#+#if 1 //#if defined(LLVM_RUSTLLVM) || defined(HAVE_SYSTEMLLVM_PATCH_FOR_TARGET_CPUS) // this is useless because CXXFLAGS are ignored here!
+#   const TargetMachine *Target = unwrap(TM);
+#   const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
+#   const ArrayRef<SubtargetFeatureKV> FeatTable = MCInfo->getFeatureTable();
+#   return FeatTable.size();
+# #else
+#+  #error "how teh1"
+#   return 0;
+# #endif
+# }
+# 
+# extern "C" void LLVMRustGetTargetFeature(LLVMTargetMachineRef TM, size_t Index,
+#                                          const char** Feature, const char** Desc) {
+#-#ifdef LLVM_RUSTLLVM
+#+#if 1 //#if defined(LLVM_RUSTLLVM) || defined(HAVE_SYSTEMLLVM_PATCH_FOR_TARGET_CPUS) // this is useless because CXXFLAGS are ignored here!
+#   const TargetMachine *Target = unwrap(TM);
+#   const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
+#   const ArrayRef<SubtargetFeatureKV> FeatTable = MCInfo->getFeatureTable();
+#   const SubtargetFeatureKV Feat = FeatTable[Index];
+#   *Feature = Feat.Key;
+#   *Desc = Feat.Desc;
+#+#else
+#+  #error "how teh2"
+# #endif
+# }
+# 
+
+Index: /var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp
++++ rustc-1.78.0-src/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp
+@@ -372,25 +372,28 @@ extern "C" void LLVMRustPrintTargetCPUs(
+ }
+ 
+ extern "C" size_t LLVMRustGetTargetFeaturesCount(LLVMTargetMachineRef TM) {
+-#if LLVM_VERSION_GE(18, 0)
++#if 1 //was: #if LLVM_VERSION_GE(18, 0) //old: #if defined(LLVM_RUSTLLVM) || defined(HAVE_SYSTEMLLVM_PATCH_FOR_TARGET_CPUS) // this is useless because CXXFLAGS are ignored here!
+   const TargetMachine *Target = unwrap(TM);
+   const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
+   const ArrayRef<SubtargetFeatureKV> FeatTable = MCInfo->getAllProcessorFeatures();
+   return FeatTable.size();
+ #else
++  #error "how teh1"
+   return 0;
+ #endif
+ }
+ 
+ extern "C" void LLVMRustGetTargetFeature(LLVMTargetMachineRef TM, size_t Index,
+                                          const char** Feature, const char** Desc) {
+-#if LLVM_VERSION_GE(18, 0)
++#if 1 //was: #if LLVM_VERSION_GE(18, 0) //old: #if defined(LLVM_RUSTLLVM) || defined(HAVE_SYSTEMLLVM_PATCH_FOR_TARGET_CPUS) // this is useless because CXXFLAGS are ignored here!
+   const TargetMachine *Target = unwrap(TM);
+   const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
+   const ArrayRef<SubtargetFeatureKV> FeatTable = MCInfo->getAllProcessorFeatures();
+   const SubtargetFeatureKV Feat = FeatTable[Index];
+   *Feature = Feat.Key;
+   *Desc = Feat.Desc;
++#else
++  #error "how teh1"
+ #endif
+ }
+ 

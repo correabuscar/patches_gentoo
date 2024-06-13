@@ -1,0 +1,64 @@
+in 1.78.0 or earlier (but after 1.76.0) this is_optional_tool bool got removed in https://github.com/rust-lang/rust/commit/fdeb8c502797af5e21cab4de1f4001deb2cd8901 which apparently means tools are expected to not fail to compile as per this line: https://github.com/rust-lang/rust/commit/fdeb8c502797af5e21cab4de1f4001deb2cd8901#diff-dc86e288bcf7b3ca3f8c127d3568fbafc785704883bc7fc336bd185910aed5daR118-R119
+so it acts as if is_optional_tool is false, therefore this patch isn't needed anymore:
+
+so now only tracking if that changes ever.
+
+//old:
+ok, if any tool such as clippy fails the build, then this patch will make ./x.py build fail instantly, instead of continuing and eventually finishing with exit code 0, and then only ./x.py install will fail(without this patch) which means 19 more mins(20+19) of compilation instead of just 20mins
+
+Index: /var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/src/bootstrap/src/core/build_steps/tool.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/src/bootstrap/src/core/build_steps/tool.rs
++++ rustc-1.78.0-src/src/bootstrap/src/core/build_steps/tool.rs
+@@ -116,8 +116,8 @@ impl Step for ToolBuild {
+             if build_success { ToolState::TestFail } else { ToolState::BuildFail },
+         );
+ 
+-        if !build_success {
+-            crate::exit!(1);
++        if !build_success { //
++            crate::exit!(1); //
+         } else {
+             // HACK(#82501): on Windows, the tools directory gets added to PATH when running tests, and
+             // compiletest confuses HTML tidy with the in-tree tidy. Name the in-tree tidy something
+#@@ -594,7 +594,7 @@ macro_rules! tool_extended {
+#                     mode: Mode::ToolRustc,
+#                     path: $path,
+#                     extra_features: $sel.extra_features,
+#-                    is_optional_tool: true,
+#+                    is_optional_tool: false,
+#                     source_type: SourceType::Submodule,
+#                 })
+#             }
+#index bd77f7a91d..49db8d282f 100644
+
+#Index: /var/tmp/portage/dev-lang/rust-9999/work/rust-git-src/src/bootstrap/tool.rs
+#===================================================================
+##--- .orig/var/tmp/portage/dev-lang/rust-9999/work/rust-git-src/src/bootstrap/tool.rs
+##+++ /var/tmp/portage/dev-lang/rust-9999/work/rust-git-src/src/bootstrap/tool.rs
+#diff --git a/src/bootstrap/tool.rs b/src/bootstrap/tool.rs
+#--- a/src/bootstrap/tool.rs
+#+++ b/src/bootstrap/tool.rs
+#@@ -636,7 +636,7 @@ macro_rules! tool_extended {
+#                     mode: Mode::ToolRustc,
+#                     path: $path,
+#                     extra_features: $sel.extra_features,
+#-                    is_optional_tool: true,
+#+                    is_optional_tool: false,
+#                     source_type: if false $(|| $in_tree)* {
+#                         SourceType::InTree
+#                     } else {
+
+#Index: /var/tmp/portage/dev-lang/rust-1.67.0/work/rustc-1.67.0-src/src/bootstrap/tool.rs
+#===================================================================
+#--- .orig/var/tmp/portage/dev-lang/rust-1.67.0/work/rustc-1.67.0-src/src/bootstrap/tool.rs
+#+++ rustc-1.67.0-src/src/bootstrap/src/core/build_steps/tool.rs
+#@@ -847,7 +847,7 @@ macro_rules! tool_extended {
+#                     mode: if false $(|| $tool_std)? { Mode::ToolStd } else { Mode::ToolRustc },
+#                     path: $path,
+#                     extra_features: $sel.extra_features,
+#-                    is_optional_tool: true,
+#+                    is_optional_tool: false,
+#                     source_type: SourceType::InTree,
+#                 })
+#             }

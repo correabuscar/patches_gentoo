@@ -1,0 +1,629 @@
+updated from 1.76.0 to 1.78.0 gentoo.
+see: https://users.rust-lang.org/t/rust-broken-on-second-invocation-in-alpine-linux-chroot/112113/3?u=correabuscar
+basically if /dev/null doesn't exist or it's a file instead of a character device, rust will error later, and you won't know this is why!
+Well with this patch it will fail fast, and it's meant to be used only by myself due to left some intentional bread crumbs and canaries to detect future changes and to more easily find the relevant error that's in effect.
+
+cargo build errors are like this:
+* when /dev/null doesn't exist
+#------
+error: could3 not execute process `/foo/myrust -vV` (never executed)
+
+Caused by:
+  Error accessing character device '/dev/null': No such file or directory (os error 2)
+exit code: 101
+#------
+* instead of:
+#------
+error: could not execute process `rustc -vV` (never executed)
+
+Caused by:
+  No such file or directory (os error 2)
+#------
+
+* when /dev/null is a file:
+#------
+error: could3 not execute process `/foo/myrust -vV` (never executed)
+
+Caused by:
+  The file '/dev/null' is not a character device
+exit code: 101
+#------
+* instead of, when it's 0 byte file (ie. works):
+#------
+    Finished dev [unoptimized + debuginfo] target(s) in 0.07s
+#------
+* instead of, when it's 1 byte file with contents "`" (one backquote or GRAVE ACCENT):
+#------
+error: failed to run `rustc` to learn about target-specific information
+
+Caused by:
+  process didn't exit successfully: `rustc - --crate-name ___ --print=file-names --crate-type bin --crate-type rlib --crate-type dylib --crate-type cdylib --crate-type staticlib --crate-type proc-macro --print=sysroot --print=split-debuginfo --print=crate-name --print=cfg` (exit status: 1)
+  --- stdout
+  ___
+  lib___.rlib
+  lib___.so
+  lib___.so
+  lib___.a
+  lib___.so
+  /usr/lib/rust/1.76.0
+  off
+  packed
+  unpacked
+  ___
+  debug_assertions
+  overflow_checks
+  panic="unwind"
+  proc_macro
+  relocation_model="pic"
+  target_abi=""
+  target_arch="x86_64"
+  target_endian="little"
+  target_env="gnu"
+  target_family="unix"
+  target_feature="fxsr"
+  target_feature="sse"
+  target_feature="sse2"
+  target_has_atomic
+  target_has_atomic="16"
+  target_has_atomic="32"
+  target_has_atomic="64"
+  target_has_atomic="8"
+  target_has_atomic="ptr"
+  target_has_atomic_equal_alignment="16"
+  target_has_atomic_equal_alignment="32"
+  target_has_atomic_equal_alignment="64"
+  target_has_atomic_equal_alignment="8"
+  target_has_atomic_equal_alignment="ptr"
+  target_has_atomic_load_store
+  target_has_atomic_load_store="16"
+  target_has_atomic_load_store="32"
+  target_has_atomic_load_store="64"
+  target_has_atomic_load_store="8"
+  target_has_atomic_load_store="ptr"
+  target_os="linux"
+  target_pointer_width="64"
+  target_thread_local
+  target_vendor="unknown"
+  unix
+
+  --- stderr
+  error: unknown start of token: `
+   --> <anon>:1:1
+    |
+  1 | `
+    | ^
+    |
+  help: Unicode character '`' (Grave Accent) looks like ''' (Single Quote), but it is not
+    |
+  1 | '
+    |
+
+  error: aborting due to 1 previous error
+#------
+
+
+
+Index: /var/tmp/portage/dev-lang/rust-1.76.0-r1/work/rustc-1.76.0-src/src/tools/cargo/credential/cargo-credential/src/stdio.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.76.0-r1/work/rustc-1.76.0-src/src/tools/cargo/credential/cargo-credential/src/stdio.rs
++++ rustc-1.76.0-src/src/tools/cargo/credential/cargo-credential/src/stdio.rs
+@@ -8,7 +8,13 @@ where
+ {
+     let open_write = |f| std::fs::OpenOptions::new().write(true).open(f);
+ 
++    #[cfg(windows)]
+     let mut stdin = File::open(imp::IN_DEVICE).or_else(|_| File::open(imp::NULL_DEVICE))?;
++    #[cfg(unix)] // respecting same cfg as the one in 'mod'
++    let mut stdin = std::open_char_device(imp::IN_DEVICE).or_else(|_| std::open_char_device(imp::NULL_DEVICE))?;
++    #[cfg(not(any(windows,unix)))]
++    compile_error!("Well, what's this unhandled case of not Windows and not any unix-es?!");
++
+     let mut stdout = open_write(imp::OUT_DEVICE).or_else(|_| open_write(imp::NULL_DEVICE))?;
+ 
+     let _stdin_guard = imp::ReplacementGuard::new(Stdio::Stdin, &mut stdin)?;
+Index: /var/tmp/portage/dev-lang/rust-1.76.0-r1/work/rustc-1.76.0-src/src/tools/cargo/credential/cargo-credential/src/lib.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.76.0-r1/work/rustc-1.76.0-src/src/tools/cargo/credential/cargo-credential/src/lib.rs
++++ rustc-1.76.0-src/src/tools/cargo/credential/cargo-credential/src/lib.rs
+@@ -231,6 +231,7 @@ pub fn main(credential: impl Credential)
+         serde_json::to_writer(std::io::stdout(), &result)
+             .expect("failed to serialize credential provider error");
+         println!();
++        //panic!("{:?}",result); //don't know how to tell cargo to get here, so commented out so far! TODO: actually test this works!
+     }
+ }
+ 
+Index: /var/tmp/portage/dev-lang/rust-1.76.0-r1/work/rustc-1.76.0-src/src/tools/cargo/crates/cargo-util/src/process_builder.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.76.0-r1/work/rustc-1.76.0-src/src/tools/cargo/crates/cargo-util/src/process_builder.rs
++++ rustc-1.76.0-src/src/tools/cargo/crates/cargo-util/src/process_builder.rs
+@@ -248,7 +248,7 @@ impl ProcessBuilder {
+             Ok(())
+         } else {
+             Err(ProcessError::new(
+-                &format!("process didn't exit successfully: {}", self),
++                &format!("process9 didn't exit successfully: {}", self),
+                 Some(exit),
+                 None,
+             )
+@@ -312,7 +312,7 @@ impl ProcessBuilder {
+             Ok(output)
+         } else {
+             Err(ProcessError::new(
+-                &format!("process didn't exit successfully: {}", self),
++                &format!("process8 didn't exit successfully: {}", self),
+                 Some(output.status),
+                 Some(&output),
+             )
+@@ -419,14 +419,14 @@ impl ProcessBuilder {
+             let to_print = if capture_output { Some(&output) } else { None };
+             if let Some(e) = callback_error {
+                 let cx = ProcessError::new(
+-                    &format!("failed to parse process output: {}", self),
++                    &format!("failed2 to parse process output: {}", self),
+                     Some(output.status),
+                     to_print,
+                 );
+                 bail!(anyhow::Error::new(cx).context(e));
+             } else if !output.status.success() {
+                 bail!(ProcessError::new(
+-                    &format!("process didn't exit successfully: {}", self),
++                    &format!("process1 didn't exit successfully: {}", self),
+                     Some(output.status),
+                     to_print,
+                 ));
+@@ -557,8 +557,9 @@ fn piped(cmd: &mut Command, pipe_stdin:
+ }
+ 
+ fn close_tempfile_and_log_error(file: NamedTempFile) {
++    let path=file.path().to_owned();
+     file.close().unwrap_or_else(|e| {
+-        tracing::warn!("failed to close temporary file: {e}");
++        tracing::warn!("failed to close temporary file '{:?}', error: '{}'", path,e);
+     });
+ }
+ 
+@@ -585,12 +586,16 @@ mod imp {
+                 error = command.exec()
+             }
+         }
++        let f=
+         if let Some(file) = file {
++            let p=file.path().to_owned();
+             close_tempfile_and_log_error(file);
+-        }
++            p
++        } else { std::path::PathBuf::from("None") };
+ 
++        let ff=&format!("could4 not execute process '{}', error:{:?}, temp(arg)file:'{:?}'", process_builder, error, f);
+         Err(anyhow::Error::from(error).context(ProcessError::new(
+-            &format!("could not execute process {}", process_builder),
++                    ff,
+             None,
+             None,
+         )))
+Index: /var/tmp/portage/dev-lang/rust-1.76.0-r1/work/rustc-1.76.0-src/src/tools/cargo/crates/cargo-util/src/process_error.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.76.0-r1/work/rustc-1.76.0-src/src/tools/cargo/crates/cargo-util/src/process_error.rs
++++ rustc-1.76.0-src/src/tools/cargo/crates/cargo-util/src/process_error.rs
+@@ -100,7 +100,7 @@ impl ProcessError {
+     ///
+     /// * `cmd` is usually but not limited to [`std::process::Command`].
+     pub fn could_not_execute(cmd: impl fmt::Display) -> ProcessError {
+-        ProcessError::new(&format!("could not execute process {cmd}"), None, None)
++        ProcessError::new(&format!("could3 not execute process {cmd}"), None, None)
+     }
+ }
+ 
+Index: /var/tmp/portage/dev-lang/rust-1.76.0-r1/work/rustc-1.76.0-src/library/std/src/lib.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.76.0-r1/work/rustc-1.76.0-src/library/std/src/lib.rs
++++ rustc-1.76.0-src/library/std/src/lib.rs
+@@ -636,6 +636,14 @@ pub use std_detect::is_x86_feature_detec
+ 
+ // Platform-abstraction modules
+ mod sys;
++//#[cfg(unix)]
++cfg_if::cfg_if! {
++    if #[cfg(unix)] {
++        #[stable(feature = "foo", since = "1.420.69")]
++        pub use sys::open_char_device;
++        //pub use sys::open_char_device_c;
++    }
++}
+ mod sys_common;
+ 
+ pub mod alloc;
+Index: /var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/src/sys/pal/unix/mod.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/src/sys/pal/unix/mod.rs
++++ rustc-1.78.0-src/library/std/src/sys/pal/unix/mod.rs
+@@ -121,6 +121,7 @@ pub unsafe fn init(argc: isize, argv: *c
+                     continue;
+                 }
+                 if open64(c"/dev/null".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
++                    // XXX: hmmm
+                     // If the stream is closed but we failed to reopen it, abort the
+                     // process. Otherwise we wouldn't preserve the safety of
+                     // operations on the corresponding Rust object Stdin, Stdout, or
+@@ -151,6 +152,7 @@ pub unsafe fn init(argc: isize, argv: *c
+             for fd in 0..3 {
+                 if libc::fcntl(fd, libc::F_GETFD) == -1 && errno() == libc::EBADF {
+                     if open64(c"/dev/null".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
++                        // XXX: hmmm
+                         // If the stream is closed but we failed to reopen it, abort the
+                         // process. Otherwise we wouldn't preserve the safety of
+                         // operations on the corresponding Rust object Stdin, Stdout, or
+Index: /var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/src/sys/pal/unix/fs.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/src/sys/pal/unix/fs.rs
++++ rustc-1.78.0-src/library/std/src/sys/pal/unix/fs.rs
+@@ -1115,7 +1115,316 @@ impl OpenOptions {
+         })
+     }
+ }
++pub mod foo {
++    use super::*; //the easy way TODO: do each super individually, like below:
++//    use super::CStr;
++//    //use crate::ffi::CStr;
++//    //use crate::sys::unix::fs::OpenOptions;
++//    use super::OpenOptions;
++//    use super::open64;
++//    //use libc::S_IFCHR;
++//    //use crate::ffi::c_int;
++//    use super::c_int;
++//    //use crate::sys::cvt_r;
++//    use super::cvt_r;
++//		//use crate::fs::File;
++//    use super::File;
++//		//use crate::io;
++//		use crate::os::unix::ffi::OsStrExt;
++//		use crate::path::{Path, PathBuf};
++//    use crate::os::fd::FromRawFd;
++//    use crate::sys::fd::FileDesc;
+ 
++		/// Custom error type for errors that can occur in `open_char_device`.
++    #[stable(feature = "foo", since = "1.420.69")]
++    #[derive(Debug)]
++		pub enum DeviceOpenError {
++				Io(io::Error, PathBuf),
++				NotADevice(PathBuf),
++		}
++
++    #[stable(feature = "foo", since = "1.420.69")]
++		impl crate::fmt::Display for DeviceOpenError {
++				fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
++						match self {
++								DeviceOpenError::Io(err, path) => {
++										write!(
++												f,
++												"Error accessing character device '{}': {}",
++												humanly_visible_os_chars(path),
++												err
++										)
++								}
++								DeviceOpenError::NotADevice(path) => {
++										write!(
++												f,
++												"The file '{}' is not a character device",
++												//path.display(),
++												humanly_visible_os_chars(path),
++										)
++								}
++						}
++				}
++		}
++
++    #[stable(feature = "foo", since = "1.420.69")]
++		impl crate::error::Error for DeviceOpenError {}
++
++    #[stable(feature = "foo", since = "1.420.69")]
++		impl From<DeviceOpenError> for io::Error {
++				fn from(err: DeviceOpenError) -> io::Error {
++						//doneTODO: this code repeats twice here and above in Display
++						//println!("FROM:{}",err.to_string());
++						match &err {
++								DeviceOpenError::Io(inner_err, _path) => {
++										io::Error::new(inner_err.kind(), err.to_string())
++								}
++								DeviceOpenError::NotADevice(_path) => {
++										io::Error::new(io::ErrorKind::NotFound, err.to_string())
++								}
++						}
++				}
++		}
++
++		fn humanly_visible_os_chars<P: AsRef<Path>>(path: P) -> String {
++				let path = path.as_ref().as_os_str();
++				if let Some(arg_str) = path.to_str() {
++						// If the argument is valid UTF-8,
++						if arg_str.contains('\0') {
++								// show the nuls as \x00, keep the rest like ♥ as they are
++								let mut formatted_path = String::new();
++								for c in arg_str.chars() {
++										if c == '\0' {
++												formatted_path.push_str("\\x00");
++										} else {
++												formatted_path.push(c);
++										}
++								}
++								return formatted_path;
++						} else {
++								// there are no nuls so keep it as it is, like with ♥ instead of \xE2\x99\xA5
++								return format!("{}", arg_str);
++						}
++				} else {
++						let mut formatted_path = String::new();
++						//not fully utf8
++						//then we show it as ascii + hex
++						for byte in path.as_bytes() {
++								match crate::char::from_u32(u32::from(*byte)) {
++										Some(c) if (*byte >= 0x20) && (*byte <= 0x7E) => {
++												formatted_path.push(c);
++										}
++										_ => {
++												formatted_path.push_str(&format!("\\x{:02X}", byte));
++										}
++								}
++						}
++						return formatted_path;
++				}
++		}
++
++		// Custom extension trait for Result
++		trait ResultExt<T> {
++				fn map_device_error<P: AsRef<Path>>(self, path: P) -> Result<T, io::Error>;
++		}
++
++		impl<T> ResultExt<T> for Result<T, io::Error> {
++				fn map_device_error<P: AsRef<Path>>(self, path: P) -> Result<T, io::Error> {
++						self.map_err(|e| DeviceOpenError::Io(e, path.as_ref().to_path_buf()).into())
++				}
++		}
++
++		// XXX: this can replace a cargo File::open call(presumably), but for rustc variants we need something else!
++		// cargo: https://github.com/rust-lang/cargo/blob/cbc12a2ebe0a99836249de0f80f025192e58cb4b/credential/cargo-credential/src/stdio.rs#L11
++		// rustc: https://github.com/rust-lang/rust/blob/4cf5723dbe471ef0a32857b968b91498551f5e38/library/std/src/sys/pal/unix/process/process_common.rs#L479-L486
++		// .. https://github.com/rust-lang/rust/blob/a83f933a9da258cf037e3cab37cd486bfd861a7d/library/std/src/sys/pal/unix/fs.rs#L1160-L1171
++		// and for my code I might want things like this: [1] [2]
++		// [1] https://github.com/rust-lang/rust/blob/a83f933a9da258cf037e3cab37cd486bfd861a7d/library/std/src/sys/pal/unix/fs.rs#L1157
++		// [2] https://github.com/rust-lang/rust/blob/a83f933a9da258cf037e3cab37cd486bfd861a7d/library/std/src/sys/pal/common/small_c_string.rs#L36
++		/// Opens a file and checks if it is a char device.
++		/// Returns an error if the file is not a character device.
++		/// meant to be a File::open() replacement for cases when /dev/null is used in cargo/rustc code!
++    /// XXX: this isn't used here in fs.rs but only in cargo's stdio.rs
++    #[stable(feature = "foo", since = "1.420.69")]
++		pub fn open_char_device<P: AsRef<Path>>(path: P) -> io::Result<crate::fs::File> {
++				let path = path.as_ref();
++				//    let metadata =
++				//        std::fs::metadata(path).map_err(|e| DeviceOpenError::Io(e, path.to_path_buf()))?;
++				let metadata = crate::fs::metadata(path).map_device_error(path)?;
++
++				// Check if the file is a character device:
++				// "/dev/null is indeed classified as a character device when inspected with the stat command."
++				// "Device type: 1,3 further confirms that it's a character device. The first number (1) indicates the major device number, which represents the device type (character device), and the second number (3) is the minor device number."
++				// - chatgpt 3.5
++				use crate::os::unix::fs::FileTypeExt;
++				if metadata.file_type().is_char_device() {
++						// Open the file as usual
++						//File::open(path).map_err(|e| DeviceOpenError::Io(e, path.to_path_buf()).into())
++						return crate::fs::File::open(path).map_device_error(path);
++				} else {
++						// Return an error indicating that the file is not a character device
++						return Err(DeviceOpenError::NotADevice(path.to_path_buf()).into());
++				}
++		}
++
++
++		#[test]
++		fn test_open_char_device() {
++				fn example(path: &str) -> io::Result<File> {
++						let file = open_char_device(path)?;
++						// Use file as needed
++						Ok(file)
++				}
++
++				//TODO: ensure the contents of errors match expected.
++				let res = open_char_device("/dev/null");
++				match &res {
++						Ok(file) => println!("Successfully opened device: {:?}", file),
++						Err(e) => println!("Failed to open device: {}", e),
++				}
++				assert!(
++						res.is_ok(),
++						"you're in chroot? or don't have /dev/null ? Should be this: crw-rw-rw- 1 root root 1, 3 29.05.2024 11:07 /dev/null   Error: '{:?}'",
++						res
++				);
++
++				let res = open_char_device("src/main.rs");
++				match &res {
++						Ok(file) => println!("Successfully opened device: {:?}", file),
++						Err(e) => println!("Failed to open device: {}", e),
++				}
++				assert!(res.is_err(), "{:?}", res);
++				assert_eq!(res.err().unwrap().kind(), io::ErrorKind::NotFound);
++
++				let res = open_char_device("this is the name of a non exiting file here");
++				match &res {
++						Ok(file) => println!("Successfully opened device: {:?}", file),
++						Err(e) => println!("Failed to open device: {}", e),
++				}
++				assert!(res.is_err(), "{:?}", res);
++				assert_eq!(res.err().unwrap().kind(), io::ErrorKind::NotFound);
++
++				let res = open_char_device("heart emoji ♥ containing one");
++				match &res {
++						Ok(file) => println!("Successfully opened device: {:?}", file),
++						Err(e) => println!("Failed to open device: {}", e),
++				}
++				assert!(res.is_err(), "{:?}", res);
++				assert_eq!(res.err().unwrap().kind(), io::ErrorKind::NotFound);
++
++				let res = open_char_device("foo\0null");
++				match &res {
++						Ok(file) => println!("Successfully opened device: {:?}", file),
++						Err(e) => println!("Failed to open device: {}", e),
++				}
++				assert!(res.is_err(), "{:?}", res);
++				assert_eq!(res.err().unwrap().kind(), io::ErrorKind::InvalidInput);
++
++				let res = open_char_device(PathBuf::from("/dev/n\0ull"));
++				match &res {
++						Ok(file) => println!("Successfully opened device: {:?}", file),
++						Err(e) => println!("Failed to open device: {}", e),
++				}
++				assert!(res.is_err(), "{:?}", res);
++				assert_eq!(res.err().unwrap().kind(), io::ErrorKind::InvalidInput);
++
++				let res = open_char_device("heart emoji ♥ containing one, and a \0nul!");
++				match &res {
++						Ok(file) => println!("Successfully opened device: {:?}", file),
++						Err(e) => println!("Failed to open device: {}", e),
++				}
++				assert!(res.is_err(), "{:?}", res);
++				assert_eq!(res.err().unwrap().kind(), io::ErrorKind::InvalidInput);
++
++				let res = example("/dev/null");
++				match &res {
++						Ok(file) => println!("Successfully opened device: {:?}", file),
++						Err(e) => println!("Failed to open device: {}", e),
++				}
++				assert!(res.is_ok(), "{:?}", res);
++
++				let res = example("./src/main");
++				match &res {
++						Ok(file) => println!("Successfully opened device: {:?}", file),
++						Err(e) => println!("Failed to open device: {}", e),
++				}
++				assert!(res.is_err(), "{:?}", res);
++				assert_eq!(res.err().unwrap().kind(), io::ErrorKind::NotFound);
++
++				let res = example("/dev/tty");
++				match &res {
++						Ok(file) => println!("Successfully opened device: {:?}", file),
++						Err(e) => println!("Failed to open device: {}", e),
++				}
++				assert!(res.is_ok(), "{:?} Should be this for this to pass: crw-rw-rw- 1 root tty 5, 0 29.05.2024 21:53 /dev/tty", res);
++
++				let res = example("/dev/tty0");
++				match &res {
++						Ok(file) => println!("Successfully opened device: {:?}", file),
++						Err(e) => println!("Failed to open device: {}", e),
++				}
++				assert!(res.is_err(), "{:?}", res);
++				assert_eq!(
++						res.err().unwrap().kind(),
++						io::ErrorKind::PermissionDenied,
++						"Should be this for this to pass: crw--w---- 1 root tty 4, 0 29.05.2024 11:07 /dev/tty0"
++				);
++		}
++
++//		pub fn open_char_device_c(path: &CStr, opts: &OpenOptions) -> io::Result<File> {
++//				let flags = libc::O_CLOEXEC
++//						| opts.get_access_mode()?
++//						| opts.get_creation_mode()?
++//						| (opts.custom_flags as c_int & !libc::O_ACCMODE);
++//				// The third argument of `open64` is documented to have type `mode_t`. On
++//				// some platforms (like macOS, where `open64` is actually `open`), `mode_t` is `u16`.
++//				// However, since this is a variadic function, C integer promotion rules mean that on
++//				// the ABI level, this still gets passed as `c_int` (aka `u32` on Unix platforms).
++//				let fd = cvt_r(|| unsafe { open64(path.as_ptr(), flags, opts.mode as c_int) })?;
++//				Ok(File(unsafe { FileDesc::from_raw_fd(fd) }))
++//		}
++    fn path_from_cstr(cstr: &CStr) -> PathBuf {
++        PathBuf::from(cstr.to_string_lossy().into_owned())
++    }
++
++    /// mod of the original open_c() from a few lines below(well it's from 1.76.0), or from https://github.com/rust-lang/rust/blob/23ea77b8edc902f4a90cda62af66f8b300e5de54/library/std/src/sys/pal/unix/fs.rs#L1160-L1171
++    pub fn open_char_device_c(path: &CStr, opts: &OpenOptions) -> io::Result<File> {
++        let path_buf = path_from_cstr(path);
++
++        // Perform stat to check if the file is a character device
++        let mut stat_info: libc::stat = unsafe { crate::mem::zeroed() };
++        let result = unsafe { libc::stat(path.as_ptr(), &mut stat_info) };
++
++        if result != 0 {
++            return Err(DeviceOpenError::Io(io::Error::last_os_error(), path_buf).into());
++        }
++
++        if (stat_info.st_mode & libc::S_IFMT) != libc::S_IFCHR {
++            return Err(DeviceOpenError::NotADevice(path_buf).into());
++        }
++
++        // Proceed to open the file
++        let flags = libc::O_CLOEXEC
++            | opts.get_access_mode()
++                .map_device_error(path_buf.clone())?
++                //.map_err(|e| DeviceOpenError::Io(e, path_buf.clone()))?
++            | opts.get_creation_mode()
++                .map_device_error(path_buf.clone())?
++                //.map_err(|e| DeviceOpenError::Io(e, path_buf.clone()))?
++            | (opts.custom_flags as c_int & !libc::O_ACCMODE);
++
++				// The third argument of `open64` is documented to have type `mode_t`. On
++				// some platforms (like macOS, where `open64` is actually `open`), `mode_t` is `u16`.
++				// However, since this is a variadic function, C integer promotion rules mean that on
++				// the ABI level, this still gets passed as `c_int` (aka `u32` on Unix platforms).
++        let fd = cvt_r(|| unsafe { open64(path.as_ptr(), flags, opts.mode as c_int) })
++            .map_device_error(path_buf)?;
++            //.map_err(|e| DeviceOpenError::Io(e, path_buf))?;
++
++        Ok(File(unsafe { FileDesc::from_raw_fd(fd) }))
++    }
++
++} // mod foo
+ impl File {
+     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
+         run_path_with_cstr(path, &|path| File::open_c(path, opts))
+Index: /var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/src/sys/pal/unix/process/process_common.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/src/sys/pal/unix/process/process_common.rs
++++ rustc-1.78.0-src/library/std/src/sys/pal/unix/process/process_common.rs
+@@ -481,7 +481,7 @@ impl Stdio {
+                 let mut opts = OpenOptions::new();
+                 opts.read(readable);
+                 opts.write(!readable);
+-                let fd = File::open_c(DEV_NULL, &opts)?;
++                let fd = crate::sys::unix::fs::foo::open_char_device_c(DEV_NULL, &opts)?;
+                 Ok((ChildStdio::Owned(fd.into_inner()), None))
+             }
+ 
+Index: /var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/src/sys/pal/mod.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/src/sys/pal/mod.rs
++++ rustc-1.78.0-src/library/std/src/sys/pal/mod.rs
+@@ -28,6 +28,8 @@ cfg_if::cfg_if! {
+     if #[cfg(unix)] {
+         mod unix;
+         pub use self::unix::*;
++        #[stable(feature = "foo", since = "1.420.69")]
++        pub use self::unix::fs::foo::open_char_device;
+     } else if #[cfg(windows)] {
+         mod windows;
+         pub use self::windows::*;
+Index: /var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/src/sys/pal/unix/process/process_unix.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/src/sys/pal/unix/process/process_unix.rs
++++ rustc-1.78.0-src/library/std/src/sys/pal/unix/process/process_unix.rs
+@@ -84,7 +84,11 @@ impl Command {
+             ));
+         }
+ 
+-        let (ours, theirs) = self.setup_io(default, needs_stdin)?;
++        let (ours, theirs) = self.setup_io(default, needs_stdin)? //.map_err(|e| {
++              //panic!("Well: {:?}",e);
++              //e
++              //})?
++            ;
+ 
+         if let Some(ret) = self.posix_spawn(&theirs, envp.as_ref())? {
+             return Ok((ret, ours));
+@@ -265,7 +269,7 @@ impl Command {
+                     e
+                 }
+             }
+-            Err(e) => e,
++            Err(e) => e, //panic!("Well2:{:?}",e),
+         }
+     }
+ 
