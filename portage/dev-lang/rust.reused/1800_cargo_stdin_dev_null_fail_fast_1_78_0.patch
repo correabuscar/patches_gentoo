@@ -234,6 +234,14 @@ Index: /var/tmp/portage/dev-lang/rust-1.76.0-r1/work/rustc-1.76.0-src/library/st
  mod sys_common;
  
  pub mod alloc;
+@@ -649,7 +649,6 @@ pub use std_detect::is_x86_feature_detec
+ 
+ // Platform-abstraction modules
+ mod sys;
+-//#[cfg(unix)]
+ cfg_if::cfg_if! {
+     if #[cfg(unix)] {
+         #[stable(feature = "foo", since = "1.420.69")]
 Index: /var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/src/sys/pal/unix/mod.rs
 ===================================================================
 --- .orig/var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/src/sys/pal/unix/mod.rs
@@ -584,7 +592,7 @@ Index: /var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/s
                  opts.read(readable);
                  opts.write(!readable);
 -                let fd = File::open_c(DEV_NULL, &opts)?;
-+                let fd = crate::sys::unix::fs::foo::open_char_device_c(DEV_NULL, &opts)?;
++                let fd = crate::sys::fs::foo::open_char_device_c(DEV_NULL, &opts)?;
                  Ok((ChildStdio::Owned(fd.into_inner()), None))
              }
  
@@ -627,3 +635,13 @@ Index: /var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/s
          }
      }
  
+Index: /var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/src/sys/mod.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/src/sys/mod.rs
++++ rustc-1.78.0-src/library/std/src/sys/mod.rs
+@@ -15,4 +15,5 @@ pub mod thread_local;
+ 
+ // FIXME(117276): remove this, move feature implementations into individual
+ //                submodules.
++#[stable(feature = "foo", since = "1.420.69")]
+ pub use pal::*;
