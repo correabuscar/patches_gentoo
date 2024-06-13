@@ -1,0 +1,556 @@
+updated for 127.0 yes it's still needed, unless intl.accept_languages is made to be dirty.
+XXX: patch isn't done, decided to not use it anymore, and just dirty the pref since so many depend on it!
+details: https://github.com/pyllyukko/user.js/issues/252#issuecomment-2165975861
+left to check:
+dom/base/Navigator.cpp
+dom/base/nsGlobalWindowInner.cpp
+dom/indexedDB/IndexedDatabaseManager.cpp
+dom/svg/SVGTests.cpp
+dom/webidl/Navigator.webidl
+mobile/android/components/geckoview/GeckoViewStartup.sys.mjs
+gfx/thebes/gfxPlatformFontList.cpp
+browser/base/content/nsContextMenu.js
+browser/components/preferences/dialogs/languages.js
+browser/app/profile/firefox.js
+browser/actors/AboutProtectionsParent.sys.mjs
+
+old info left intact:
+updated for firefox 105.0.1 because Compare doesn't seem to exist anymore(maybe an import issue?) so using EqualsLiteral which may be a bad idea if one side is of different capitalization! Compare is still here https://searchfox.org/mozilla-central/rev/d45dd05bf412e7468b3770a52519e9d546d6325c/xpcom/string/nsTStringRepr.h#455
+
+updated: now doesn't need vendor.js setting for intl.accept_languages so it doesn't get set to "chrome://global/locale/intl.properties"
+//but the font is still wrong, see the comment after the commented out patch portion!
+//oh wait, nevermind the font thing is because of browser.display.use_document_fonts=0  if it's =1 then they work ok
+TODO: see if others need change: $ grep -nrIFw intl.accept_languages
+(other variants were already grep-ed and disregarded, eg. INTL_ACCEPT_LANGUAGES)
+//////
+WARNING: using this patch without a vendor.js causes GetString to return the value "chrome://global/locale/intl.properties" (seen by https://www.whatismybrowser.com/detect/what-http-headers-is-my-browser-sending ) even though in about:config it's "en-US, en", so unless I modify it in about:config as "en-US,  en" (or "en-US,en") just so it shows modified, it will NOT be seen in headers as it should ie. "en-US,en;q=0.5"
+also the fonts are different when the gotten string is that chrome:// one!
+//wait, I'm using GetString and GetCString hmmm... oh ok, makes sense because of the type of the var!
+///////
+This patch will allow setting intl.accept_languages value in vendor.js without need for it to also be set in either user.js or manually in about:config! The "Localized" part will only see it if the pref was modified and it can only be seen as modified in those 2 ways (user.js or about:config) and the user.js one even if it has the same value as the vendor.js one it still shows as modified!
+
+FIXME: A few files were ignored since I can't find the non-Localized counterpart:
+services/common/hawkrequest.js:165:        "intl.accept_languages", Ci.nsIPrefLocalizedString).data;
+toolkit/components/extensions/ExtensionCommon.jsm:1946:    let result = Services.prefs.getComplexValue("intl.accept_languages", Ci.nsIPrefLocalizedString).data;
+toolkit/components/telemetry/app/TelemetryEnvironment.jsm:376:      Services.prefs.getComplexValue("intl.accept_languages", Ci.nsIPrefLocalizedString)
+
+FIXME: still happens when trying to add a language from Preferences->Language->Choose...(button)->Add(button)
+ TypeError: null has no propertieslanguages.js:183:24
+    addLanguage chrome://browser/content/preferences/languages.js:183
+    oncommand chrome://browser/content/preferences/languages.xul:1
+that is the second line in the following 2-line languages.js snippet:
+var preference = Preferences.get("intl.accept_languages");
+var arrayOfPrefs = preference.value.toLowerCase().split(/\s*,\s*/);
+UNLESS I make sure intl.accept_languages is dirty in about:config ! then it works!
+
+##diff -r 456bdb1cc727 netwerk/protocol/http/nsHttpHandler.cpp
+##--- a/netwerk/protocol/http/nsHttpHandler.cpp	Thu Mar 07 20:47:50 2019 -0500
+##+++ b/netwerk/protocol/http/nsHttpHandler.cpp	Fri Mar 08 06:49:44 2019 +0100
+##@@ -660,6 +660,7 @@
+##     MOZ_ASSERT(NS_SUCCEEDED(rv));
+##   }
+## 
+##+    //printf("!! mAcceptLanguages.IsEmpty() == %d\n", mAcceptLanguages.IsEmpty());
+##   // Add the "Accept-Language" header
+##   if (!mAcceptLanguages.IsEmpty()) {
+##     rv = request->SetHeader(nsHttp::Accept_Language, mAcceptLanguages, false,
+##@@ -1967,10 +1969,13 @@
+##   mAcceptLanguagesIsDirty = false;
+## 
+##   nsAutoCString acceptLanguages;
+##-  Preferences::GetLocalizedCString(INTL_ACCEPT_LANGUAGES, acceptLanguages);
+##+  //Preferences::GetLocalizedCString(INTL_ACCEPT_LANGUAGES, acceptLanguages); //this will only see this as non-empty if either set in user.js or manually in about:config, otherwise it's empty! even if set in vendor.js !
+##+  Preferences::GetCString(INTL_ACCEPT_LANGUAGES, acceptLanguages);//this will see the vendor.js one! eg. even if Reset button was pressed on the property!
+## 
+##   nsAutoCString buf;
+##+  //printf("!! acceptLanguages.get()=%s\n", acceptLanguages.get()); //this is empty when GetLocalizedCString and only vendor.js value exists! it's non-empty when user.js value is set or manual value in about:config is set(ie. modified) or when just using GetCString instead!
+##   nsresult rv = PrepareAcceptLanguages(acceptLanguages.get(), buf);
+##+  //printf("!! rv=%" PRIu32 " NS_OK==%" PRIu32 "\n",rv, NS_OK);
+##   if (NS_SUCCEEDED(rv)) {
+##     mAcceptLanguages.Assign(buf);
+##   }
+##diff -r bb76bbd404c0 dom/base/Navigator.cpp
+##--- a/dom/base/Navigator.cpp	Mon Mar 11 21:34:30 2019 -0500
+##+++ b/dom/base/Navigator.cpp	Tue Mar 12 14:51:29 2019 +0100
+##@@ -308,7 +308,8 @@
+## 
+##   // E.g. "de-de, en-us,en".
+##   nsAutoString acceptLang;
+##-  Preferences::GetLocalizedString("intl.accept_languages", acceptLang);
+##+  //Preferences::GetLocalizedString("intl.accept_languages", acceptLang);
+##+  Preferences::GetString("intl.accept_languages", acceptLang);
+## 
+##   // Split values on commas.
+##   nsCharSeparatedTokenizer langTokenizer(acceptLang, ',');
+##diff -r 5f0b392beadb dom/indexedDB/IndexedDatabaseManager.cpp
+##--- a/dom/indexedDB/IndexedDatabaseManager.cpp	Tue Nov 12 04:00:00 2019 +0000
+##+++ b/dom/indexedDB/IndexedDatabaseManager.cpp	Tue Nov 12 11:46:26 2019 +0100
+##@@ -309,7 +309,8 @@
+##                                        kPrefMaxPreloadExtraRecords);
+## 
+##   nsAutoCString acceptLang;
+##-  Preferences::GetLocalizedCString("intl.accept_languages", acceptLang);
+##+  //Preferences::GetLocalizedCString("intl.accept_languages", acceptLang);
+##+  Preferences::GetCString("intl.accept_languages", acceptLang);
+## 
+##   // Split values on commas.
+##   nsCCharSeparatedTokenizer langTokenizer(acceptLang, ',');
+###diff -r 3afb892abb74 dom/indexedDB/IndexedDatabaseManager.cpp
+###--- a/dom/indexedDB/IndexedDatabaseManager.cpp	Sat Aug 10 00:57:59 2019 +0300
+###+++ b/dom/indexedDB/IndexedDatabaseManager.cpp	Sat Aug 10 18:45:18 2019 +0200
+###@@ -288,7 +288,8 @@
+###                                        &gPreprocessingEnabled);
+### 
+###   nsAutoCString acceptLang;
+###-  Preferences::GetLocalizedCString("intl.accept_languages", acceptLang);
+###+  //Preferences::GetLocalizedCString("intl.accept_languages", acceptLang);
+###+  Preferences::GetCString("intl.accept_languages", acceptLang);
+### 
+###   // Split values on commas.
+###   nsCCharSeparatedTokenizer langTokenizer(acceptLang, ',');
+###diff -r bb76bbd404c0 dom/indexedDB/IndexedDatabaseManager.cpp
+###--- a/dom/indexedDB/IndexedDatabaseManager.cpp	Mon Mar 11 21:34:30 2019 -0500
+###+++ b/dom/indexedDB/IndexedDatabaseManager.cpp	Tue Mar 12 14:51:29 2019 +0100
+###@@ -282,7 +282,8 @@
+###                                        kPrefMaxSerilizedMsgSize);
+### 
+###   nsAutoCString acceptLang;
+###-  Preferences::GetLocalizedCString("intl.accept_languages", acceptLang);
+###+  //Preferences::GetLocalizedCString("intl.accept_languages", acceptLang);
+###+  Preferences::GetCString("intl.accept_languages", acceptLang);
+### 
+###   // Split values on commas.
+###   nsCCharSeparatedTokenizer langTokenizer(acceptLang, ',');
+##diff -r bb76bbd404c0 dom/svg/SVGSwitchElement.cpp
+##--- a/dom/svg/SVGSwitchElement.cpp	Mon Mar 11 21:34:30 2019 -0500
+##+++ b/dom/svg/SVGSwitchElement.cpp	Tue Mar 12 14:51:29 2019 +0100
+##@@ -112,7 +112,8 @@
+## 
+## nsIContent* SVGSwitchElement::FindActiveChild() const {
+##   nsAutoString acceptLangs;
+##-  Preferences::GetLocalizedString("intl.accept_languages", acceptLangs);
+##+  //Preferences::GetLocalizedString("intl.accept_languages", acceptLangs);
+##+  Preferences::GetString("intl.accept_languages", acceptLangs);
+## 
+##   if (!acceptLangs.IsEmpty()) {
+##     int32_t bestLanguagePreferenceRank = -1;
+##diff -r bb76bbd404c0 dom/svg/SVGTests.cpp
+##--- a/dom/svg/SVGTests.cpp	Mon Mar 11 21:34:30 2019 -0500
+##+++ b/dom/svg/SVGTests.cpp	Tue Mar 12 14:51:29 2019 +0100
+##@@ -144,7 +144,7 @@
+##     if (aAcceptLangs) {
+##       acceptLangs.Assign(*aAcceptLangs);
+##     } else {
+##-      Preferences::GetLocalizedString("intl.accept_languages", acceptLangs);
+##+      Preferences::GetString("intl.accept_languages", acceptLangs);
+##     }
+## 
+##     if (acceptLangs.IsEmpty()) {
+###doneTODO: this cannot be applied anymore as the code changed!  check to see if browser headers is affected!
+###diff -r bb76bbd404c0 gfx/thebes/gfxPlatformFontList.cpp
+###--- a/gfx/thebes/gfxPlatformFontList.cpp	Mon Mar 11 21:34:30 2019 -0500
+###+++ b/gfx/thebes/gfxPlatformFontList.cpp	Tue Mar 12 14:51:29 2019 +0100
+###@@ -1150,7 +1150,7 @@
+###     // Add the CJK pref fonts from accept languages, the order should be same
+###     // order
+###     nsAutoCString list;
+###-    Preferences::GetLocalizedCString("intl.accept_languages", list);
+###+    Preferences::GetCString("intl.accept_languages", list);
+###     if (!list.IsEmpty()) {
+###       const char kComma = ',';
+###       const char *p, *p_end;
+##diff -r 5afa8f03bfed gfx/thebes/gfxPlatformFontList.cpp
+##--- a/gfx/thebes/gfxPlatformFontList.cpp	Fri Nov 22 14:46:17 2019 +0000
+##+++ b/gfx/thebes/gfxPlatformFontList.cpp	Fri Nov 29 02:22:56 2019 +0100
+##@@ -1644,7 +1644,7 @@
+##     // though it's not actually a list of fonts but of lang codes; the format
+##     // is the same.
+##     AutoTArray<nsCString, 5> list;
+##-    gfxFontUtils::GetPrefsFontList("intl.accept_languages", list, true);
+##+    gfxFontUtils::GetPrefsFontList("intl.accept_languages", list, false /*localized?*/);
+##     for (const auto& lang : list) {
+##       eFontPrefLang fpl = GetFontPrefLangFor(lang.get());
+##       switch (fpl) {
+##--------------------
+##nvm//ok tried to (but kinda partially failed: the font is different seen on https://wiki.gentoo.org/index.php?title=Talk:Zram&action=edit  ie. should be https://i.imgur.com/yNW0Cmq.png but it's https://i.imgur.com/NTCF8WD.png do you see the lack of serif?)
+##ok it's good //otherwise it would be good:
+##//oh wait, nevermind the font thing is because of browser.display.use_document_fonts=0  if it's =1 then they work ok
+#
+#diff -r 078326f48100 dom/base/Navigator.cpp
+#--- a/dom/base/Navigator.cpp	Tue Apr 14 06:41:42 2020 +0000
+#+++ b/dom/base/Navigator.cpp	Wed Apr 15 14:06:00 2020 +0200
+#@@ -325,7 +325,17 @@
+# 
+#   // E.g. "de-de, en-us,en".
+#   nsAutoString acceptLang;
+#-  Preferences::GetLocalizedString("intl.accept_languages", acceptLang);
+#+  Preferences::GetString("intl.accept_languages", acceptLang);
+#+  if ((acceptLang.IsEmpty()) || (acceptLang.EqualsLiteral("chrome://global/locale/intl.properties"))) {
+#+    //note: when you try to set it in about:config to
+#+    //"chrome://global/locale/intl.properties" it will auto-convert to
+#+    //whatever's the setting in that file, so "en-US, en"
+#+    //but this chrome://global/locale/intl.properties is there because of
+#+    //being set in modules/libpref/init/all.js:2043 and not having it set at
+#+    //all in vendor.js (that's what the GetString above will get you here: ignores
+#+    //Localized aka about:config !)
+#+    Preferences::GetLocalizedString("intl.accept_languages", acceptLang);
+#+  }
+# 
+#   // Split values on commas.
+#   nsCharSeparatedTokenizer langTokenizer(acceptLang, ',');
+#diff -r 078326f48100 dom/indexedDB/IndexedDatabaseManager.cpp
+#--- a/dom/indexedDB/IndexedDatabaseManager.cpp	Tue Apr 14 06:41:42 2020 +0000
+#+++ b/dom/indexedDB/IndexedDatabaseManager.cpp	Wed Apr 15 14:06:00 2020 +0200
+#@@ -318,7 +318,17 @@
+#                                        kPrefMaxPreloadExtraRecords);
+# 
+#   nsAutoCString acceptLang;
+#-  Preferences::GetLocalizedCString("intl.accept_languages", acceptLang);
+#+  Preferences::GetCString("intl.accept_languages", acceptLang);
+#+  if ((acceptLang.IsEmpty()) || (acceptLang.EqualsLiteral("chrome://global/locale/intl.properties"))) {
+#+    //note: when you try to set it in about:config to
+#+    //"chrome://global/locale/intl.properties" it will auto-convert to
+#+    //whatever's the setting in that file, so "en-US, en"
+#+    //but this chrome://global/locale/intl.properties is there because of
+#+    //being set in modules/libpref/init/all.js:2043 and not having it set at
+#+    //all in vendor.js (that's what the GetString above will get you here: ignores
+#+    //Localized aka about:config !)
+#+    Preferences::GetLocalizedCString("intl.accept_languages", acceptLang);
+#+  }
+# 
+#   // Split values on commas.
+#   nsCCharSeparatedTokenizer langTokenizer(acceptLang, ',');
+#diff -r b1146cce5053 dom/svg/SVGSwitchElement.cpp
+#--- a/dom/svg/SVGSwitchElement.cpp	Tue Jun 23 02:23:48 2020 +0300
+#+++ b/dom/svg/SVGSwitchElement.cpp	Tue Jun 23 07:32:47 2020 +0200
+#@@ -110,7 +110,18 @@
+# 
+# nsIContent* SVGSwitchElement::FindActiveChild() const {
+#   nsAutoString acceptLangs;
+#-  Preferences::GetLocalizedString("intl.accept_languages", acceptLangs);
+#+//  Preferences::GetLocalizedString("intl.accept_languages", acceptLangs);
+#+  Preferences::GetString("intl.accept_languages", acceptLangs);
+#+  if ((acceptLangs.IsEmpty()) || (acceptLangs.EqualsLiteral("chrome://global/locale/intl.properties"))) {
+#+    //note: when you try to set it in about:config to
+#+    //"chrome://global/locale/intl.properties" it will auto-convert to
+#+    //whatever's the setting in that file, so "en-US, en"
+#+    //but this chrome://global/locale/intl.properties is there because of
+#+    //being set in modules/libpref/init/all.js:2043 and not having it set at
+#+    //all in vendor.js (that's what the GetString above will get you here: ignores
+#+    //Localized aka about:config !)
+#+    Preferences::GetLocalizedString("intl.accept_languages", acceptLangs);
+#+  }
+# 
+#   int32_t bestLanguagePreferenceRank = -1;
+#   nsIContent* bestChild = nullptr;
+##old version:
+##diff -r 078326f48100 dom/svg/SVGSwitchElement.cpp
+##--- a/dom/svg/SVGSwitchElement.cpp	Tue Apr 14 06:41:42 2020 +0000
+##+++ b/dom/svg/SVGSwitchElement.cpp	Wed Apr 15 14:06:00 2020 +0200
+##@@ -110,7 +110,17 @@
+## 
+## nsIContent* SVGSwitchElement::FindActiveChild() const {
+##   nsAutoString acceptLangs;
+##-  Preferences::GetLocalizedString("intl.accept_languages", acceptLangs);
+##+  Preferences::GetString("intl.accept_languages", acceptLangs);
+##+  if ((acceptLangs.IsEmpty()) || (acceptLangs.EqualsLiteral("chrome://global/locale/intl.properties"))) {
+##+    //note: when you try to set it in about:config to
+##+    //"chrome://global/locale/intl.properties" it will auto-convert to
+##+    //whatever's the setting in that file, so "en-US, en"
+##+    //but this chrome://global/locale/intl.properties is there because of
+##+    //being set in modules/libpref/init/all.js:2043 and not having it set at
+##+    //all in vendor.js (that's what the GetString above will get you here: ignores
+##+    //Localized aka about:config !)
+##+    Preferences::GetLocalizedString("intl.accept_languages", acceptLangs);
+##+  }
+## 
+##   if (!acceptLangs.IsEmpty()) {
+##     int32_t bestLanguagePreferenceRank = -1;
+#diff -r b1146cce5053 dom/svg/SVGTests.cpp
+#--- a/dom/svg/SVGTests.cpp	Tue Jun 23 02:23:48 2020 +0300
+#+++ b/dom/svg/SVGTests.cpp	Tue Jun 23 07:34:11 2020 +0200
+#@@ -132,7 +132,18 @@
+# 
+#     // Get our language preferences
+#     nsAutoString acceptLangs;
+#-    Preferences::GetLocalizedString("intl.accept_languages", acceptLangs);
+#+    //Preferences::GetLocalizedString("intl.accept_languages", acceptLangs);
+#+      Preferences::GetString("intl.accept_languages", acceptLangs);
+#+      if ((acceptLangs.IsEmpty()) || (acceptLangs.EqualsLiteral("chrome://global/locale/intl.properties"))) {
+#+        //note: when you try to set it in about:config to
+#+        //"chrome://global/locale/intl.properties" it will auto-convert to
+#+        //whatever's the setting in that file, so "en-US, en"
+#+        //but this chrome://global/locale/intl.properties is there because of
+#+        //being set in modules/libpref/init/all.js:2043 and not having it set at
+#+        //all in vendor.js (that's what the GetString above will get you here: ignores
+#+        //Localized aka about:config !)
+#+        Preferences::GetLocalizedString("intl.accept_languages", acceptLangs);
+#+      }
+# 
+#     if (acceptLangs.IsEmpty()) {
+#       NS_WARNING(
+##old version:
+##diff -r 078326f48100 dom/svg/SVGTests.cpp
+##--- a/dom/svg/SVGTests.cpp	Tue Apr 14 06:41:42 2020 +0000
+##+++ b/dom/svg/SVGTests.cpp	Wed Apr 15 14:06:00 2020 +0200
+##@@ -138,7 +138,17 @@
+##     if (aAcceptLangs) {
+##       acceptLangs.Assign(*aAcceptLangs);
+##     } else {
+##-      Preferences::GetLocalizedString("intl.accept_languages", acceptLangs);
+##+      Preferences::GetString("intl.accept_languages", acceptLangs);
+##+      if ((acceptLangs.IsEmpty()) || (acceptLangs.EqualsLiteral("chrome://global/locale/intl.properties"))) {
+##+        //note: when you try to set it in about:config to
+##+        //"chrome://global/locale/intl.properties" it will auto-convert to
+##+        //whatever's the setting in that file, so "en-US, en"
+##+        //but this chrome://global/locale/intl.properties is there because of
+##+        //being set in modules/libpref/init/all.js:2043 and not having it set at
+##+        //all in vendor.js (that's what the GetString above will get you here: ignores
+##+        //Localized aka about:config !)
+##+        Preferences::GetLocalizedString("intl.accept_languages", acceptLangs);
+##+      }
+##     }
+## 
+##     if (acceptLangs.IsEmpty()) {
+#diff -r 078326f48100 gfx/thebes/gfxPlatformFontList.cpp
+#--- a/gfx/thebes/gfxPlatformFontList.cpp	Tue Apr 14 06:41:42 2020 +0000
+#+++ b/gfx/thebes/gfxPlatformFontList.cpp	Wed Apr 15 14:06:00 2020 +0200
+#@@ -1683,7 +1683,10 @@
+#     // though it's not actually a list of fonts but of lang codes; the format
+#     // is the same.
+#     AutoTArray<nsCString, 5> list;
+#-    gfxFontUtils::GetPrefsFontList("intl.accept_languages", list, true);
+#+    gfxFontUtils::GetPrefsFontList("intl.accept_languages", list, false /*localized?*/);
+#+    if ((list.Length() <= 0)||(list[0].EqualsLiteral("chrome://global/locale/intl.properties"))) {
+#+      gfxFontUtils::GetPrefsFontList("intl.accept_languages", list, true /*localized?*/);
+#+    }
+#     for (const auto& lang : list) {
+#       eFontPrefLang fpl = GetFontPrefLangFor(lang.get());
+#       switch (fpl) {
+#diff -r 078326f48100 netwerk/protocol/http/nsHttpHandler.cpp
+#--- a/netwerk/protocol/http/nsHttpHandler.cpp	Tue Apr 14 06:41:42 2020 +0000
+#+++ b/netwerk/protocol/http/nsHttpHandler.cpp	Wed Apr 15 14:06:00 2020 +0200
+#@@ -660,6 +660,7 @@
+#     MOZ_ASSERT(NS_SUCCEEDED(rv));
+#   }
+# 
+#+  if (mAcceptLanguages.IsEmpty()) { printf("!! mAcceptLanguages.IsEmpty() == %d\n", mAcceptLanguages.IsEmpty()); }
+#   // Add the "Accept-Language" header
+#   if (!mAcceptLanguages.IsEmpty()) {
+#     rv = request->SetHeader(nsHttp::Accept_Language, mAcceptLanguages, false,
+#@@ -2011,10 +2012,22 @@
+#   mAcceptLanguagesIsDirty = false;
+# 
+#   nsAutoCString acceptLanguages;
+#-  Preferences::GetLocalizedCString(INTL_ACCEPT_LANGUAGES, acceptLanguages);
+#+  Preferences::GetCString(INTL_ACCEPT_LANGUAGES, acceptLanguages);//this will see the vendor.js one! eg. even if Reset button was pressed on the property!
+#+  if ((acceptLanguages.IsEmpty()) || (acceptLanguages.EqualsLiteral("chrome://global/locale/intl.properties"))) {
+#+    //note: when you try to set it in about:config to
+#+    //"chrome://global/locale/intl.properties" it will auto-convert to
+#+    //whatever's the setting in that file, so "en-US, en"
+#+    //but this chrome://global/locale/intl.properties is there because of
+#+    //being set in modules/libpref/init/all.js:2043 and not having it set at
+#+    //all in vendor.js (that's what the GetString above will get you here: ignores
+#+    //Localized aka about:config !)
+#+    Preferences::GetLocalizedCString(INTL_ACCEPT_LANGUAGES, acceptLanguages); //this will only see this as non-empty if either set in user.js or manually in about:config, otherwise it's empty! even if set in vendor.js !
+#+  }
+# 
+#   nsAutoCString buf;
+#+  //printf("!! acceptLanguages.get()='%s'\n", acceptLanguages.get()); //this is empty when GetLocalizedCString and only vendor.js value exists! it's non-empty when user.js value is set or manual value in about:config is set(ie. modified) or when just using GetCString instead!  If however, vendor.js doesn't exist it just returns "chrome://global/locale/intl.properties" if only Preferences::GetCString(INTL_ACCEPT_LANGUAGES, acceptLanguages); were to be used! because it's set in modules/libpref/init/all.js:2043:pref("intl.accept_languages",               "chrome://global/locale/intl.properties");  but hopefully I fixed it above by also calling ::GetLocalizedCString when that happens!
+#   nsresult rv = PrepareAcceptLanguages(acceptLanguages.get(), buf);
+#+  //printf("!! PrepareAcceptLanguages() rv=%" PRIu32 " NS_OK==%" PRIu32 "\n",rv, NS_OK);
+#   if (NS_SUCCEEDED(rv)) {
+#     mAcceptLanguages.Assign(buf);
+#   }
+Index: /var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/dom/svg/SVGTests.cpp
+===================================================================
+--- .orig/var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/dom/svg/SVGTests.cpp
++++ firefox-127.0/dom/svg/SVGTests.cpp
+@@ -64,7 +64,18 @@ bool SVGTests::IsConditionalProcessingAt
+ int32_t FindBestLanguage(const nsTArray<nsCString>& aAvailLangs) {
+   AutoTArray<nsCString, 16> reqLangs;
+   nsCString acceptLangs;
+-  Preferences::GetLocalizedCString("intl.accept_languages", acceptLangs);
++  //Preferences::GetLocalizedCString("intl.accept_languages", acceptLangs);
++      Preferences::GetCString("intl.accept_languages", acceptLangs);
++      if ((acceptLangs.IsEmpty()) || (acceptLangs.EqualsLiteral("chrome://global/locale/intl.properties"))) {
++        //note: when you try to set it in about:config to
++        //"chrome://global/locale/intl.properties" it will auto-convert to
++        //whatever's the setting in that file, so "en-US, en"
++        //but this chrome://global/locale/intl.properties is there because of
++        //being set in modules/libpref/init/all.js:2043 and not having it set at
++        //all in vendor.js (that's what the GetString above will get you here: ignores
++        //Localized aka about:config !)
++        Preferences::GetLocalizedCString("intl.accept_languages", acceptLangs);
++      }
+   nsCCharSeparatedTokenizer languageTokenizer(acceptLangs, ',');
+   while (languageTokenizer.hasMoreTokens()) {
+     reqLangs.AppendElement(languageTokenizer.nextToken());
+Index: /var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/dom/base/Navigator.cpp
+===================================================================
+--- .orig/var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/dom/base/Navigator.cpp
++++ firefox-127.0/dom/base/Navigator.cpp
+@@ -345,7 +345,17 @@ void Navigator::GetAcceptLanguages(nsTAr
+ 
+   // E.g. "de-de, en-us,en".
+   nsAutoString acceptLang;
+-  Preferences::GetLocalizedString("intl.accept_languages", acceptLang);
++  Preferences::GetString("intl.accept_languages", acceptLang);
++  if ((acceptLang.IsEmpty()) || (acceptLang.EqualsLiteral("chrome://global/locale/intl.properties"))) {
++    //note: when you try to set it in about:config to
++    //"chrome://global/locale/intl.properties" it will auto-convert to
++    //whatever's the setting in that file, so "en-US, en"
++    //but this chrome://global/locale/intl.properties is there because of
++    //being set in modules/libpref/init/all.js:2043 and not having it set at
++    //all in vendor.js (that's what the GetString above will get you here: ignores
++    //Localized aka about:config !)
++    Preferences::GetLocalizedString("intl.accept_languages", acceptLang);
++  }
+ 
+   // Split values on commas.
+   for (nsDependentSubstring lang :
+Index: /var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/dom/indexedDB/IndexedDatabaseManager.cpp
+===================================================================
+--- .orig/var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/dom/indexedDB/IndexedDatabaseManager.cpp
++++ firefox-127.0/dom/indexedDB/IndexedDatabaseManager.cpp
+@@ -680,7 +680,17 @@ nsresult IndexedDatabaseManager::EnsureL
+   MOZ_ASSERT(NS_IsMainThread());
+ 
+   nsAutoCString acceptLang;
+-  Preferences::GetLocalizedCString("intl.accept_languages", acceptLang);
++  Preferences::GetCString("intl.accept_languages", acceptLang);
++  if ((acceptLang.IsEmpty()) || (acceptLang.EqualsLiteral("chrome://global/locale/intl.properties"))) {
++    //note: when you try to set it in about:config to
++    //"chrome://global/locale/intl.properties" it will auto-convert to
++    //whatever's the setting in that file, so "en-US, en"
++    //but this chrome://global/locale/intl.properties is there because of
++    //being set in modules/libpref/init/all.js:2043 and not having it set at
++    //all in vendor.js (that's what the GetString above will get you here: ignores
++    //Localized aka about:config !)
++    Preferences::GetLocalizedCString("intl.accept_languages", acceptLang);
++  }
+ 
+   // Split values on commas.
+   for (const auto& lang :
+Index: /var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/gfx/thebes/gfxPlatformFontList.cpp
+===================================================================
+--- .orig/var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/gfx/thebes/gfxPlatformFontList.cpp
++++ firefox-127.0/gfx/thebes/gfxPlatformFontList.cpp
+@@ -2404,7 +2404,10 @@ void gfxPlatformFontList::AppendCJKPrefL
+     // though it's not actually a list of fonts but of lang codes; the format
+     // is the same.
+     AutoTArray<nsCString, 5> list;
+-    gfxFontUtils::GetPrefsFontList("intl.accept_languages", list, true);
++    gfxFontUtils::GetPrefsFontList("intl.accept_languages", list, false /*localized?*/);
++    if ((list.Length() <= 0)||(list[0].EqualsLiteral("chrome://global/locale/intl.properties"))) {
++      gfxFontUtils::GetPrefsFontList("intl.accept_languages", list, true /*localized?*/);
++    }
+     for (const auto& lang : list) {
+       eFontPrefLang fpl = GetFontPrefLangFor(lang.get());
+       switch (fpl) {
+Index: /var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/netwerk/protocol/http/nsHttpHandler.cpp
+===================================================================
+--- .orig/var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/netwerk/protocol/http/nsHttpHandler.cpp
++++ firefox-127.0/netwerk/protocol/http/nsHttpHandler.cpp
+@@ -579,6 +579,7 @@ nsresult nsHttpHandler::AddStandardReque
+     MOZ_ASSERT(NS_SUCCEEDED(rv));
+   }
+ 
++  if (mAcceptLanguages.IsEmpty()) { printf("!! mAcceptLanguages.IsEmpty() == %d\n", mAcceptLanguages.IsEmpty()); }
+   // Add the "Accept-Language" header
+   if (!mAcceptLanguages.IsEmpty()) {
+     rv = request->SetHeader(nsHttp::Accept_Language, mAcceptLanguages, false,
+@@ -1838,10 +1839,22 @@ nsresult nsHttpHandler::SetAcceptLanguag
+   mAcceptLanguagesIsDirty = false;
+ 
+   nsAutoCString acceptLanguages;
+-  Preferences::GetLocalizedCString(INTL_ACCEPT_LANGUAGES, acceptLanguages);
++  Preferences::GetCString(INTL_ACCEPT_LANGUAGES, acceptLanguages);//this will see the vendor.js one! eg. even if Reset button was pressed on the property!
++  if ((acceptLanguages.IsEmpty()) || (acceptLanguages.EqualsLiteral("chrome://global/locale/intl.properties"))) {
++    //note: when you try to set it in about:config to
++    //"chrome://global/locale/intl.properties" it will auto-convert to
++    //whatever's the setting in that file, so "en-US, en"
++    //but this chrome://global/locale/intl.properties is there because of
++    //being set in modules/libpref/init/all.js:2043 and not having it set at
++    //all in vendor.js (that's what the GetString above will get you here: ignores
++    //Localized aka about:config !)
++    Preferences::GetLocalizedCString(INTL_ACCEPT_LANGUAGES, acceptLanguages); //this will only see this as non-empty if either set in user.js or manually in about:config, otherwise it's empty! even if set in vendor.js !
++  }
+ 
+   nsAutoCString buf;
++  //printf("!! acceptLanguages.get()='%s'\n", acceptLanguages.get()); //this is empty when GetLocalizedCString and only vendor.js value exists! it's non-empty when user.js value is set or manual value in about:config is set(ie. modified) or when just using GetCString instead!  If however, vendor.js doesn't exist it just returns "chrome://global/locale/intl.properties" if only Preferences::GetCString(INTL_ACCEPT_LANGUAGES, acceptLanguages); were to be used! because it's set in modules/libpref/init/all.js:2043:pref("intl.accept_languages",               "chrome://global/locale/intl.properties");  but hopefully I fixed it above by also calling ::GetLocalizedCString when that happens!
+   nsresult rv = PrepareAcceptLanguages(acceptLanguages.get(), buf);
++  //printf("!! PrepareAcceptLanguages() rv=%" PRIu32 " NS_OK==%" PRIu32 "\n",rv, NS_OK);
+   if (NS_SUCCEEDED(rv)) {
+     mAcceptLanguages.Assign(buf);
+   }
+Index: /var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/modules/libpref/init/all.js
+===================================================================
+--- .orig/var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/modules/libpref/init/all.js
++++ firefox-127.0/modules/libpref/init/all.js
+@@ -1591,7 +1591,7 @@ pref("network.stricttransportsecurity.pr
+ pref("converter.html2txt.structs",          true); // Output structured phrases (strong, em, code, sub, sup, b, i, u)
+ pref("converter.html2txt.header_strategy",  1); // 0 = no indention; 1 = indention, increased with header level; 2 = numbering and slight indention
+ 
+-pref("intl.accept_languages",               "chrome://global/locale/intl.properties");
++//pref("intl.accept_languages",               "chrome://global/locale/intl.properties");
+ pref("intl.menuitems.alwaysappendaccesskeys","chrome://global/locale/intl.properties");
+ pref("intl.menuitems.insertseparatorbeforeaccesskeys","chrome://global/locale/intl.properties");
+ pref("intl.ellipsis",                       "chrome://global-platform/locale/intl.properties");
+Index: /var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/services/common/hawkrequest.sys.mjs
+===================================================================
+--- .orig/var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/services/common/hawkrequest.sys.mjs
++++ firefox-127.0/services/common/hawkrequest.sys.mjs
+@@ -170,7 +170,7 @@ Intl.prototype = {
+     this._everRead = true;
+     try {
+       this._accepted = Services.prefs.getComplexValue(
+-        "intl.accept_languages",
++        "intl.accept_languages", //hmm
+         Ci.nsIPrefLocalizedString
+       ).data;
+     } catch (err) {
+Index: /var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/toolkit/components/extensions/ExtensionCommon.sys.mjs
+===================================================================
+--- .orig/var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/toolkit/components/extensions/ExtensionCommon.sys.mjs
++++ firefox-127.0/toolkit/components/extensions/ExtensionCommon.sys.mjs
+@@ -2217,7 +2217,7 @@ LocaleData.prototype = {
+ 
+   get acceptLanguages() {
+     let result = Services.prefs.getComplexValue(
+-      "intl.accept_languages",
++      "intl.accept_languages", //hmm
+       Ci.nsIPrefLocalizedString
+     ).data;
+     return result.split(/\s*,\s*/g);
+Index: /var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/toolkit/components/translations/actors/TranslationsParent.sys.mjs
+===================================================================
+--- .orig/var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/toolkit/components/translations/actors/TranslationsParent.sys.mjs
++++ firefox-127.0/toolkit/components/translations/actors/TranslationsParent.sys.mjs
+@@ -698,7 +698,7 @@ export class TranslationsParent extends
+   static getWebContentLanguages() {
+     if (!TranslationsParent.#webContentLanguages) {
+       const values = Services.prefs
+-        .getComplexValue("intl.accept_languages", Ci.nsIPrefLocalizedString)
++        .getComplexValue("intl.accept_languages", Ci.nsIPrefLocalizedString) //hmmm
+         .data.split(/\s*,\s*/g);
+ 
+       TranslationsParent.#webContentLanguages = new Set();
+@@ -715,7 +715,7 @@ export class TranslationsParent extends
+       }
+ 
+       if (
+-        !Services.prefs.prefHasUserValue("intl.accept_languages") &&
++        !Services.prefs.prefHasUserValue("intl.accept_languages") && //hmm
+         Services.locale.appLocaleAsBCP47 !== "en" &&
+         !Services.locale.appLocaleAsBCP47.startsWith("en-")
+       ) {
+@@ -756,7 +756,7 @@ export class TranslationsParent extends
+         "intl:app-locales-changed"
+       );
+       Services.prefs.addObserver(
+-        "intl.accept_languages",
++        "intl.accept_languages", // hmm
+         TranslationsParent.#resetPreferredLanguages
+       );
+       TranslationsParent.#observingLanguages = true;

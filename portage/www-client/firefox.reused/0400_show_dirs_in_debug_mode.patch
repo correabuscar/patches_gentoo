@@ -1,3 +1,5 @@
+in firefox 127.0 and likely in prev. ones, this patch doesn't output anything. Maybe permissionsFile isn't empty? FIXME
+
 [7743] WARNING: !! NS_APP_PERMISSION_PARENT_DIR='permissionDBPDir' permissionsFile=''
 : file /home/user/build/1packages/firefox-hg/makepkg_pacman/firefox-hg/src/firefox-hg/extensions/cookie/nsPermissionManager.cpp, line 974
 [7743] WARNING: !! NS_APP_USER_PROFILE_50_DIR='ProfD' permissionsFile=''

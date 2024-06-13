@@ -1,0 +1,63 @@
+https://bugs.gentoo.org/850988
+with USE=-clang   this compilation error is possible:
+due to: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=97913
+with gcc 14
+
+834:26.61 /var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/dom/base/nsTreeSanitizer.cpp:637:20: error: non-constant condition for static assertion
+834:26.62   637 | static_assert(AllOf(std::begin(kURLAttributesSVG), std::end(kURLAttributesSVG),
+834:26.62       |               ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+834:26.62   638 |                     [](auto aURLAttributeSVG) {
+834:26.62       |                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+834:26.62   639 |                       return AnyOf(std::begin(kAttributesSVG),
+834:26.63       |                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+834:26.63   640 |                                    std::end(kAttributesSVG),
+834:26.63       |                                    ~~~~~~~~~~~~~~~~~~~~~~~~~
+834:26.63   641 |                                    [&](auto aAttributeSVG) {
+834:26.63       |                                    ~~~~~~~~~~~~~~~~~~~~~~~~~
+834:26.63   642 |                                      return aAttributeSVG == aURLAttributeSVG;
+834:26.64       |                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+834:26.64   643 |                                    });
+834:26.64       |                                    ~~~
+834:26.64   644 |                     }));
+834:26.64       |                     ~~
+834:26.64 /var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/dom/base/nsTreeSanitizer.cpp:637:20:   in 'constexpr' expansion of 'mozilla::AllOf<const nsStaticAtom* const*, <lambda(auto:42)> >(std::begin<const nsStaticAtom* const, 2>(kURLAttributesSVG), std::end<const nsStaticAtom* const, 2>(kURLAttributesSVG), (<lambda closure object><lambda(auto:42)>(), <lambda(auto:42)>()))'
+834:26.65 /var/tmp/portage/www-client/firefox-127.0/work/firefox_build/dist/include/mozilla/Algorithm.h:24:15:   in 'constexpr' expansion of 'aPred.<lambda(auto:42)>(((const nsStaticAtom*)(* aFirst)))'
+834:26.65 /var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/dom/base/nsTreeSanitizer.cpp:639:35:   in 'constexpr' expansion of 'mozilla::AnyOf<const nsStaticAtom* const*, <lambda(auto:42)>::<lambda(auto:43)> >(std::begin<const nsStaticAtom* const, 182>(kAttributesSVG), std::end<const nsStaticAtom* const, 182>(kAttributesSVG), <lambda closure object><lambda(auto:42)>::<lambda(auto:43)>{aURLAttributeSVG})'
+834:26.65 /var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/dom/base/nsTreeSanitizer.cpp:642:59: error: '((& mozilla::detail::gGkAtoms.mozilla::detail::GkAtoms::mAtoms[1581]) == 0)' is not a constant expression
+834:26.66   642 |                                      return aAttributeSVG == aURLAttributeSVG;
+834:26.66       |                                             ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~
+834:26.66 In file included from /var/tmp/portage/www-client/firefox-127.0/work/firefox_build/dist/include/mozilla/dom/ModuleLoader.h:11,
+834:26.66                  from /var/tmp/portage/www-client/firefox-127.0/work/firefox_build/dist/include/mozilla/dom/ScriptLoader.h:29,
+834:26.66                  from /var/tmp/portage/www-client/firefox-127.0/work/firefox_build/dist/include/mozilla/dom/WorkerPrivate.h:12,
+834:26.67                  from /var/tmp/portage/www-client/firefox-127.0/work/firefox_build/dist/include/mozilla/dom/ProcessIsolation.h:15,
+834:26.67                  from /var/tmp/portage/www-client/firefox-127.0/work/firefox_build/dist/include/mozilla/dom/CanonicalBrowsingContext.h:13,
+834:26.67                  from /var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/dom/base/nsWindowRoot.cpp:29,
+834:26.67                  from Unified_cpp_dom_base10.cpp:119:
+
+Index: /var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/dom/base/nsTreeSanitizer.cpp
+===================================================================
+--- .orig/var/tmp/portage/www-client/firefox-127.0/work/firefox-127.0/dom/base/nsTreeSanitizer.cpp
++++ firefox-127.0/dom/base/nsTreeSanitizer.cpp
+@@ -634,14 +634,14 @@ constexpr const nsStaticAtom* const kAtt
+ constexpr const nsStaticAtom* const kURLAttributesSVG[] = {nsGkAtoms::href,
+                                                            nullptr};
+ 
+-static_assert(AllOf(std::begin(kURLAttributesSVG), std::end(kURLAttributesSVG),
+-                    [](auto aURLAttributeSVG) {
+-                      return AnyOf(std::begin(kAttributesSVG),
+-                                   std::end(kAttributesSVG),
+-                                   [&](auto aAttributeSVG) {
+-                                     return aAttributeSVG == aURLAttributeSVG;
+-                                   });
+-                    }));
++//static_assert(AllOf(std::begin(kURLAttributesSVG), std::end(kURLAttributesSVG),
++//                    [](auto aURLAttributeSVG) {
++//                      return AnyOf(std::begin(kAttributesSVG),
++//                                   std::end(kAttributesSVG),
++//                                   [&](auto aAttributeSVG) {
++//                                     return aAttributeSVG == aURLAttributeSVG;
++//                                   });
++//                    }));
+ 
+ const nsStaticAtom* const kElementsMathML[] = {
+     nsGkAtoms::abs_,                  // abs
