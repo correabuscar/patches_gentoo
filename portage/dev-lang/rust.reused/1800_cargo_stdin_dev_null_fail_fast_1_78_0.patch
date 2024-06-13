@@ -234,6 +234,10 @@ Index: /var/tmp/portage/dev-lang/rust-1.76.0-r1/work/rustc-1.76.0-src/library/st
  mod sys_common;
  
  pub mod alloc;
+Index: /var/tmp/portage/dev-lang/rust-1.76.0-r1/work/rustc-1.76.0-src/library/std/src/lib.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.76.0-r1/work/rustc-1.76.0-src/library/std/src/lib.rs
++++ rustc-1.76.0-src/library/std/src/lib.rs
 @@ -649,7 +649,6 @@ pub use std_detect::is_x86_feature_detec
  
  // Platform-abstraction modules
