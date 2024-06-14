@@ -1,0 +1,33 @@
+this is from PR https://github.com/rust-lang/rustfmt/pull/5392
+
+fix an issue whereby rustfmt (version 2) would fix this:
+fn main() {
+    let x = 0; // X
+    //.Y
+}
+into this:
+fn main() {
+    let x = 0; // X
+    
+    //.Y
+}
+with the error:
+error[internal]: left behind trailing whitespace
+
+note: to use version 2, have a rustfmt.toml file in your project's root dir with contents:
+version="Two"
+
+Index: /var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/src/tools/rustfmt/src/comment.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/src/tools/rustfmt/src/comment.rs
++++ rustc-1.78.0-src/src/tools/rustfmt/src/comment.rs
+@@ -261,7 +261,8 @@ pub(crate) fn rewrite_comment(
+     shape: Shape,
+     config: &Config,
+ ) -> Option<String> {
+-    identify_comment(orig, block_style, shape, config, false)
++    // src: https://github.com/rust-lang/rustfmt/pull/5392/files#diff-503b1182d193a6d1443c4f4d15e005cd78b60d7213e0a90c2732bf0c463e4b62R266
++    identify_comment(orig.trim_start(), block_style, shape, config, false)
+ }
+ 
+ fn identify_comment(
