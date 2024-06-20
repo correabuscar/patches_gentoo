@@ -1,0 +1,38 @@
+From a582633c9721543bc184bb48e55f23fedbb66fed Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Tim=20R=C3=BChsen?= <tim.ruehsen@gmx.de>
+Date: Sun, 5 May 2024 16:42:49 +0200
+Subject: [PATCH] * src/utils.c (run_with_timeout): Set SIGALRM handler before
+ setjmp() (reported by valgrind)
+
+---
+ src/utils.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/utils.c b/src/utils.c
+index 58de4a72..8c33fa5f 100644
+--- a/src/utils.c
++++ b/src/utils.c
+@@ -2176,16 +2176,16 @@ run_with_timeout (double timeout, void (*fun) (void *), void *arg)
+       return false;
+     }
+ 
++  /* Set alarm handler before doing setjmp. */
++  signal (SIGALRM, abort_run_with_timeout);
++
+   if (SETJMP (run_with_timeout_env) != 0)
+     {
+       /* Longjumped out of FUN with a timeout. */
+       signal (SIGALRM, SIG_DFL);
+       return true;
+     }
+-  else
+-    {
+-      signal (SIGALRM, abort_run_with_timeout);
+-    }
++
+   alarm_set (timeout);
+   fun (arg);
+ 
+-- 
+GitLab
+

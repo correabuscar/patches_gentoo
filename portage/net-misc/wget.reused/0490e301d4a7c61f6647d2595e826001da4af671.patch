@@ -1,0 +1,41 @@
+From 0490e301d4a7c61f6647d2595e826001da4af671 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Tim=20R=C3=BChsen?= <tim.ruehsen@gmx.de>
+Date: Sun, 5 May 2024 17:20:03 +0200
+Subject: [PATCH] * src/wget.h (DO_REALLOC): Initialize realloc'ed memory to
+ help valgrind
+
+---
+ src/wget.h | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
+
+diff --git a/src/wget.h b/src/wget.h
+index 3525eced..c3340725 100644
+--- a/src/wget.h
++++ b/src/wget.h
+@@ -213,15 +213,20 @@ static inline unsigned char _unhex(unsigned char c)
+ 
+ #define DO_REALLOC(basevar, sizevar, needed_size, type) do {    \
+   long DR_needed_size = (needed_size);                          \
+-  long DR_newsize = 0;                                          \
++  long DR_newsize = 0, sizevar_old = sizevar;                   \
+   while ((sizevar) < (DR_needed_size)) {                        \
+     DR_newsize = sizevar << 1;                                  \
+     if (DR_newsize < 16)                                        \
+       DR_newsize = 16;                                          \
+     (sizevar) = DR_newsize;                                     \
+   }                                                             \
+-  if (DR_newsize)                                               \
+-    basevar = xrealloc (basevar, DR_newsize * sizeof (type));   \
++  if (DR_newsize) {                                             \
++    void *basevar_new = xrealloc (basevar, DR_newsize * sizeof (type)); \
++    if (basevar_new != basevar) {                               \
++      memset (basevar_new + sizevar_old * sizeof (type), 0, (DR_newsize - sizevar_old) * sizeof (type)); \
++      basevar = basevar_new;                                    \
++    }                                                           \
++  }                                                             \
+ } while (0)
+ 
+ /* Used to print pointers (usually for debugging).  Print pointers
+-- 
+GitLab
+

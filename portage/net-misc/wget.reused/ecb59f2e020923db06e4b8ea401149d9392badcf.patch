@@ -1,0 +1,25 @@
+From ecb59f2e020923db06e4b8ea401149d9392badcf Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Tim=20R=C3=BChsen?= <tim.ruehsen@gmx.de>
+Date: Sun, 5 May 2024 19:05:48 +0200
+Subject: [PATCH] * src/init.c (cleanup): Do not close stdout on exit
+
+---
+ src/init.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/init.c b/src/init.c
+index 3a37f14f..10557e30 100644
+--- a/src/init.c
++++ b/src/init.c
+@@ -1938,7 +1938,7 @@ cleanup (void)
+ 
+   log_close ();
+ 
+-  if (output_stream && output_stream != stderr)
++  if (output_stream && output_stream != stderr && output_stream != stdout)
+     {
+       FILE *fp = output_stream;
+       output_stream = NULL;
+-- 
+GitLab
+

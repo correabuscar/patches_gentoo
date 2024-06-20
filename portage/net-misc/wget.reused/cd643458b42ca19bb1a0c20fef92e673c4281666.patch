@@ -1,0 +1,25 @@
+From cd643458b42ca19bb1a0c20fef92e673c4281666 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Tim=20R=C3=BChsen?= <tim.ruehsen@gmx.de>
+Date: Sun, 5 May 2024 19:17:24 +0200
+Subject: [PATCH] * src/warc.c (warc_close): Fix memleak
+
+---
+ src/warc.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/warc.c b/src/warc.c
+index e810ab1a..230bd36f 100644
+--- a/src/warc.c
++++ b/src/warc.c
+@@ -1276,6 +1276,8 @@ warc_close (void)
+       fclose (warc_log_fp);
+       log_set_warc_log_fp (NULL);
+     }
++
++  xfree (warc_current_filename);
+ }
+ 
+ /* Creates a temporary file for writing WARC output.
+-- 
+GitLab
+

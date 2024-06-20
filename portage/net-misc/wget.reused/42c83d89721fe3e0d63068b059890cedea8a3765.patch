@@ -1,0 +1,31 @@
+From 42c83d89721fe3e0d63068b059890cedea8a3765 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Tim=20R=C3=BChsen?= <tim.ruehsen@gmx.de>
+Date: Sun, 5 May 2024 18:10:10 +0200
+Subject: [PATCH] * src/iri.c (do_conversion): Initialize memory from realloc()
+
+---
+ src/iri.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/src/iri.c b/src/iri.c
+index d5c47144..351357da 100644
+--- a/src/iri.c
++++ b/src/iri.c
+@@ -191,7 +191,13 @@ do_conversion (const char *tocode, const char *fromcode, char const *in_org, siz
+           tooshort++;
+           done = len;
+           len = done + inlen * 2;
+-          s = xrealloc (s, len + 1);
++          char *s_new = xrealloc (s, len + 1);
++          if (s_new != s)
++            {
++              /* Help valgrind by initializing additional memory. */
++              s = s_new;
++              memset(s + done, 0, inlen * 2 + 1);
++            }
+           *out = s + done - outlen;
+           outlen += inlen * 2;
+         }
+-- 
+GitLab
+

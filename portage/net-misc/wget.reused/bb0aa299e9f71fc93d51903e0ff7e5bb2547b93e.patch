@@ -1,0 +1,27 @@
+From bb0aa299e9f71fc93d51903e0ff7e5bb2547b93e Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Tim=20R=C3=BChsen?= <tim.ruehsen@gmx.de>
+Date: Sun, 5 May 2024 17:59:20 +0200
+Subject: [PATCH] * src/warc.c (warc_write_end_record): Check warc_write_ok
+ (fix use-after-free)"
+
+---
+ src/warc.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/warc.c b/src/warc.c
+index 756d71ef..a90266f3 100644
+--- a/src/warc.c
++++ b/src/warc.c
+@@ -327,6 +327,9 @@ warc_write_block_from_file (FILE *data_in)
+ static bool
+ warc_write_end_record (void)
+ {
++  if (!warc_write_ok)
++    return warc_write_ok;
++
+   if (warc_write_buffer ("\r\n\r\n", 4) != 4)
+     {
+       warc_write_ok = false;
+-- 
+GitLab
+

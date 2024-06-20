@@ -1,0 +1,34 @@
+From 62fffab5776652a9c181b0239cd8a5aedf716c47 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Tim=20R=C3=BChsen?= <tim.ruehsen@gmx.de>
+Date: Sun, 5 May 2024 19:06:38 +0200
+Subject: [PATCH] * src/httpc.c (http_loop): Fix memleak
+
+---
+ src/http.c | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/src/http.c b/src/http.c
+index 5a5ee843..16edf461 100644
+--- a/src/http.c
++++ b/src/http.c
+@@ -4327,11 +4327,12 @@ http_loop (const struct url *u, struct url *original_url, char **newloc,
+       if (opt.if_modified_since && !send_head_first && got_name && file_exists_p (hstat.local_file, NULL))
+         {
+           *dt |= IF_MODIFIED_SINCE;
+-          {
+-            uerr_t timestamp_err = set_file_timestamp (&hstat);
+-            if (timestamp_err != RETROK)
+-              return timestamp_err;
+-          }
++          uerr_t timestamp_err = set_file_timestamp (&hstat);
++          if (timestamp_err != RETROK)
++            {
++              ret = timestamp_err;
++              goto exit;
++            }
+         }
+         /* Send preliminary HEAD request if -N is given and we have existing
+          * destination file or content disposition is enabled.  */
+-- 
+GitLab
+

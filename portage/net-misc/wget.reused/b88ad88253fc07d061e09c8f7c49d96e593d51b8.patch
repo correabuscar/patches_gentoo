@@ -1,0 +1,69 @@
+From b88ad88253fc07d061e09c8f7c49d96e593d51b8 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Tim=20R=C3=BChsen?= <tim.ruehsen@gmx.de>
+Date: Sun, 5 May 2024 19:12:49 +0200
+Subject: [PATCH] * src/warc.c (warc_start_new_file): Simplify code
+
+---
+ src/warc.c | 26 +++++++-------------------
+ 1 file changed, 7 insertions(+), 19 deletions(-)
+
+diff --git a/src/warc.c b/src/warc.c
+index a90266f3..e810ab1a 100644
+--- a/src/warc.c
++++ b/src/warc.c
+@@ -862,9 +862,6 @@ warc_start_new_file (bool meta)
+   const char *extension = "warc";
+ #endif
+ 
+-  int base_filename_length;
+-  char *new_filename;
+-
+   if (opt.warc_filename == NULL)
+     return false;
+ 
+@@ -876,35 +873,26 @@ warc_start_new_file (bool meta)
+ 
+   warc_current_file_number++;
+ 
+-  base_filename_length = strlen (opt.warc_filename);
+-  /* filename format:  base + "-" + 5 digit serial number + ".warc.gz" */
+-  new_filename = xmalloc (base_filename_length + 1 + 5 + 8 + 1);
+-
+-  warc_current_filename = new_filename;
+-
+   /* If max size is enabled, we add a serial number to the file names. */
+   if (meta)
+-    sprintf (new_filename, "%s-meta.%s", opt.warc_filename, extension);
++    warc_current_filename = aprintf ("%s-meta.%s", opt.warc_filename, extension);
+   else if (opt.warc_maxsize > 0)
+-    {
+-      sprintf (new_filename, "%s-%05d.%s", opt.warc_filename,
+-               warc_current_file_number, extension);
+-    }
++      warc_current_filename = aprintf ("%s-%05d.%s", opt.warc_filename, warc_current_file_number, extension);
+   else
+-    sprintf (new_filename, "%s.%s", opt.warc_filename, extension);
++    warc_current_filename = aprintf ("%s.%s", opt.warc_filename, extension);
+ 
+-  logprintf (LOG_VERBOSE, _("Opening WARC file %s.\n\n"), quote (new_filename));
++  logprintf (LOG_VERBOSE, _("Opening WARC file %s.\n\n"), quote (warc_current_filename));
+ 
+   /* Open the WARC file. */
+-  warc_current_file = fopen (new_filename, "wb+");
++  warc_current_file = fopen (warc_current_filename, "wb+");
+   if (warc_current_file == NULL)
+     {
+       logprintf (LOG_NOTQUIET, _("Error opening WARC file %s.\n"),
+-                 quote (new_filename));
++                 quote (warc_current_filename));
+       return false;
+     }
+ 
+-  if (! warc_write_warcinfo_record (new_filename))
++  if (! warc_write_warcinfo_record (warc_current_filename))
+     return false;
+ 
+   /* Add warcinfo uuid to manifest. */
+-- 
+GitLab
+

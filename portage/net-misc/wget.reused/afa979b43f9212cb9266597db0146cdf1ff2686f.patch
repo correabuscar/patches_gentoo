@@ -1,0 +1,28 @@
+From afa979b43f9212cb9266597db0146cdf1ff2686f Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Tim=20R=C3=BChsen?= <tim.ruehsen@gmx.de>
+Date: Sun, 2 Jun 2024 14:26:01 +0200
+Subject: [PATCH] * src/retr.c (retrieve_from_file): Fix memleak
+
+---
+ src/retr.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/src/retr.c b/src/retr.c
+index fc314caa..ecaf24d0 100644
+--- a/src/retr.c
++++ b/src/retr.c
+@@ -1292,7 +1292,10 @@ retrieve_from_file (const char *file, bool html, int *count)
+       url_free (url_parsed);
+ 
+       if (!url_file || (status != RETROK))
+-        return status;
++        {
++          iri_free (iri);
++          return status;
++        }
+ 
+       if (dt & TEXTHTML)
+         html = true;
+-- 
+GitLab
+

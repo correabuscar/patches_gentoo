@@ -1,0 +1,125 @@
+From f6291c33cdeac8e0a6be2d2d98eb8cb7364eeced Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Tim=20R=C3=BChsen?= <tim.ruehsen@gmx.de>
+Date: Sun, 24 Mar 2024 14:52:23 +0100
+Subject: [PATCH] Update gnulib link libraries
+
+* fuzz/Makefile.am: Update gnulib link libraries.
+* src/Makefile.am: Likewise.
+* tests/Makefile.am: Likewise.
+---
+ fuzz/Makefile.am  | 24 ++++++++++++++++++++----
+ src/Makefile.am   | 26 ++++++++++++++++++++++----
+ tests/Makefile.am | 25 +++++++++++++++++++++----
+ 3 files changed, 63 insertions(+), 12 deletions(-)
+
+diff --git a/fuzz/Makefile.am b/fuzz/Makefile.am
+index 29156515d..c0ad2a963 100644
+--- a/fuzz/Makefile.am
++++ b/fuzz/Makefile.am
+@@ -3,10 +3,26 @@ AM_CPPFLAGS = -I$(top_srcdir)/src -I$(srcdir) -I$(top_builddir)/lib -I$(top_srcd
+  $(CODE_COVERAGE_CPPFLAGS) \
+  -DSRCDIR=\"$(abs_srcdir)\"
+ LDADD = ../lib/libgnu.a \
+- $(GETADDRINFO_LIB) $(HOSTENT_LIB) $(INET_NTOP_LIB) $(INET_PTON_LIB) \
+- $(LIBSOCKET) $(LIB_CLOCK_GETTIME) $(LIB_CRYPTO) $(LIB_GETLOGIN) $(LIB_NANOSLEEP) $(LIB_POLL) \
+- $(LIB_POSIX_SPAWN) $(LIB_PTHREAD_SIGMASK) $(LIB_SELECT) $(LIBICONV) $(LIBINTL) \
+- $(LIBMULTITHREAD) $(LIBTHREAD) $(SERVENT_LIB) @INTL_MACOSX_LIBS@ \
++ $(CLOCK_TIME_LIB) \
++ $(GETADDRINFO_LIB) \
++ $(GETRANDOM_LIB) \
++ $(HARD_LOCALE_LIB) \
++ $(HOSTENT_LIB) \
++ $(INET_NTOP_LIB) \
++ $(LIBSOCKET) \
++ $(LIBTHREAD) \
++ $(LIB_CRYPTO) \
++ $(LIBC32CONV) \
++ $(LIBICONV) \
++ $(LIBINTL) \
++ $(LIBUNISTRING) \
++ $(MBRTOWC_LIB) \
++ $(NANOSLEEP_LIB) \
++ $(POSIX_SPAWN_LIB) \
++ $(PTHREAD_SIGMASK_LIB) \
++ $(SELECT_LIB) \
++ $(SERVENT_LIB) \
++ $(SETLOCALE_NULL_LIB) \
+  $(FUZZ_LIBS) $(CODE_COVERAGE_LIBS)
+ 
+ WGET_TESTS = \
+diff --git a/src/Makefile.am b/src/Makefile.am
+index 18ec6225b..86be5330b 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -84,10 +84,28 @@ endif
+ 
+ nodist_wget_SOURCES = version.c
+ EXTRA_wget_SOURCES = iri.c metalink.c xattr.c
+-LDADD = $(CODE_COVERAGE_LIBS) $(LIBOBJS) ../lib/libgnu.a $(GETADDRINFO_LIB) $(HOSTENT_LIB)\
+- $(INET_NTOP_LIB) $(LIBSOCKET) $(LIB_CLOCK_GETTIME) $(LIB_CRYPTO)\
+- $(LIB_NANOSLEEP) $(LIB_POSIX_SPAWN) $(LIB_SELECT) $(LIBICONV) $(LIBINTL)\
+- $(LIBTHREAD) $(LIBUNISTRING) $(SERVENT_LIB)
++LDADD = $(CODE_COVERAGE_LIBS) $(LIBOBJS) ../lib/libgnu.a \
++ $(CLOCK_TIME_LIB) \
++ $(GETADDRINFO_LIB) \
++ $(GETRANDOM_LIB) \
++ $(HARD_LOCALE_LIB) \
++ $(HOSTENT_LIB) \
++ $(INET_NTOP_LIB) \
++ $(LIBSOCKET) \
++ $(LIBTHREAD) \
++ $(LIB_CRYPTO) \
++ $(LIBC32CONV) \
++ $(LIBICONV) \
++ $(LIBINTL) \
++ $(LIBUNISTRING) \
++ $(MBRTOWC_LIB) \
++ $(NANOSLEEP_LIB) \
++ $(POSIX_SPAWN_LIB) \
++ $(PTHREAD_SIGMASK_LIB) \
++ $(SELECT_LIB) \
++ $(SERVENT_LIB) \
++ $(SETLOCALE_NULL_LIB)
++
+ AM_CPPFLAGS = -I$(top_builddir)/lib -I$(top_srcdir)/lib $(CODE_COVERAGE_CPPFLAGS)
+ AM_CFLAGS = $(WERROR_CFLAGS) $(WARN_CFLAGS) $(CODE_COVERAGE_CFLAGS)
+ 
+diff --git a/tests/Makefile.am b/tests/Makefile.am
+index affb0f229..f9ee54e4c 100644
+--- a/tests/Makefile.am
++++ b/tests/Makefile.am
+@@ -139,10 +139,27 @@ EXTRA_DIST = FTPServer.pm FTPTest.pm HTTPServer.pm HTTPTest.pm \
+ 
+ check_PROGRAMS = unit-tests
+ unit_tests_SOURCES = unit-tests.c unit-tests.h
+-LDADD = ../src/libunittest.a ../lib/libgnu.a $(GETADDRINFO_LIB) $(HOSTENT_LIB)\
+- $(INET_NTOP_LIB) $(LIBSOCKET) $(LIB_CLOCK_GETTIME) $(LIB_CRYPTO)\
+- $(LIB_NANOSLEEP) $(LIB_POSIX_SPAWN) $(LIB_SELECT) $(LIBICONV) $(LIBINTL)\
+- $(LIBTHREAD) $(LIBUNISTRING) $(SERVENT_LIB)
++LDADD = ../src/libunittest.a ../lib/libgnu.a \
++ $(CLOCK_TIME_LIB) \
++ $(GETADDRINFO_LIB) \
++ $(GETRANDOM_LIB) \
++ $(HARD_LOCALE_LIB) \
++ $(HOSTENT_LIB) \
++ $(INET_NTOP_LIB) \
++ $(LIBSOCKET) \
++ $(LIBTHREAD) \
++ $(LIB_CRYPTO) \
++ $(LIBC32CONV) \
++ $(LIBICONV) \
++ $(LIBINTL) \
++ $(LIBUNISTRING) \
++ $(MBRTOWC_LIB) \
++ $(NANOSLEEP_LIB) \
++ $(POSIX_SPAWN_LIB) \
++ $(PTHREAD_SIGMASK_LIB) \
++ $(SELECT_LIB) \
++ $(SERVENT_LIB) \
++ $(SETLOCALE_NULL_LIB)
+ AM_CPPFLAGS = -I$(top_builddir)/lib -I$(top_srcdir)/lib \
+  -I$(top_srcdir)/src -DLOCALEDIR=\"$(localedir)\"
+ AM_CFLAGS = $(WERROR_CFLAGS) $(WARN_CFLAGS)
+-- 
+GitLab
+
