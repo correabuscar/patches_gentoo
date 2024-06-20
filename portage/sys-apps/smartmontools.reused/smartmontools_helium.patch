@@ -4,8 +4,14 @@ on PCGNW870 vs PCGNW120
 thus needs to be raw16 or raw8, can't do raw24 or raw32 as I get "Syntax error in preset option string"
 but "raw24/raw32" works but it's same as raw48, wrong value.
 
-now it's once again:
+now, with just `raw16` it's once again:
  22 Helium_Level            PO---K   100   100   025    -    0 100 100
+
+now with `raw16(raw16) it's actually:
+ 22 Helium_Level            0x0023   100   100   025    Pre-fail  Always       -       100 (0 100)
+or
+ 22 Helium_Level            PO---K   100   100   025    -    100 (0 100)
+
 
 Index: /var/tmp/portage/sys-apps/smartmontools-7.4-r1/work/smartmontools-7.4/drivedb.h
 ===================================================================
@@ -16,7 +22,7 @@ Index: /var/tmp/portage/sys-apps/smartmontools-7.4-r1/work/smartmontools-7.4/dri
        // WUH721818ALE6L4/PCGAW232, WDC  WUH721818ALN6L4/PCGNW088
      "(WDC  ?)?WUH72181[68]AL[EN]6[0L][0146]",
 +    "PCGNW870", "",
-+    "-v 22,raw16,Helium_Level"
++    "-v 22,raw16(raw16),Helium_Level"
 +  },
 +  { "Western Digital Ultrastar DC HC550", // tested with WDC  WUH721818ALE6L4/PCGNW110,
 +      // WUH721818ALE6L4/PCGAW232, WDC  WUH721818ALN6L4/PCGNW088
