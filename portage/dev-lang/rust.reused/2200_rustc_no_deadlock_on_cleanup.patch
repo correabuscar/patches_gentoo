@@ -1,0 +1,42 @@
+see example in /home/user/sandbox/rust/05_sandbox/global_allocator/deadlock_on_cleanup
+
+Index: /var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/src/io/stdio.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/src/io/stdio.rs
++++ /var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/src/io/stdio.rs
+@@ -667,10 +667,24 @@ pub fn stdout() -> Stdout {
+ // by replacing the line writer by one with zero
+ // buffering capacity.
+ pub fn cleanup() {
++    if STDOUT.get().is_none() {
++        // don't deadlock on the below STDOUT.get_or_init()
++        const ENV_RUSTC_DONT_DEADLOCK_ON_CLEANUP :&str="RUSTC_DONT_DEADLOCK_ON_CLEANUP";
++        if crate::env::var(ENV_RUSTC_DONT_DEADLOCK_ON_CLEANUP).map_or_else(|_err| false, |ok_value| ok_value != "0") {
++            eprintln!("!! stdout deadlock avoided, but stdout that didn't end with newlines wasn't flushed(which is true even when deadlocking)!");
++            return;
++        } else {
++            eprintln!("!! stdout deadlocking next(and anything printed without ending in newlines wonn't flushed/seen), to avoid set {} to a value other than '0'.", ENV_RUSTC_DONT_DEADLOCK_ON_CLEANUP);
++        }
++    }
+     let mut initialized = false;
++    eprintln!("!! stdout get_or_init attempt...");
+     let stdout = STDOUT.get_or_init(|| {
++        eprintln!("!! stdout reinitializing at cleanup() 1of2");
+         initialized = true;
+-        ReentrantLock::new(RefCell::new(LineWriter::with_capacity(0, stdout_raw())))
++        let ret=ReentrantLock::new(RefCell::new(LineWriter::with_capacity(0, stdout_raw())));
++        eprintln!("!! stdout reinitializing at cleanup() 2of2");
++        ret
+     });
+ 
+     if !initialized {
+@@ -679,7 +693,9 @@ pub fn cleanup() {
+         // might have leaked a StdoutLock, which would
+         // otherwise cause a deadlock here.
+         if let Some(lock) = stdout.try_lock() {
++            eprintln!("!! stdout was already initialized at cleanup() now setting it to 0 buffer 1of2");
+             *lock.borrow_mut() = LineWriter::with_capacity(0, stdout_raw());
++            eprintln!("!! stdout was already initialized at cleanup() now setting it to 0 buffer 2of2");
+         }
+     }
+ }
