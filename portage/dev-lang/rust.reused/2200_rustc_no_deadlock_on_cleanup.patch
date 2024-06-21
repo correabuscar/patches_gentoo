@@ -1,42 +1,92 @@
+This will panic instead of deadlock on cleanup if RUSTC_DONT_DEADLOCK_ON_CLEANUP is set to non "0" value.
+else it will print some stuff on stderr and deadlock
+also prints some extras on stderr anyway.
+it only prints ANYTHING is env. var RUSTC_DONT_DEADLOCK_ON_CLEANUP_VERBOSE is set to a value other than the "0" value.
+
 see example in /home/user/sandbox/rust/05_sandbox/global_allocator/deadlock_on_cleanup
 
 Index: /var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/src/io/stdio.rs
 ===================================================================
 --- .orig/var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/src/io/stdio.rs
 +++ rustc-1.78.0-src/library/std/src/io/stdio.rs
-@@ -667,10 +667,24 @@ pub fn stdout() -> Stdout {
+@@ -667,10 +667,65 @@ pub fn stdout() -> Stdout {
  // by replacing the line writer by one with zero
  // buffering capacity.
  pub fn cleanup() {
++    const ENV_RUSTC_DONT_DEADLOCK_ON_CLEANUP_VERBOSE_STR : &str = concat!("RUSTC_DONT_DEADLOCK_ON_CLEANUP_VERBOSE","\0");
++    const ENV_RUSTC_DONT_DEADLOCK_ON_CLEANUP_VERBOSE :*const libc::c_char = ENV_RUSTC_DONT_DEADLOCK_ON_CLEANUP_VERBOSE_STR.as_bytes().as_ptr() as *const libc::c_char;
++    let verb_env = unsafe {
++        libc::getenv(ENV_RUSTC_DONT_DEADLOCK_ON_CLEANUP_VERBOSE)
++    };
++    let verbose:bool;
++    if !verb_env.is_null() && unsafe { libc::strncmp(verb_env, b"0\0".as_ptr() as *const libc::c_char, 2) != 0 } {
++        // env. var is set and is not set to "0"
++        verbose=true;
++    } else {
++        verbose=false;
++    }
 +    if STDOUT.get().is_none() {
++        //okFIXME: so we can get here even if STDOUT was never used before, so nothing got printed on stdout!
++        // but also when we tried to print something and inside that print it panicked and thus that panic reached this point where we try to re-init STDOUT while we were inside it, and thus deadlock on OnceLock (which uses Once)'s get_or_init below.
++
 +        // don't deadlock on the below STDOUT.get_or_init()
-+        const ENV_RUSTC_DONT_DEADLOCK_ON_CLEANUP :&str="RUSTC_DONT_DEADLOCK_ON_CLEANUP";
-+        if crate::env::var(ENV_RUSTC_DONT_DEADLOCK_ON_CLEANUP).map_or_else(|_err| false, |ok_value| ok_value != "0") {
-+            eprintln!("!! stdout deadlock avoided, but stdout that didn't end with newlines wasn't flushed(which is true even when deadlocking)!");
++        // I don't wanna use another thread to detect the deadlock because I may not be allowed to make new threads, OR alloc!
++        // "No, .as_bytes() does not perform a heap allocation. It simply provides a view of the string as a slice of bytes. Both b"something" and "something".as_bytes() are efficient and do not involve any heap allocation." - chatgpt-4o
++        const ENV_RUSTC_DONT_DEADLOCK_ON_CLEANUP_STR : &str = concat!("RUSTC_DONT_DEADLOCK_ON_CLEANUP","\0");
++        const ENV_RUSTC_DONT_DEADLOCK_ON_CLEANUP :*const libc::c_char = ENV_RUSTC_DONT_DEADLOCK_ON_CLEANUP_STR.as_bytes().as_ptr() as *const libc::c_char;
++        //eprintln!("before env read");
++        //doneFIXME: this env::var allocates on heap because it returns a String! so using this is bad. Yep it allocates due to .to_vec() and OsStringExt::from_vec()(which does OsString::new()) that it uses internally (on unix target_os) as per library/std/src/sys/pal/unix/os.rs:643:pub However, tracking it via global allocator doesn't show any allocs even tho used same eprintln!() here and in "tracker" and it's all supposed to run in one single thread(right?!). Well ok there's only this when var exists: "!! before alloc, size=1"
++        //if crate::env::var(ENV_RUSTC_DONT_DEADLOCK_ON_CLEANUP).map_or_else(|_err| false, |ok_value| ok_value != "0") {
++        let env = unsafe {
++            libc::getenv(ENV_RUSTC_DONT_DEADLOCK_ON_CLEANUP)
++        };
++        if !env.is_null() && unsafe { libc::strncmp(env, b"0\0".as_ptr() as *const libc::c_char, 2) != 0 } {
++            // env. var is set and is not set to "0"
++            if verbose {
++                let msg:&str="!! skipping stdout flush ie. either stdout deadlock avoided or(you're seeing this also in the case of) stdout was never ever used/inited(so it won't deadlock then!), but whatever you just tried to print to stdout(ie. the print(if any) that triggered this panic/exit) including previous prints(if any) that didn't end with newline wasn't and won't be flushed and thus you can't see it so it got lost(this is true only when it would've deadlocked here - but since u're seeing this msg it won't if it would've, but also, as said, it may not've deadlocked if stdout was never used)!";
++                eprintln!("{}",msg);
++                //XXX: don't panic here because if stdout wasn't used, then no need to panic, just skip the flushing - so this always skips the flushing then, in that case when stdout wasn't used, which makes sense because it wasn't used!
++                //eprintln!("Attempting to panic next, with the same message.");
++            }
++            //panic!("{}",msg);
++            //#[allow(unreachable_code)]
 +            return;
 +        } else {
-+            eprintln!("!! stdout deadlocking next(and anything printed so far without ending in newlines won't be flushed/seen), to avoid set {} to a value other than '0'.", ENV_RUSTC_DONT_DEADLOCK_ON_CLEANUP);
++            if verbose {
++                eprintln!("!! stdout was never used/inited before so it might be deadlocking next if it's recursing due to having panicked in its own get_or_init() (and anything printed so far(if any) without ending in newlines (including the very print attempt(if any) that triggered this) won't be flushed/seen), to avoid this deadlock, set {} to a value other than '0'.", &ENV_RUSTC_DONT_DEADLOCK_ON_CLEANUP_STR[..ENV_RUSTC_DONT_DEADLOCK_ON_CLEANUP_STR.len()-1]);
++            }
 +        }
++        //eprintln!("after env read");
 +    }
      let mut initialized = false;
-+    eprintln!("!! stdout get_or_init attempt...");
++    if verbose {
++        eprintln!("!! stdout get_or_init attempt...");
++    }
      let stdout = STDOUT.get_or_init(|| {
-+        eprintln!("!! stdout reinitializing at cleanup() 1of2");
++        if verbose {
++            eprintln!("!! stdout reinitializing at cleanup() 1of2");
++        }
          initialized = true;
 -        ReentrantLock::new(RefCell::new(LineWriter::with_capacity(0, stdout_raw())))
 +        let ret=ReentrantLock::new(RefCell::new(LineWriter::with_capacity(0, stdout_raw())));
-+        eprintln!("!! stdout reinitializing at cleanup() 2of2");
++        if verbose {
++            eprintln!("!! stdout reinitializing at cleanup() 2of2");
++        }
 +        ret
      });
  
      if !initialized {
-@@ -679,7 +693,9 @@ pub fn cleanup() {
+@@ -679,7 +734,13 @@ pub fn cleanup() {
          // might have leaked a StdoutLock, which would
          // otherwise cause a deadlock here.
          if let Some(lock) = stdout.try_lock() {
-+            eprintln!("!! stdout was already initialized at cleanup() now setting it to 0 buffer 1of2");
++            if verbose {
++                eprintln!("!! stdout was already initialized at cleanup() now setting it to 0 buffer 1of2");
++            }
              *lock.borrow_mut() = LineWriter::with_capacity(0, stdout_raw());
-+            eprintln!("!! stdout was already initialized at cleanup() now setting it to 0 buffer 2of2");
++            if verbose {
++                eprintln!("!! stdout was already initialized at cleanup() now setting it to 0 buffer 2of2");
++            }
          }
      }
  }
