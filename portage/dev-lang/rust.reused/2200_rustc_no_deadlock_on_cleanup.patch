@@ -3,7 +3,7 @@ see example in /home/user/sandbox/rust/05_sandbox/global_allocator/deadlock_on_c
 Index: /var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/src/io/stdio.rs
 ===================================================================
 --- .orig/var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/src/io/stdio.rs
-+++ /var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/src/io/stdio.rs
++++ rustc-1.78.0-src/library/std/src/io/stdio.rs
 @@ -667,10 +667,24 @@ pub fn stdout() -> Stdout {
  // by replacing the line writer by one with zero
  // buffering capacity.
@@ -15,7 +15,7 @@ Index: /var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/s
 +            eprintln!("!! stdout deadlock avoided, but stdout that didn't end with newlines wasn't flushed(which is true even when deadlocking)!");
 +            return;
 +        } else {
-+            eprintln!("!! stdout deadlocking next(and anything printed without ending in newlines wonn't flushed/seen), to avoid set {} to a value other than '0'.", ENV_RUSTC_DONT_DEADLOCK_ON_CLEANUP);
++            eprintln!("!! stdout deadlocking next(and anything printed so far without ending in newlines won't be flushed/seen), to avoid set {} to a value other than '0'.", ENV_RUSTC_DONT_DEADLOCK_ON_CLEANUP);
 +        }
 +    }
      let mut initialized = false;
