@@ -1,0 +1,36 @@
+see: https://bugs.gentoo.org/932671
+
+From 5d338b7980bbaf2bead48a57f2b7b33069921ba0 Mon Sep 17 00:00:00 2001
+From: "Michael Cook (mackal)" <277429+mackal@users.noreply.github.com>
+Date: Fri, 24 May 2024 16:15:52 -0400
+Subject: [PATCH] revdep_rebuild: Fix issue where library is a full path
+
+app-editors/neovim-0.10.0 has one of it's libraries referenced by a full
+path, which seems to be causing it want to rebuild.
+
+On my system scanelf shows:
+   /usr/bin/nvim;nvim;;libluv.so.1,libvterm.so.0,/usr/lib64/lua/5.1/lpeg.so,libmsgpack-c.so.2,libtree-sitter.so.0,libunibilium.so.4,libluajit-5.1.so.2,libm.so.6,libuv.so.1,libc.so.6;ELFCLASS64
+
+In the LibCheck.search() function it was passing
+"/usr/lib64/lua/5.1/lpeg.so" to LibCheck.check() which searches by
+basename, which of course isn't going to match.
+---
+ pym/gentoolkit/revdep_rebuild/analyse.py | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/pym/gentoolkit/revdep_rebuild/analyse.py b/pym/gentoolkit/revdep_rebuild/analyse.py
+index 1431a2f3..a4571809 100644
+--- a/pym/gentoolkit/revdep_rebuild/analyse.py
++++ b/pym/gentoolkit/revdep_rebuild/analyse.py
+@@ -250,6 +250,11 @@ def search(self, scanned_files=None):
+                                     "\tFile %s ignored as it is masked" % filename
+                                 )
+                                 continue
++                            if l.startswith('/') and os.path.isfile(l):
++                                self.logger.debug(
++                                    "\tLibrary %s is a full path and it exists" % l
++                                )
++                                continue
+                             if not bits in found_libs:
+                                 found_libs[bits] = {}
+                             try:
