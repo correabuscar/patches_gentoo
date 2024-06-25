@@ -1,0 +1,44 @@
+this patch is by an actual dev. tsujan from here: https://github.com/lxqt/qterminal/issues/1143#issuecomment-2189138026
+which fixes the issue properly.
+issue was: replacement char aka � in group of 3 would sometimes appear in `btop`
+
+locally testing lives in /home/user/sandbox/terminal/qterminal/replacement_char
+
+diff -ruNp qtermwidget-orig/lib/Emulation.cpp qtermwidget/lib/Emulation.cpp
+--- qtermwidget-orig/lib/Emulation.cpp
++++ qtermwidget/lib/Emulation.cpp
+@@ -52,7 +52,7 @@ Emulation::Emulation() :
+   _keyTranslator(nullptr),
+   _usesMouse(false),
+   _bracketedPasteMode(false),
+-  _fromUtf8(QStringEncoder::Utf16)
++  _toUtf16(QStringEncoder::Utf8)
+ {
+   // create screens with a default size
+   _screen[0] = new Screen(40,80);
+@@ -224,9 +224,9 @@ void Emulation::receiveData(const char*
+      * U+10FFFF
+      * https://unicodebook.readthedocs.io/unicode_encodings.html#surrogates
+      */
+-    QString str = QString::fromUtf8(text, length);
+-    auto encoded = _fromUtf8(str);
+-    std::wstring unicodeText = encoded.data.toStdWString(); 
++    QByteArray ba(text, length);
++    QString str = _toUtf16(ba);
++    std::wstring unicodeText = str.toStdWString();
+ 
+     //send characters to terminal emulator
+     for (size_t i=0;i<unicodeText.length();i++)
+diff -ruNp qtermwidget-orig/lib/Emulation.h qtermwidget/lib/Emulation.h
+--- qtermwidget-orig/lib/Emulation.h
++++ qtermwidget/lib/Emulation.h
+@@ -494,7 +494,7 @@ private:
+   bool _bracketedPasteMode;
+   QTimer _bulkTimer1{this};
+   QTimer _bulkTimer2{this};
+-  QStringEncoder _fromUtf8;
++  QStringDecoder _toUtf16;
+ };
+ 
+ }
+
