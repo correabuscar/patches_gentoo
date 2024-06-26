@@ -1,0 +1,52 @@
+assume these defaults even when nothing's set, such like when executing: $ env -i bash --noprofile --norc
+
+declare -x HISTCONTROL="ignorespace"
+declare -x HISTFILESIZE="-1"
+declare -x HISTSIZE="-1"
+declare -x HISTTIMEFORMAT="%F %T "
+
+Index: /var/tmp/portage/app-shells/bash-9999/work/bash-9999/bashhist.c
+===================================================================
+--- .orig/var/tmp/portage/app-shells/bash-9999/work/bash-9999/bashhist.c
++++ bash-9999/bashhist.c
+@@ -61,7 +61,7 @@ extern int rl_done, rl_dispatching;	/* s
+ #endif
+ 
+ #ifndef HISTSIZE_DEFAULT
+-#  define HISTSIZE_DEFAULT "500"
++#  define HISTSIZE_DEFAULT "-1"
+ #endif
+ 
+ #if !defined (errno)
+Index: /var/tmp/portage/app-shells/bash-9999/work/bash-9999/builtins/history.def
+===================================================================
+--- .orig/var/tmp/portage/app-shells/bash-9999/work/bash-9999/builtins/history.def
++++ bash-9999/builtins/history.def
+@@ -374,6 +374,7 @@ display_history (list)
+       else
+ 	i = 0;
+ 
++      set_if_not ("HISTTIMEFORMAT", "%F %T "); //this might not be needed, just making sure
+       histtimefmt = get_string_value ("HISTTIMEFORMAT");
+ 
+       while (hlist[i])
+Index: /var/tmp/portage/app-shells/bash-9999/work/bash-9999/variables.c
+===================================================================
+--- .orig/var/tmp/portage/app-shells/bash-9999/work/bash-9999/variables.c
++++ bash-9999/variables.c
+@@ -6170,6 +6170,7 @@ sv_history_control (name)
+   int tptr;
+ 
+   history_control = 0;
++  set_if_not ("HISTCONTROL", "ignorespace");
+   temp = get_string_value (name);
+ 
+   if (temp == 0 || *temp == 0)
+@@ -6225,6 +6226,7 @@ sv_histtimefmt (name)
+ {
+   SHELL_VAR *v;
+ 
++  set_if_not ("HISTTIMEFORMAT", "%F %T ");
+   if (v = find_variable (name))
+     {
+       if (history_comment_char == 0)
