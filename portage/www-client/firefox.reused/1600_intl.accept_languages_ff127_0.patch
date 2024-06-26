@@ -1,4 +1,4 @@
-updated for 127.0 yes it's still needed, unless intl.accept_languages is made to be dirty.
+not using it anymore//updated for 127.0 yes it's still needed, unless intl.accept_languages is made to be dirty.
 XXX: patch isn't done, decided to not use it anymore, and just dirty the pref since so many depend on it!
 details: https://github.com/pyllyukko/user.js/issues/252#issuecomment-2165975861
 left to check:
