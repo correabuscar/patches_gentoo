@@ -2,6 +2,8 @@ this patch is by an actual dev. tsujan from here: https://github.com/lxqt/qtermi
 which fixes the issue properly.
 issue was: replacement char aka � in group of 3 would sometimes appear in `btop`
 
+slightly modified/pedantic to remove implicits
+
 locally testing lives in /home/user/sandbox/terminal/qterminal/replacement_char
 
 diff -ruNp qtermwidget-orig/lib/Emulation.cpp qtermwidget/lib/Emulation.cpp
@@ -12,7 +14,7 @@ diff -ruNp qtermwidget-orig/lib/Emulation.cpp qtermwidget/lib/Emulation.cpp
    _usesMouse(false),
    _bracketedPasteMode(false),
 -  _fromUtf8(QStringEncoder::Utf16)
-+  _toUtf16(QStringEncoder::Utf8)
++  _toUtf16(QStringConverter::Utf8, QStringConverter::Flag::Default)
  {
    // create screens with a default size
    _screen[0] = new Screen(40,80);
@@ -23,9 +25,9 @@ diff -ruNp qtermwidget-orig/lib/Emulation.cpp qtermwidget/lib/Emulation.cpp
 -    QString str = QString::fromUtf8(text, length);
 -    auto encoded = _fromUtf8(str);
 -    std::wstring unicodeText = encoded.data.toStdWString(); 
-+    QByteArray ba(text, length);
-+    QString str = _toUtf16(ba);
-+    std::wstring unicodeText = str.toStdWString();
++    const QByteArray ba(text, length);
++    const QString str = _toUtf16.decode(ba);
++    const std::wstring unicodeText = str.toStdWString();
  
      //send characters to terminal emulator
      for (size_t i=0;i<unicodeText.length();i++)
