@@ -1,10 +1,18 @@
 #!/bin/bash
 
-#FIXME: find a way to show exit code? or err if non-zero! when checking each patch!
+#kindadoneFIXME: find a way to show exit code? or err if non-zero! when checking each patch!
 
 export WARN=0
-find . -type f -and -iname \*.patch -and -print0 | xargs -P1 -0 --max-args=1 --  /swcode/bin.append/patch_dangling_hunk_detector
+#this takes 12.2sec with -P1, or 0.4sec with -P0
+#but the reason I wanted to avoid -P0 is due to the potentiality of intermixed output.
+find . -type f -and -iname \*.patch -and -print0 | xargs -P0 -0 --max-args=1 --  /swcode/bin.append/patch_dangling_hunk_detector >/dev/null 2>&1; ec="$?"
+if test "$ec" != "0"; then
+  echo "Found something(exit code:$ec), reruning it without the possibility of intermixed output..."
+  find . -type f -and -iname \*.patch -and -print0 | xargs -P1 -0 --max-args=1 --  /swcode/bin.append/patch_dangling_hunk_detector
+  echo "exit code: $?"
+fi
 echo "----------------- Now rerunning with warning(s) enabled: ------------"
 sleep 1 #so i can see that the next text/warns are to be ignored, usually
 export WARN=1
+#this is very verbose already, so -P1 is needed always:
 find . -type f -and -iname \*.patch -and -print0 | xargs -P1 -0 --max-args=1 --  /swcode/bin.append/patch_dangling_hunk_detector
