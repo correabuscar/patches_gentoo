@@ -1,0 +1,81 @@
+just echo the 2 files it's comparing when arg is given: --show-filenames-on-stderr
+used by script: /home/user/sandbox/patch/hunk_applied_to_wrong_place/diff
+
+example output (without indentation):
+  diff: Comparing non-binary files:
+  workspace.rs.original_real
+  workspace.rs
+
+Index: /var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/analyze.c
+===================================================================
+--- .orig/var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/analyze.c
++++ diffutils-3.10/src/analyze.c
+@@ -533,6 +533,9 @@ diff_2_files (struct comparison *cmp)
+     }
+   else
+     {
++      if (show_filenames_on_stderr) {
++        fprintf (stderr,"diff: Comparing non-binary files:\n%s\n%s\n", cmp->file[0].name, cmp->file[1].name);
++      }
+       struct context ctxt;
+       lin diags;
+       lin too_expensive;
+Index: /var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.c
+===================================================================
+--- .orig/var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.c
++++ diffutils-3.10/src/diff.c
+@@ -93,6 +93,7 @@ static bool binary;
+ #else
+ enum { binary = true };
+ #endif
++//static bool show_filenames_on_stderr;
+ 
+ /* If one file is missing, treat it as present but empty (-N).  */
+ static bool new_file;
+@@ -145,6 +146,7 @@ enum
+ 
+   COLOR_OPTION,
+   COLOR_PALETTE_OPTION,
++  SHOW_FILENAMES_ON_STDERR,
+ 
+   NO_DIRECTORY_OPTION,
+   PRESUME_OUTPUT_TTY_OPTION,
+@@ -226,6 +228,7 @@ static struct option const longopts[] =
+   {"unified", 2, 0, 'U'},
+   {"version", 0, 0, 'v'},
+   {"width", 1, 0, 'W'},
++  {"show-filenames-on-stderr", 0, 0, SHOW_FILENAMES_ON_STDERR},
+ 
+   /* This is solely for diff3.  Do not document.  */
+   {"-no-directory", no_argument, nullptr, NO_DIRECTORY_OPTION},
+@@ -308,6 +311,7 @@ main (int argc, char **argv)
+   re_set_syntax (RE_SYNTAX_GREP | RE_NO_POSIX_BACKTRACKING);
+   excluded = new_exclude ();
+   presume_output_tty = false;
++  show_filenames_on_stderr = false;
+   xstdopen ();
+ 
+   /* Decode the options.  */
+@@ -698,6 +702,9 @@ main (int argc, char **argv)
+         case COLOR_PALETTE_OPTION:
+           set_color_palette (optarg);
+           break;
++        case SHOW_FILENAMES_ON_STDERR:
++          show_filenames_on_stderr = true;
++          break;
+ 
+         case NO_DIRECTORY_OPTION:
+           no_directory = true;
+Index: /var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.h
+===================================================================
+--- .orig/var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.h
++++ diffutils-3.10/src/diff.h
+@@ -158,6 +158,8 @@ XTERN bool ignore_case;
+ /* Ignore differences in case of letters in file names.  */
+ XTERN bool ignore_file_name_case;
+ 
++XTERN bool show_filenames_on_stderr;
++
+ /* Act on symbolic links themselves rather than on their target
+    (--no-dereference).  */
+ XTERN bool no_dereference_symlinks;
