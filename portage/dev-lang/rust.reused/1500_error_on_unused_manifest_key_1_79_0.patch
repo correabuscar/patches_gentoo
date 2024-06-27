@@ -122,161 +122,16 @@ cargo:warning=      |                            ^~~~~~~~
 
 now THE patch:
 
-#Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/util/toml/mod.rs
-#===================================================================
-#--- .orig/var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/util/toml/mod.rs
-#+++ rustc-1.75.0-src/src/tools/cargo/src/cargo/util/toml/mod.rs
-#@@ -1,3 +1,5 @@
-#+#![deny(unused_must_use)] // this is so that calls to our modded function(if uncommented mods) dont forget to use the '?' suffix!
-#+
-# use std::collections::{BTreeMap, BTreeSet, HashMap};
-# use std::ffi::OsStr;
-# use std::path::{Path, PathBuf};
-#@@ -102,13 +104,22 @@ fn read_manifest_from_str(
-#         stringify(&mut key, &path);
-#         unused.insert(key);
-#     })?;
-#+//    let mut found_unused_manifest_keys=false;
-#+//    //XXX: This detects keys in the root Cargo.toml file so not inside [dependencies] for example.
-#     let add_unused = |warnings: &mut Warnings| {
-#         for key in unused {
-#+//            if !found_unused_manifest_keys {
-#+//                found_unused_manifest_keys=true;
-#+//            }
-#             warnings.add_warning(format!("unused manifest key: {}", key));
-#             if key == "profiles.debug" {
-#                 warnings.add_warning("use `[profile.dev]` to configure debug builds".to_string());
-#-            }
-#-        }
-#+            };
-#+        };
-#+//        if found_unused_manifest_keys {
-#+//            bail!("Unused manifest keys detected1, failing early to avoid any possible future issues like the package= one using earlier rust like explained in https://github.com/rust-lang/rust/security/advisories/GHSA-phjm-8x66-qw4r");
-#+//        };
-#+//        Ok(()) //thanks bail! which forces this closure to return -> Result<_, Error>
-#     };
-# 
-#     if let Some(deps) = manifest
-#@@ -1356,11 +1369,27 @@ fn unused_dep_keys(
-#     kind: &str,
-#     unused_keys: Vec<String>,
-#     warnings: &mut Vec<String>,
-#+//) -> CargoResult<()> {
-# ) {
-#+    //XXX: This code detects unuseds in the subkeys like in the [dependencies] but not in the root
-#+    //package
-#+//    let mut found_unused_manifest_keys=false;
-#     for unused in unused_keys {
-#-        let key = format!("unused manifest key: {kind}.{dep_name}.{unused}");
-#+//        if !found_unused_manifest_keys {
-#+//            found_unused_manifest_keys=true;
-#+//        }
-#+        let key = format!("unused2 manifest key: {kind}.{dep_name}.{unused}");
-#         warnings.push(key);
-#-    }
-#+    };
-#+//    if found_unused_manifest_keys {
-#+//        use std::io::Write;
-#+//        let mut stderr = std::io::stderr();
-#+//        for warn in warnings {
-#+//            writeln!(stderr, "{}", warn)?;
-#+//        }
-#+//        bail!("Unused manifest keys detected, failing early to avoid any possible future issues like the package= one using earlier rust like explained in https://github.com/rust-lang/rust/security/advisories/GHSA-phjm-8x66-qw4r");
-#+//    };
-#+//    return Ok(());
-# }
-# 
-# fn inheritable_from_path(
-Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/core/workspace.rs
+Index: /var/tmp/portage/dev-lang/rust-1.79.0/work/rustc-1.79.0-src/src/tools/cargo/src/cargo/core/compiler/job_queue/mod.rs
 ===================================================================
---- .orig/var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/core/workspace.rs
-+++ rustc-1.75.0-src/src/tools/cargo/src/cargo/core/workspace.rs
-#@@ -1098,12 +1098,16 @@ impl<'cfg> Workspace<'cfg> {
-#     }
-# 
-#     pub fn emit_warnings(&self) -> CargoResult<()> {
-#+        let mut seen_any_warnings=false;
-#         for (path, maybe_pkg) in &self.packages.packages {
-#             let warnings = match maybe_pkg {
-#                 MaybePackage::Package(pkg) => pkg.manifest().warnings().warnings(),
-#                 MaybePackage::Virtual(vm) => vm.warnings().warnings(),
-#             };
-#             let path = path.join("Cargo.toml");
-#+            if !seen_any_warnings && !warnings.is_empty() {
-#+                seen_any_warnings=true;
-#+            }
-#             for warning in warnings {
-#                 if warning.is_critical {
-#                     let err = anyhow::format_err!("{}", warning.message);
-#WELL the following hunk gets applied to the wrong function (validate_manifest instead of emit_warnings) in rust 1.79.0 but not in 1.78.0 (or earlier, guessing)
-@@ -1122,6 +1126,10 @@ impl<'cfg> Workspace<'cfg> {
-                 }
-             }
-         }
-+        if seen_any_warnings {
-+            //use anyhow::bail;
-+            bail!("Compilation failed due to cargo warnings! Manually done this(via cargo patch) so that things like the following (ie. dep key packages= and using rust pre 1.26.0 which ignores it, downloads squatted package) will be avoided in the future: https://github.com/rust-lang/rust/security/advisories/GHSA-phjm-8x66-qw4r");
-+        }
-         Ok(())
-     }
- 
-Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/ops/resolve.rs
-===================================================================
---- .orig/var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/ops/resolve.rs
-+++ rustc-1.75.0-src/src/tools/cargo/src/cargo/ops/resolve.rs
-@@ -814,6 +814,7 @@ fn emit_warnings_of_unused_patches(
-     resolve: &Resolve,
-     registry: &PackageRegistry<'_>,
- ) -> CargoResult<()> {
-+    let mut seen_any_warnings=false;
-     const MESSAGE: &str = "was not used in the crate graph.";
- 
-     // Patch package with the source URLs being patch
-@@ -868,6 +872,9 @@ fn emit_warnings_of_unused_patches(
- 
-     // Show general help message.
-     if !unemitted_unused_patches.is_empty() {
-+        if !seen_any_warnings {
-+            seen_any_warnings=true;
-+        }
-         let warnings: Vec<_> = unemitted_unused_patches
-             .iter()
-             .map(|pkgid| format!("Patch `{}` {}", pkgid, MESSAGE))
-@@ -877,5 +884,9 @@ fn emit_warnings_of_unused_patches(
-             .warn(format!("{}\n{}", warnings.join("\n"), UNUSED_PATCH_WARNING))?;
-     }
- 
-+    if seen_any_warnings {
-+        use anyhow::bail;
-+        bail!("Compilation failed due to cargo [patch] warnings(above)! Manually done this(via cargo patch) so that things like the following (ie. dep key packages= and using rust pre 1.26.0 which ignores it, downloads squatted package) will be avoided in the future: https://github.com/rust-lang/rust/security/advisories/GHSA-phjm-8x66-qw4r");
-+    }
-     return Ok(());
- }
-Index: /var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/src/tools/cargo/src/cargo/ops/resolve.rs
-===================================================================
---- .orig/var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/src/tools/cargo/src/cargo/ops/resolve.rs
-+++ rustc-1.78.0-src/src/tools/cargo/src/cargo/ops/resolve.rs
-@@ -858,6 +858,9 @@ fn emit_warnings_of_unused_patches(
-                     write!(msg, "\n    {}", id.display_registry_name())?;
-                 }
-                 ws.gctx().shell().warn(msg)?;
-+                if !seen_any_warnings {
-+                    seen_any_warnings=true;
-+                }
-             }
-             _ => unemitted_unused_patches.push(unused),
-         }
-Index: /var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/core/compiler/job_queue/mod.rs
-===================================================================
---- .orig/var/tmp/portage/dev-lang/rust-1.75.0-r1/work/rustc-1.75.0-src/src/tools/cargo/src/cargo/core/compiler/job_queue/mod.rs
-+++ rustc-1.75.0-src/src/tools/cargo/src/cargo/core/compiler/job_queue/mod.rs
-@@ -962,8 +962,52 @@ impl<'cfg> DrainState<'cfg> {
+--- .orig/var/tmp/portage/dev-lang/rust-1.79.0/work/rustc-1.79.0-src/src/tools/cargo/src/cargo/core/compiler/job_queue/mod.rs
++++ rustc-1.79.0-src/src/tools/cargo/src/cargo/core/compiler/job_queue/mod.rs
+@@ -990,8 +990,51 @@ impl<'gctx> DrainState<'gctx> {
                      // Output an empty line.
-                     writeln!(bcx.config.shell().err())?;
+                     writeln!(bcx.gctx.shell().err())?;
                  }
 -            }
 -        }
-+                //TODO: do this for the other 3 places(seen in patch) too, with their own env.vars!
 +                let env_name="CARGO_DONT_ERR_ON_CARGO_WARNINGS_MADE_DURING_CARGO_JOBS";
 +                // XXX: if it's set to anything other than '0' or 'off' or 'disabled' etc.,
 +                // then it's on/enabled aka it doesn't err on warnings!
@@ -329,7 +184,7 @@ Index: /var/tmp/portage/dev-lang/rust-1.79.0/work/rustc-1.79.0-src/src/tools/car
 ===================================================================
 --- .orig/var/tmp/portage/dev-lang/rust-1.79.0/work/rustc-1.79.0-src/src/tools/cargo/src/cargo/core/workspace.rs
 +++ rustc-1.79.0-src/src/tools/cargo/src/cargo/core/workspace.rs
-@@ -1158,6 +1158,7 @@ impl<'gctx> Workspace<'gctx> {
+@@ -1154,6 +1154,7 @@ impl<'gctx> Workspace<'gctx> {
      }
  
      pub fn emit_warnings(&self) -> CargoResult<()> {
@@ -337,7 +192,7 @@ Index: /var/tmp/portage/dev-lang/rust-1.79.0/work/rustc-1.79.0-src/src/tools/car
          for (path, maybe_pkg) in &self.packages.packages {
              let path = path.join("Cargo.toml");
              if let MaybePackage::Package(pkg) = maybe_pkg {
-@@ -1169,6 +1170,9 @@ impl<'gctx> Workspace<'gctx> {
+@@ -1165,6 +1166,9 @@ impl<'gctx> Workspace<'gctx> {
                  MaybePackage::Package(pkg) => pkg.manifest().warnings().warnings(),
                  MaybePackage::Virtual(vm) => vm.warnings().warnings(),
              };
@@ -347,3 +202,126 @@ Index: /var/tmp/portage/dev-lang/rust-1.79.0/work/rustc-1.79.0-src/src/tools/car
              for warning in warnings {
                  if warning.is_critical {
                      let err = anyhow::format_err!("{}", warning.message);
+@@ -1180,11 +1184,45 @@ impl<'gctx> Workspace<'gctx> {
+                         format!("{}: {}", path.display(), warning.message)
+                     };
+                     self.gctx.shell().warn(msg)?
+-                }
+-            }
+-        }
++                };
++            };
++        };
++        if seen_any_warnings {
++            let env_name="CARGO_DONT_ERR_ON_CARGO_WARNINGS_MADE_INSIDE_WORKSPACE_RS";
++            // XXX: if it's set to anything other than '0' or 'off' or 'disabled' etc.,
++            // then it's on/enabled aka it doesn't err on warnings!
++            // Sometimes it's set and you can't unset it, but you can set it to something
++            // so we must allow setting it to something to disable it.
++            // So if it's unset or set to '0' etc., then it's off aka it does err on warnings
++            // (ie. by default it does)
++            use std::env;
++            const C_DISABLED_VALUES: [&str; 6] = ["0", "off", "no", "disabled", "err", "error"];
++            static DISABLED_VALUES_REF: &[&str] = &C_DISABLED_VALUES;
++            let env_val:String=env::var(env_name).unwrap_or(String::from(C_DISABLED_VALUES[0]));//get value if it's set, or if unset, set it to the first disabled value; FIXME: maybe we shouldn't make new 'off' string!
++            let should_err:bool=
++                if env_val.is_empty() {
++                    //env var is set to empty string? then don't err on warnings
++                    false
++                } else { //not empty env.var
++                    let env_val=env_val.to_lowercase(); //TODO: shadowed rather than mut, which is better ?!
++                    if DISABLED_VALUES_REF.iter().any(|v| v == &env_val) {
++                        // if it's set to any of the disabled values, then it's like it's unset aka
++                        // do err on warnings!
++                        true
++                    } else {
++                        // but if it's set to anything else like '1' or 'randomstring' then it's
++                        // set to on aka do NOT err on warnings!
++                        false
++                    }
++                };
++            if should_err {
++                let values_str = DISABLED_VALUES_REF.iter().map(|v| format!("\"{}\"", v)).collect::<Vec<String>>().join(", ");
++                use anyhow::bail;//not needed here, but futureproofing it.
++                bail!("Compilation failed due to the above cargo warnings! Manually done this(via cargo patch) so that things like the following (ie. dep key packages= and using rust pre 1.26.0 which ignores it, downloads squatted package) will be avoided in the future: https://github.com/rust-lang/rust/security/advisories/GHSA-phjm-8x66-qw4r You can prevent this error from exiting by having env var '{}' set to any value except any of the following(case insensitive) values(which make it act as if it's unset aka it will err on warnings): {}", env_name, values_str);
++            };
++        };
+         Ok(())
+-    }
++    } // emit_warnings fn
+ 
+     pub fn emit_lints(&self, pkg: &Package, path: &Path) -> CargoResult<()> {
+         let mut error_count = 0;
+Index: /var/tmp/portage/dev-lang/rust-1.79.0/work/rustc-1.79.0-src/src/tools/cargo/src/cargo/ops/resolve.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.79.0/work/rustc-1.79.0-src/src/tools/cargo/src/cargo/ops/resolve.rs
++++ rustc-1.79.0-src/src/tools/cargo/src/cargo/ops/resolve.rs
+@@ -727,6 +727,7 @@ fn emit_warnings_of_unused_patches(
+     resolve: &Resolve,
+     registry: &PackageRegistry<'_>,
+ ) -> CargoResult<()> {
++    let mut seen_any_warnings=false;
+     const MESSAGE: &str = "was not used in the crate graph.";
+ 
+     // Patch package with the source URLs being patch
+@@ -774,6 +775,9 @@ fn emit_warnings_of_unused_patches(
+                     write!(msg, "\n    {}", id.display_registry_name())?;
+                 }
+                 ws.gctx().shell().warn(msg)?;
++                if !seen_any_warnings {
++                    seen_any_warnings=true;
++                }
+             }
+             _ => unemitted_unused_patches.push(unused),
+         }
+@@ -781,6 +785,9 @@ fn emit_warnings_of_unused_patches(
+ 
+     // Show general help message.
+     if !unemitted_unused_patches.is_empty() {
++        if !seen_any_warnings {
++            seen_any_warnings=true;
++        }
+         let warnings: Vec<_> = unemitted_unused_patches
+             .iter()
+             .map(|pkgid| format!("Patch `{}` {}", pkgid, MESSAGE))
+@@ -790,6 +797,40 @@ fn emit_warnings_of_unused_patches(
+             .warn(format!("{}\n{}", warnings.join("\n"), UNUSED_PATCH_WARNING))?;
+     }
+ 
++    if seen_any_warnings {
++            let env_name="CARGO_DONT_ERR_ON_CARGO_WARNINGS_MADE_INSIDE_RESOLVE_RS";
++            // XXX: if it's set to anything other than '0' or 'off' or 'disabled' etc.,
++            // then it's on/enabled aka it doesn't err on warnings!
++            // Sometimes it's set and you can't unset it, but you can set it to something
++            // so we must allow setting it to something to disable it.
++            // So if it's unset or set to '0' etc., then it's off aka it does err on warnings
++            // (ie. by default it does)
++            use std::env;
++            const C_DISABLED_VALUES: [&str; 6] = ["0", "off", "no", "disabled", "err", "error"];
++            static DISABLED_VALUES_REF: &[&str] = &C_DISABLED_VALUES;
++            let env_val:String=env::var(env_name).unwrap_or(String::from(C_DISABLED_VALUES[0]));//get value if it's set, or if unset, set it to the first disabled value; FIXME: maybe we shouldn't make new 'off' string!
++            let should_err:bool=
++                if env_val.is_empty() {
++                    //env var is set to empty string? then don't err on warnings
++                    false
++                } else { //not empty env.var
++                    let env_val=env_val.to_lowercase(); //TODO: shadowed rather than mut, which is better ?!
++                    if DISABLED_VALUES_REF.iter().any(|v| v == &env_val) {
++                        // if it's set to any of the disabled values, then it's like it's unset aka
++                        // do err on warnings!
++                        true
++                    } else {
++                        // but if it's set to anything else like '1' or 'randomstring' then it's
++                        // set to on aka do NOT err on warnings!
++                        false
++                    }
++                };
++            if should_err {
++                let values_str = DISABLED_VALUES_REF.iter().map(|v| format!("\"{}\"", v)).collect::<Vec<String>>().join(", ");
++                use anyhow::bail;//not needed here, but futureproofing it.
++                bail!("Compilation failed due to cargo [patch] warnings(above)! Manually done this(via cargo patch) so that things like the following (ie. dep key packages= and using rust pre 1.26.0 which ignores it, downloads squatted package) will be avoided in the future: https://github.com/rust-lang/rust/security/advisories/GHSA-phjm-8x66-qw4r You can prevent this error from exiting by having env var '{}' set to any value except any of the following(case insensitive) values(which make it act as if it's unset aka it will err on warnings): {}", env_name, values_str);
++            };
++    };
+     return Ok(());
+ }
+ 
