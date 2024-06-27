@@ -1,0 +1,25 @@
+Index: /var/tmp/portage/dev-lang/rust-1.79.0/work/rustc-1.79.0-src/compiler/rustc_hir_typeck/src/expr.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.79.0/work/rustc-1.79.0-src/compiler/rustc_hir_typeck/src/expr.rs
++++ rustc-1.79.0-src/compiler/rustc_hir_typeck/src/expr.rs
+@@ -2310,12 +2310,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+ 
+     fn name_series_display(&self, names: Vec<Symbol>) -> String {
+         // dynamic limit, to never omit just one field
+-        let limit = if names.len() == 6 { 6 } else { 5 };
+-        let mut display =
+-            names.iter().take(limit).map(|n| format!("`{n}`")).collect::<Vec<_>>().join(", ");
+-        if names.len() > limit {
+-            display = format!("{} ... and {} others", display, names.len() - limit);
+-        }
++        //let limit = if names.len() == 6 { 6 } else { 5 };
++        let display =
++            names.iter()
++            //.take(limit)
++            .map(|n| format!("`{n}`")).collect::<Vec<_>>().join(", ");
++        //if names.len() > limit {
++        //    display = format!("{} ... and {} others", display, names.len() - limit);
++        //}
+         display
+     }
+ 
