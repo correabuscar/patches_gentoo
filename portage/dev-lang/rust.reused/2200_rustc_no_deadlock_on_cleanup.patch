@@ -5,6 +5,11 @@ it only prints ANYTHING is env. var RUSTC_DONT_DEADLOCK_ON_CLEANUP_VERBOSE is se
 
 see example in /home/user/sandbox/rust/05_sandbox/global_allocator/deadlock_on_cleanup
 
+with USE="-llvm_targets_ARM -llvm_targets_AArch64 -llvm_targets_WebAssembly -wasm" as opposed to them enabled all,
+I get:
+error: unexpected `cfg` condition value: `solid`
+therefore I've to remove it from this patch too ;p
+
 Index: /var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/src/io/stdio.rs
 ===================================================================
 --- .orig/var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/src/io/stdio.rs
@@ -15,7 +20,7 @@ Index: /var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/s
  pub fn cleanup() {
 +    let verbose:bool;
 +    //#[cfg(all(not(target_arch="wasm32"),any(unix, windows, target_os = "fuchsia", target_os = "vxworks", target_os = "wasi", target_os = "solid")))]
-+    #[cfg(any(unix, windows, target_os = "fuchsia", target_os = "vxworks", target_os = "wasi", target_os = "solid"))]
++    #[cfg(any(unix, windows, target_os = "fuchsia", target_os = "vxworks", target_os = "wasi"))]
 +    {
 +    //if cfg!(all(not(target_arch="wasm32"),any(unix, windows, target_os = "fuchsia", target_os = "vxworks", target_os = "wasi", target_os = "solid"))) {
 +        const ENV_RUSTC_DONT_DEADLOCK_ON_CLEANUP_VERBOSE_STR : &str = concat!("RUSTC_DONT_DEADLOCK_ON_CLEANUP_VERBOSE","\0");
@@ -63,7 +68,7 @@ Index: /var/tmp/portage/dev-lang/rust-1.78.0/work/rustc-1.78.0-src/library/std/s
 +            //eprintln!("after env read");
 +        }
 +    } //else:
-+    #[cfg(not(any(unix, windows, target_os = "fuchsia", target_os = "vxworks", target_os = "wasi", target_os = "solid")))]
++    #[cfg(not(any(unix, windows, target_os = "fuchsia", target_os = "vxworks", target_os = "wasi")))]
 +    {
 +        // like target wasm32-unknown-unknown which is apparently: target_arch, target_os, target_env
 +        verbose = false;
