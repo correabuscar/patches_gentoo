@@ -1,0 +1,62 @@
+Index: /var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.c
+===================================================================
+--- .orig/var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.c
++++ diffutils-3.10/src/diff.c
+@@ -147,6 +147,7 @@ enum
+   COLOR_OPTION,
+   COLOR_PALETTE_OPTION,
+   SHOW_FILENAMES_ON_STDERR,
++  SHOW_UNIFIED_ARG_VALUE,
+ 
+   NO_DIRECTORY_OPTION,
+   PRESUME_OUTPUT_TTY_OPTION,
+@@ -229,6 +230,7 @@ static struct option const longopts[] =
+   {"version", 0, 0, 'v'},
+   {"width", 1, 0, 'W'},
+   {"show-filenames-on-stderr", 0, 0, SHOW_FILENAMES_ON_STDERR},
++  {"show-unified-arg-value", 0, 0, SHOW_UNIFIED_ARG_VALUE},
+ 
+   /* This is solely for diff3.  Do not document.  */
+   {"-no-directory", no_argument, nullptr, NO_DIRECTORY_OPTION},
+@@ -312,6 +314,7 @@ main (int argc, char **argv)
+   excluded = new_exclude ();
+   presume_output_tty = false;
+   show_filenames_on_stderr = false;
++  show_unified_arg_value = false;
+   xstdopen ();
+ 
+   /* Decode the options.  */
+@@ -705,6 +708,9 @@ main (int argc, char **argv)
+         case SHOW_FILENAMES_ON_STDERR:
+           show_filenames_on_stderr = true;
+           break;
++        case SHOW_UNIFIED_ARG_VALUE:
++          show_unified_arg_value = true;
++          break;
+ 
+         case NO_DIRECTORY_OPTION:
+           no_directory = true;
+@@ -834,7 +840,10 @@ main (int argc, char **argv)
+           | (ignore_regexp_list.regexps || ignore_white_space)));
+ 
+   switch_string = option_list (argv + 1, optind - 1);
+-
++  if (show_unified_arg_value) {
++    // src/system.h:131:#define pI "t"
++    fprintf (stderr,"diff: the value of the --unified arg is:\n%"pI"d\n", context);
++  }
+   if (from_file)
+     {
+       if (to_file)
+Index: /var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.h
+===================================================================
+--- .orig/var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.h
++++ diffutils-3.10/src/diff.h
+@@ -159,6 +159,7 @@ XTERN bool ignore_case;
+ XTERN bool ignore_file_name_case;
+ 
+ XTERN bool show_filenames_on_stderr;
++XTERN bool show_unified_arg_value;
+ 
+ /* Act on symbolic links themselves rather than on their target
+    (--no-dereference).  */
