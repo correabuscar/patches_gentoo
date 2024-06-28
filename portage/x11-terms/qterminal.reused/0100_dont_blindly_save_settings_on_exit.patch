@@ -1,0 +1,33 @@
+why not? https://github.com/lxqt/qterminal/issues/642#issuecomment-2196539940
+WARNING: this patch ignores the settings and assumes they're false:
+SavePosOnExit=false
+SaveSizeOnExit=false
+thus not saving pos/size on exit!
+
+if you need any changes saved, just open Preferences and click Ok, they're insta-saved even if you modified none!
+in file /home/user/.config/qterminal.org/qterminal.ini
+
+diff --git a/src/mainwindow.cpp b/src/mainwindow.cpp
+index 8c544a3..af86a85 100644
+--- a/src/mainwindow.cpp
++++ b/src/mainwindow.cpp
+@@ -633,7 +633,8 @@ void MainWindow::closeEvent(QCloseEvent *ev)
+             Properties::Instance()->windowMaximized = isMaximized();
+             Properties::Instance()->mainWindowState = saveState();
+         }
+-        Properties::Instance()->saveSettings();
++        qDebug() << "qterminal: Not saving settings on quit (done by patch)(1) because it would overwrite any changes made in Preferences of any other running qterminal instance!";
++        //Properties::Instance()->saveSettings();
+         for (int i = consoleTabulator->count(); i > 0; --i) {
+             consoleTabulator->removeTab(i - 1);
+         }
+@@ -667,7 +668,8 @@ void MainWindow::closeEvent(QCloseEvent *ev)
+         Properties::Instance()->mainWindowState = saveState();
+         Properties::Instance()->askOnExit = !dontAskCheck->isChecked();
+         Properties::Instance()->windowMaximized = isMaximized();
+-        Properties::Instance()->saveSettings();
++        qDebug() << "qterminal: Not saving settings on quit (done by patch)(2) because it would overwrite any changes made in Preferences of any other running qterminal instance!";
++        //Properties::Instance()->saveSettings();
+         for (int i = consoleTabulator->count(); i > 0; --i) {
+             consoleTabulator->removeTab(i - 1);
+         }
