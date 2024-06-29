@@ -1,0 +1,171 @@
+Index: /var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.c
+===================================================================
+--- .orig/var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.c
++++ diffutils-3.10/src/diff.c
+@@ -148,6 +148,7 @@ enum
+   COLOR_PALETTE_OPTION,
+   SHOW_FILENAMES_ON_STDERR,
+   SHOW_UNIFIED_ARG_VALUE,
++  OVERRIDE_CONTEXT_LINES,
+ 
+   NO_DIRECTORY_OPTION,
+   PRESUME_OUTPUT_TTY_OPTION,
+@@ -231,6 +231,7 @@ static struct option const longopts[] =
+   {"width", 1, 0, 'W'},
+   {"show-filenames-on-stderr", 0, 0, SHOW_FILENAMES_ON_STDERR},
+   {"show-unified-arg-value", 0, 0, SHOW_UNIFIED_ARG_VALUE},
++  {"override-context-lines", 1, 0, OVERRIDE_CONTEXT_LINES},
+ 
+   /* This is solely for diff3.  Do not document.  */
+   {"-no-directory", no_argument, nullptr, NO_DIRECTORY_OPTION},
+@@ -315,6 +316,7 @@ main (int argc, char **argv)
+   presume_output_tty = false;
+   show_filenames_on_stderr = false;
+   show_unified_arg_value = false;
++  has_overriding_context_length = false;
+   xstdopen ();
+ 
+   /* Decode the options.  */
+@@ -365,6 +367,7 @@ main (int argc, char **argv)
+         case 'C':
+         case 'U':
+           {
++            //nvmXXX: ah nvm it works//unclear how to get 'optarg' to ever be false here, so that 'else' branch seems to never hit! because -U NUM, that NUM is always required even if "" it's still there! and if -U is last arg, then u get: "diff: option requires an argument -- 'U'"; ah I see it's via --unified without the optional =NUM suffix! because "       -u, -U NUM, --unified[=NUM]"
+             if (optarg)
+               {
+                 numval = strtoimax (optarg, &numend, 10);
+@@ -372,21 +376,37 @@ main (int argc, char **argv)
+                   try_help ("invalid context length '%s'", optarg);
+                 if (CONTEXT_MAX < numval)
+                   numval = CONTEXT_MAX;
++                if (has_overriding_context_length) {
++                  fprintf (stderr,"diff: ignoring a normal attempt to set context length to %"pI"d lines (via -U NUM) due to a previous --override-context-lines=%"pI"d\n", numval, context);
++                  specify_style (c == 'U' ? OUTPUT_UNIFIED : OUTPUT_CONTEXT);
++                  explicit_context = true;
++                  break;
++                }
+               }
+             else
+               numval = 3;
+ 
+             specify_style (c == 'U' ? OUTPUT_UNIFIED : OUTPUT_CONTEXT);
+-            if (context < numval)
+-              context = numval;
+             explicit_context = true;
++            if (context < numval) {
++              if (has_overriding_context_length) {
++                fprintf (stderr,"diff: ignoring a defaulting attempt to set context length to %"pI"d lines (via --unified without an =NUM)due to a previous --override-context-lines=%"pI"d\n", numval, context);
++                break;
++              }
++              context = numval;
++            }
+           }
+           break;
+ 
+         case 'c':
+           specify_style (OUTPUT_CONTEXT);
+-          if (context < 3)
++          if (context < 3) {
++            if (has_overriding_context_length) {
++              fprintf (stderr,"diff: ignoring a defaulting attempt to set context length to %"pI"d lines (via a lone -c arg) due to a previous --override-context-lines=%"pI"d\n", numval, context);
++              break;
++            }
+             context = 3;
++          }
+           break;
+ 
+         case 'd':
+@@ -552,8 +569,13 @@ main (int argc, char **argv)
+ 
+         case 'u':
+           specify_style (OUTPUT_UNIFIED);
+-          if (context < 3)
++          if (context < 3) {
++            if (has_overriding_context_length) {
++              fprintf (stderr,"diff: ignoring a defaulting attempt to set context length to %"pI"d lines (via a lone -c arg) due to a previous --override-context-lines=%"pI"d\n", numval, context);
++              break;
++            }
+             context = 3;
++          }
+           break;
+ 
+         case 'v':
+@@ -711,6 +736,34 @@ main (int argc, char **argv)
+         case SHOW_UNIFIED_ARG_VALUE:
+           show_unified_arg_value = true;
+           break;
++        case OVERRIDE_CONTEXT_LINES:
++          if (!optarg)
++          {
++            try_help ("unspecified context length, try --override-context-lines=NUM", nullptr);
++          }
++          numval = strtoimax (optarg, &numend, 10);
++          if (*numend || numval < 0)
++            try_help ("invalid context length '%s'", optarg);
++          if (CONTEXT_MAX < numval) {
++            fprintf (stderr,"context length '%s' is too high, CONTEXT_MAX is '%"pI"d'\n", optarg, CONTEXT_MAX);
++            try_help (nullptr, nullptr);
++          }
++
++          if (has_overriding_context_length) {
++            //XXX: trying to use --override-context-lines=NUM more than once? only the first is accepted!
++            fprintf (stderr,"diff: The extra encountered --override-context-lines=%"pI"d will be ignored, only the first overriding --override-context-lines=%"pI"d is considered!\n", numval, context);
++            break;
++          }
++          //specify_style (OUTPUT_UNIFIED); //actually this may be -C or -U, allowing either!
++          //if (context < numval)
++            context = numval;
++          if (explicit_context) {
++            fprintf (stderr,"diff: actively overriding any --unified arg(s) due to --override-context-lines=%"pI"d\n", context);
++          } else {
++            explicit_context = true;
++          }
++          has_overriding_context_length = true;
++          break;
+ 
+         case NO_DIRECTORY_OPTION:
+           no_directory = true;
+@@ -738,8 +791,13 @@ main (int argc, char **argv)
+       if (show_c_function)
+         {
+           specify_style (OUTPUT_CONTEXT);
+-          if (ocontext < 0)
+-            context = 3;
++          if (ocontext < 0) {
++            if (has_overriding_context_length) {
++              fprintf (stderr,"diff: ignoring a defaulting attempt to set context length to %"pI"d lines (via not having specified either -c or -u args) due to a previous --override-context-lines=%"pI"d\n", 3, context);
++            } else {
++              context = 3;
++            }
++          }
+         }
+       else
+         specify_style (OUTPUT_NORMAL);
+@@ -767,8 +825,13 @@ main (int argc, char **argv)
+       && (output_style == OUTPUT_CONTEXT
+           || output_style == OUTPUT_UNIFIED)
+       && (context < ocontext
+-          || (ocontext < context && ! explicit_context)))
+-    context = ocontext;
++          || (ocontext < context && ! explicit_context))) {
++    if (has_overriding_context_length) {
++      fprintf (stderr,"diff: ignoring a defaulting attempt to set context length to %"pI"d lines (via -NUM arg(s)) due to a previous --override-context-lines=%"pI"d\n", ocontext, context);
++    } else {
++      context = ocontext;
++    }
++  }
+ 
+   if (! tabsize)
+     tabsize = 8;
+Index: /var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.h
+===================================================================
+--- .orig/var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.h
++++ diffutils-3.10/src/diff.h
+@@ -160,6 +160,7 @@ XTERN bool ignore_file_name_case;
+ 
+ XTERN bool show_filenames_on_stderr;
+ XTERN bool show_unified_arg_value;
++XTERN bool has_overriding_context_length;
+ 
+ /* Act on symbolic links themselves rather than on their target
+    (--no-dereference).  */

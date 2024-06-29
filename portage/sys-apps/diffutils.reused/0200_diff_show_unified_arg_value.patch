@@ -1,3 +1,7 @@
+FIXME: technically this is the value of the context length aka context lines
+even if --unified wasn't used, so -c or -C NUM or --context or --context=NUM was used!
+so, fix by renaming and stuff, but doing this, messes up the next patch because it has these changes as context
+
 Index: /var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.c
 ===================================================================
 --- .orig/var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.c
