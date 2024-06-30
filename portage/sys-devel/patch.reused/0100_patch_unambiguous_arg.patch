@@ -1,3 +1,8 @@
+adds --ambiguous and --unambiguous args
+assumes the latter is the default, if unspecified
+
+they don't do anything at the moment though!
+
 Index: /var/tmp/portage/sys-devel/patch-2.7.6-r5/work/patch-2.7.6/src/common.h
 ===================================================================
 --- .orig/var/tmp/portage/sys-devel/patch-2.7.6-r5/work/patch-2.7.6/src/common.h
@@ -6,7 +11,7 @@ Index: /var/tmp/portage/sys-devel/patch-2.7.6-r5/work/patch-2.7.6/src/common.h
  XTERN bool set_time;
  XTERN bool set_utc;
  XTERN bool follow_symlinks;
-+XTERN bool unambiguous;
++XTERN bool ambiguous;
  
  enum diff
    {
@@ -14,28 +19,44 @@ Index: /var/tmp/portage/sys-devel/patch-2.7.6-r5/work/patch-2.7.6/src/patch.c
 ===================================================================
 --- .orig/var/tmp/portage/sys-devel/patch-2.7.6-r5/work/patch-2.7.6/src/patch.c
 +++ patch-2.7.6/src/patch.c
-@@ -770,6 +770,7 @@ static struct option const longopts[] =
+@@ -725,6 +725,11 @@ static char const shortopts[] = "bB:cd:D
+ #endif
+ 				"nNo:p:r:RstTuvV:x:Y:z:Z";
+ 
++enum
++{
++  UNAMBIGUOUS_OPTION = CHAR_MAX + 12,
++  AMBIGUOUS_OPTION,
++};
+ static struct option const longopts[] =
+ {
+   {"backup", no_argument, NULL, 'b'},
+@@ -770,6 +775,8 @@ static struct option const longopts[] =
    {"reject-format", required_argument, NULL, CHAR_MAX + 9},
    {"read-only", required_argument, NULL, CHAR_MAX + 10},
    {"follow-symlinks", no_argument, NULL, CHAR_MAX + 11},
-+  {"unambiguous", no_argument, NULL, CHAR_MAX + 12},
++  {"unambiguous", no_argument, NULL, UNAMBIGUOUS_OPTION},
++  {"ambiguous", no_argument, NULL, AMBIGUOUS_OPTION},
    {NULL, no_argument, NULL, 0}
  };
  
-@@ -872,6 +873,7 @@ static void
+@@ -872,6 +879,7 @@ static void
  get_some_switches (void)
  {
      int optc;
-+    unambiguous = false; // like I'm gonna rely on the default value being false ;p in common.h
++    ambiguous = false; // assuming --unambiguous by default!
  
      free (rejname);
      rejname = 0;
-@@ -1064,6 +1066,9 @@ get_some_switches (void)
+@@ -1064,6 +1072,12 @@ get_some_switches (void)
  	    case CHAR_MAX + 11:
  		follow_symlinks = true;
  		break;
-+	    case CHAR_MAX + 12:
-+		unambiguous = true;
++            case UNAMBIGUOUS_OPTION:
++		ambiguous = false;
++		break;
++            case AMBIGUOUS_OPTION:
++		ambiguous = true;
 +		break;
  	    default:
  		usage (stderr, 2);
