@@ -1,0 +1,45 @@
+diff --git a/src/propertiesdialog.cpp b/src/propertiesdialog.cpp
+index 0e86c75..2a6184d 100644
+--- a/src/propertiesdialog.cpp
++++ b/src/propertiesdialog.cpp
+@@ -368,7 +368,7 @@ void PropertiesDialog::apply()
+     Properties::Instance()->historyLimited = historyLimited->isChecked();
+     Properties::Instance()->historyLimitedTo = historyLimitedTo->value();
+ 
+-    saveShortcuts();
++    saveShortcuts(false);
+ 
+     Properties::Instance()->saveSettings();
+ 
+@@ -424,7 +424,7 @@ void PropertiesDialog::chooseBackgroundImageButton_clicked()
+         backgroundImageLineEdit->setText(filename);
+ }
+ 
+-void PropertiesDialog::saveShortcuts()
++void PropertiesDialog::saveShortcuts(bool to_disk)
+ {
+     QMap<QString, QAction*> actions = QTerminalApp::Instance()->getWindowList()[0]->leaseActions();
+     QList< QString > shortcutKeys = actions.keys();
+@@ -452,7 +452,8 @@ void PropertiesDialog::saveShortcuts()
+             shortcuts.append(QKeySequence(sequenceString, QKeySequence::NativeText));
+         keyAction->setShortcuts(shortcuts);
+     }
+-    Properties::Instance()->saveSettings();
++    if (to_disk)
++      Properties::Instance()->saveSettings();
+ }
+ 
+ void PropertiesDialog::setupShortcuts()
+diff --git a/src/propertiesdialog.h b/src/propertiesdialog.h
+index b1cc117..11d6e78 100644
+--- a/src/propertiesdialog.h
++++ b/src/propertiesdialog.h
+@@ -87,7 +87,7 @@ class PropertiesDialog : public QDialog, Ui::PropertiesDialog
+ 
+     protected:
+         void setupShortcuts();
+-        void saveShortcuts();
++        void saveShortcuts(bool);
+ };
+ 
+ 
