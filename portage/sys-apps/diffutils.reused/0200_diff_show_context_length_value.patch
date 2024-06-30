@@ -1,6 +1,5 @@
-FIXME: technically this is the value of the context length aka context lines
+this is the value of the context length aka context lines
 even if --unified wasn't used, so -c or -C NUM or --context or --context=NUM was used!
-so, fix by renaming and stuff, but doing this, messes up the next patch because it has these changes as context
 
 Index: /var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.c
 ===================================================================
@@ -10,7 +9,7 @@ Index: /var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.c
    COLOR_OPTION,
    COLOR_PALETTE_OPTION,
    SHOW_FILENAMES_ON_STDERR,
-+  SHOW_UNIFIED_ARG_VALUE,
++  SHOW_CONTEXT_LENGTH_VALUE,
  
    NO_DIRECTORY_OPTION,
    PRESUME_OUTPUT_TTY_OPTION,
@@ -18,7 +17,7 @@ Index: /var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.c
    {"version", 0, 0, 'v'},
    {"width", 1, 0, 'W'},
    {"show-filenames-on-stderr", 0, 0, SHOW_FILENAMES_ON_STDERR},
-+  {"show-unified-arg-value", 0, 0, SHOW_UNIFIED_ARG_VALUE},
++  {"show-context-length-value", 0, 0, SHOW_CONTEXT_LENGTH_VALUE},
  
    /* This is solely for diff3.  Do not document.  */
    {"-no-directory", no_argument, nullptr, NO_DIRECTORY_OPTION},
@@ -26,7 +25,7 @@ Index: /var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.c
    excluded = new_exclude ();
    presume_output_tty = false;
    show_filenames_on_stderr = false;
-+  show_unified_arg_value = false;
++  show_context_length_value = false;
    xstdopen ();
  
    /* Decode the options.  */
@@ -34,8 +33,8 @@ Index: /var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.c
          case SHOW_FILENAMES_ON_STDERR:
            show_filenames_on_stderr = true;
            break;
-+        case SHOW_UNIFIED_ARG_VALUE:
-+          show_unified_arg_value = true;
++        case SHOW_CONTEXT_LENGTH_VALUE:
++          show_context_length_value = true;
 +          break;
  
          case NO_DIRECTORY_OPTION:
@@ -45,9 +44,9 @@ Index: /var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.c
  
    switch_string = option_list (argv + 1, optind - 1);
 -
-+  if (show_unified_arg_value) {
++  if (show_context_length_value) {
 +    // src/system.h:131:#define pI "t"
-+    fprintf (stderr,"diff: the value of the --unified arg is:\n%"pI"d\n", context);
++    fprintf (stderr,"diff: the value of the context length aka lines is:\n%"pI"d\n", context);
 +  }
    if (from_file)
      {
@@ -60,7 +59,7 @@ Index: /var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.h
  XTERN bool ignore_file_name_case;
  
  XTERN bool show_filenames_on_stderr;
-+XTERN bool show_unified_arg_value;
++XTERN bool show_context_length_value;
  
  /* Act on symbolic links themselves rather than on their target
     (--no-dereference).  */

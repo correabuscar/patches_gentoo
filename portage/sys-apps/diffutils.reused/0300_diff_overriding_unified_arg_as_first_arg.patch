@@ -5,7 +5,7 @@ Index: /var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.c
 @@ -148,6 +148,7 @@ enum
    COLOR_PALETTE_OPTION,
    SHOW_FILENAMES_ON_STDERR,
-   SHOW_UNIFIED_ARG_VALUE,
+   SHOW_CONTEXT_LENGTH_VALUE,
 +  OVERRIDE_CONTEXT_LINES,
  
    NO_DIRECTORY_OPTION,
@@ -13,7 +13,7 @@ Index: /var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.c
 @@ -231,6 +231,7 @@ static struct option const longopts[] =
    {"width", 1, 0, 'W'},
    {"show-filenames-on-stderr", 0, 0, SHOW_FILENAMES_ON_STDERR},
-   {"show-unified-arg-value", 0, 0, SHOW_UNIFIED_ARG_VALUE},
+   {"show-context-length-value", 0, 0, SHOW_CONTEXT_LENGTH_VALUE},
 +  {"override-context-lines", 1, 0, OVERRIDE_CONTEXT_LINES},
  
    /* This is solely for diff3.  Do not document.  */
@@ -21,7 +21,7 @@ Index: /var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.c
 @@ -315,6 +316,7 @@ main (int argc, char **argv)
    presume_output_tty = false;
    show_filenames_on_stderr = false;
-   show_unified_arg_value = false;
+   show_context_length_value = false;
 +  has_overriding_context_length = false;
    xstdopen ();
  
@@ -91,8 +91,8 @@ Index: /var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.c
  
          case 'v':
 @@ -711,6 +736,34 @@ main (int argc, char **argv)
-         case SHOW_UNIFIED_ARG_VALUE:
-           show_unified_arg_value = true;
+         case SHOW_CONTEXT_LENGTH_VALUE:
+           show_context_length_value = true;
            break;
 +        case OVERRIDE_CONTEXT_LINES:
 +          if (!optarg)
@@ -116,7 +116,7 @@ Index: /var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.c
 +          //if (context < numval)
 +            context = numval;
 +          if (explicit_context) {
-+            fprintf (stderr,"diff: actively overriding any --unified arg(s) due to --override-context-lines=%"pI"d\n", context);
++            fprintf (stderr,"diff: actively overriding any context length(lines) due to --override-context-lines=%"pI"d\n", context);
 +          } else {
 +            explicit_context = true;
 +          }
@@ -164,7 +164,7 @@ Index: /var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.h
 @@ -160,6 +160,7 @@ XTERN bool ignore_file_name_case;
  
  XTERN bool show_filenames_on_stderr;
- XTERN bool show_unified_arg_value;
+ XTERN bool show_context_length_value;
 +XTERN bool has_overriding_context_length;
  
  /* Act on symbolic links themselves rather than on their target
