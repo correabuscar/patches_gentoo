@@ -1,0 +1,55 @@
+adds --ambiguous and --unambiguous args
+assumes the latter is the default, if unspecified
+
+they don't do anything at the moment though!
+Index: /var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.c
+===================================================================
+--- .orig/var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.c
++++ diffutils-3.10/src/diff.c
+@@ -148,6 +148,8 @@ enum
+ 
+   NO_DIRECTORY_OPTION,
+   PRESUME_OUTPUT_TTY_OPTION,
++  UNAMBIGUOUS_OPTION,
++  AMBIGUOUS_OPTION,
+ };
+ 
+ static char const group_format_option[][sizeof "--unchanged-group-format"] =
+@@ -232,6 +234,8 @@ static struct option const longopts[] =
+ 
+   /* This is solely for testing.  Do not document.  */
+   {"-presume-output-tty", no_argument, nullptr, PRESUME_OUTPUT_TTY_OPTION},
++  {"unambiguous", 0, 0, UNAMBIGUOUS_OPTION},
++  {"ambiguous", 0, 0, AMBIGUOUS_OPTION},
+   {0, 0, 0, 0}
+ };
+ 
+@@ -707,6 +711,14 @@ main (int argc, char **argv)
+           presume_output_tty = true;
+           break;
+ 
++        case UNAMBIGUOUS_OPTION:
++          ambiguous = false;
++          break;
++
++        case AMBIGUOUS_OPTION:
++          ambiguous = true;
++          break;
++
+         default:
+           try_help (nullptr, nullptr);
+         }
+Index: /var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.h
+===================================================================
+--- .orig/var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.h
++++ diffutils-3.10/src/diff.h
+@@ -222,6 +222,9 @@ XTERN bool left_column;
+ /* Tell OUTPUT_SDIFF to not show common lines.  */
+ XTERN bool suppress_common_lines;
+ 
++/* if true, acts like normal 'diff', if false, then each hunk alone, cannot be applied more than once in each original file even if context length had to be increased! */
++XTERN bool ambiguous;
++
+ /* The half line width and column 2 offset for OUTPUT_SDIFF.  */
+ XTERN size_t sdiff_half_width;
+ XTERN size_t sdiff_column2_offset;
