@@ -1,0 +1,42 @@
+Index: /var/tmp/portage/sys-devel/patch-2.7.6-r5/work/patch-2.7.6/src/common.h
+===================================================================
+--- .orig/var/tmp/portage/sys-devel/patch-2.7.6-r5/work/patch-2.7.6/src/common.h
++++ patch-2.7.6/src/common.h
+@@ -118,6 +118,7 @@ XTERN int patch_get;
+ XTERN bool set_time;
+ XTERN bool set_utc;
+ XTERN bool follow_symlinks;
++XTERN bool unambiguous;
+ 
+ enum diff
+   {
+Index: /var/tmp/portage/sys-devel/patch-2.7.6-r5/work/patch-2.7.6/src/patch.c
+===================================================================
+--- .orig/var/tmp/portage/sys-devel/patch-2.7.6-r5/work/patch-2.7.6/src/patch.c
++++ patch-2.7.6/src/patch.c
+@@ -770,6 +770,7 @@ static struct option const longopts[] =
+   {"reject-format", required_argument, NULL, CHAR_MAX + 9},
+   {"read-only", required_argument, NULL, CHAR_MAX + 10},
+   {"follow-symlinks", no_argument, NULL, CHAR_MAX + 11},
++  {"unambiguous", no_argument, NULL, CHAR_MAX + 12},
+   {NULL, no_argument, NULL, 0}
+ };
+ 
+@@ -872,6 +873,7 @@ static void
+ get_some_switches (void)
+ {
+     int optc;
++    unambiguous = false; // like I'm gonna rely on the default value being false ;p in common.h
+ 
+     free (rejname);
+     rejname = 0;
+@@ -1064,6 +1066,9 @@ get_some_switches (void)
+ 	    case CHAR_MAX + 11:
+ 		follow_symlinks = true;
+ 		break;
++	    case CHAR_MAX + 12:
++		unambiguous = true;
++		break;
+ 	    default:
+ 		usage (stderr, 2);
+ 	}
