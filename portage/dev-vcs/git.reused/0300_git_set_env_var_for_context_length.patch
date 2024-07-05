@@ -1,0 +1,158 @@
+patch for git version 2.45.2
+this changes a few things:
+* shows exit code when external diff program fails
+* allows both -UNUM and -uNUM in env.var. GIT_DIFF_OPTS, not only the latter
+  ofc. --unified=NUM is still allowed
+* passes GIT_DIFF_OPTS=--unified=NUM to external diff program, where NUM is the current context length that say 'git diff' uses, either due to 'git diff --unified=NUM' or due to default.
+  ofc, as before, if GIT_DIFF_OPTS is set when running 'git' then it means it's exported and thus remains set as it is, and overrides wtw cmd line was passed to 'git diff' so any eg. 'git diff -UNUM' is ignored in favor of the env. var. even if the env.var. didn't have any context set!(maybe FIXME? add context length to env.var. if not specified in env.var.)
+
+Index: /var/tmp/portage/dev-vcs/git-2.45.2/work/git-2.45.2/diff.c
+===================================================================
+--- .orig/var/tmp/portage/dev-vcs/git-2.45.2/work/git-2.45.2/diff.c
++++ git-2.45.2/diff.c
+@@ -3814,13 +3814,37 @@ static void builtin_diff(const char *nam
+ 		if (pe)
+ 			xdiff_set_find_func(&xecfg, pe->pattern, pe->cflags);
+ 
++		//(true)this whole block only executes when external diff isn't used, due to the function name here.
+ 		diffopts = getenv("GIT_DIFF_OPTS");
+-		if (!diffopts)
++		// "The getenv() function returns a pointer to the value in the environment, or NULL if there is no match." - man getenv
++		if (!diffopts) {
++			//if here, the env. var is NOT set! ie. diffopts is null
+ 			;
+-		else if (skip_prefix(diffopts, "--unified=", &v))
++		}
++		else if (skip_prefix(diffopts, "--unified=", &v)) {
++			// env. var. is set, but we only look at --unified=NUM
++			// which would overwrite any prev. such arg to 'git diff' command!
++			// storing the result of say "-21" into a long stores it as -21 aka negative! at some future point is capped to 0 though, if it were unsigned long here tho, it would be a huge number like 18446744073709551595
++			xecfg.ctxlen = strtoul(v, NULL, 10);
++		}
++		else if (skip_prefix(diffopts, "-u", &v)) {
++			// OR at --uNUM
++			// which would overwrite any prev. such arg to 'git diff' command! actually it only supports -UNUM but not -U NUM nor -uNUM nor -u NUM, so changing the above -uNUM to -UNUM in this patch would be in order however it's better to support both variants!
++			/*-U<n>, --unified=<n>
++			  Generate diffs with <n> lines of context instead of the usual three. Implies --patch. */
+ 			xecfg.ctxlen = strtoul(v, NULL, 10);
+-		else if (skip_prefix(diffopts, "-u", &v))
++		}
++		else if (skip_prefix(diffopts, "-U", &v)) {
++			//addition, to match the -UNUM arg to 'git diff'
+ 			xecfg.ctxlen = strtoul(v, NULL, 10);
++		} else {
++			die("the value for GIT_DIFF_OPTS=\"%s\" would've been ignored", diffopts);
++		}
++
++		// that xecfg.ctxlen is 'long' so it will hold negative values from the above strtoul() even though it returns 'unsigned long' !
++		if (xecfg.ctxlen < 0) {
++			die("context length shouldn't be less than 0 (it woulda been capped to 0 tho), it's '%ld'", xecfg.ctxlen);
++		}
+ 
+ 		if (o->word_diff)
+ 			init_diff_words_data(&ecbdata, o, one, two);
+@@ -4484,11 +4508,102 @@ static void run_external_diff(const char
+ 		     ++o->diff_path_counter);
+ 	strvec_pushf(&cmd.env, "GIT_DIFF_PATH_TOTAL=%d", q->nr);
+ 
++	//next we make sure the value of the unified context is passed to the external diff program via the GIT_DIFF_OPTS=--unified=NUM
++	//this can be set either via having GIT_DIFF_OPTS already set before calling 'git', or via 'git diff --unified=NUM' or via 'git diff -UNUM' (note that -uNUM,-U NUM,-u NUM are invalid, git version 2.45.2)
++	_Static_assert(sizeof(o->context) == sizeof(int), "expected o->context (diff.h:238) to be of type 'int'");
++	int context=o->context; //it's 'int' in diff.h:238 , git version 2.45.2
++	if (context < 0) {
++		//die("context length shouldn't be less than 0, it's '%ld'", xecfg.ctxlen);
++		die("context length shouldn't be less than 0, it's '%d'", context);
++	}
++	const char *diffopts;
++	//const char *v;
++	/* The  GNU-specific secure_getenv() function is just like getenv() except that it returns NULL in cases where "se‐
++	   cure execution" is required.  Secure execution is required if one of the following conditions was true when  the
++	   program run by the calling process was loaded:
++
++	   •  the  process’s  effective  user ID did not match its real user ID or the process’s effective group ID did not
++	   match its real group ID (typically this is the result of executing a set-user-ID or set-group-ID program);
++
++	   •  the effective capability bit was set on the executable file; or
++
++	   •  the process has a nonempty permitted capability set.
++
++	   Secure execution may also be required if triggered by some Linux security modules.
++
++	   The secure_getenv() function is intended for use in general-purpose  libraries  to  avoid  vulnerabilities  that
++	   could occur if set-user-ID or set-group-ID programs accidentally trusted the environment
++from: man 3 secure_getenv */
++	diffopts = secure_getenv("GIT_DIFF_OPTS");
++	// "The getenv() function returns a pointer to the value in the environment, or NULL if there is no match." - man getenv
++	if (NULL == diffopts) {
++		//if here, the env. var is NOT set! or it's set but running this as suid root discarded it!
++		const char * actual_env_var=getenv("GIT_DIFF_OPTS");
++		if (NULL != actual_env_var) {
++			fprintf(stderr, "WARNING: ignoring env.var. GIT_DIFF_OPTS=\"%s\" for security reasons(eg. running as suid root? see 'man 3 secure_getenv' for cases when this happens)\n",actual_env_var);
++		}
++		// that xecfg.ctxlen is 'long' and should be already set if 'git diff --unified=NUM' or 'git diff -uNUM' was called, or be a default of 3 if such arg(s) wasn't used.
++		//nahTODO: maybe only set the env.var. if context length is different than the default, but can't really know the default as it's quite likely set via diff.context gitconfig option rather than any constant from C files. So, for now, we unconditionally set this in the env.var.! probably for the best!
++		/* The maximum value of a long type in C depends on the platform and the architecture. On most platforms, especially those that follow the LP64 or ILP32 data models, the maximum values are as follows:
++
++		   ILP32 (32-bit systems):
++		   long is typically 32 bits.
++		   The maximum value of a long is 2147483647 (which is 2^31 - 1).
++		   This is a 10-digit number.
++
++		   LP64 (64-bit systems):
++		   long is typically 64 bits.
++		   The maximum value of a long is 9223372036854775807 (which is 2^63 - 1).
++		   This is a 19-digit number.
++
++		   Therefore, on a 64-bit system, you would need to accommodate a 19-digit number when converting a long to a string. To safely handle this conversion, a buffer size of 21 characters should be sufficient (19 digits + optional negative sign + null terminator). */
++		/* The maximum value of a signed 32-bit integer in base 10 (which is 2,147,483,6472,147,483,6472,147,483,647) does not depend on the platform because it's defined by the C standard (and similarly in other languages that specify integer sizes).
++
++In C and many other programming languages, the size of data types like int is standardized to ensure consistency across different platforms and compilers. For a signed 32-bit integer (int), it always ranges from −231-2^{31}−231 to 231−12^{31} - 1231−1, regardless of the underlying hardware or operating system.
++
++Therefore, the maximum number of characters needed to represent the maximum value of a signed 32-bit integer in base 10 (without considering sign or null terminator) is consistently 10 across all platforms and systems that adhere to the standard. This ensures portability and predictability in software development.*/
++		// Buffer to hold the string representation of ctxlen
++		char ctxlen_str[/*19*/10+1+1+10];  /* 19 digits(for long) or 10 digits(for int) + sign + null terminator + the string '--unified=' aka 10 */
++		// Convert ctxlen to a string using snprintf
++		//int ret=snprintf(ctxlen_str, sizeof(ctxlen_str), "--unified=%ld", xecfg.ctxlen);
++		int ret=snprintf(ctxlen_str, sizeof(ctxlen_str), "--unified=%d", context);
++		if (ret < 0 /*failed*/ || /*truncated*/ ret >= sizeof(ctxlen_str)) {
++			/* The functions snprintf() and vsnprintf() do not write more than size bytes (including the terminating null  byte
++			   ('\0')).   If the output was truncated due to this limit, then the return value is the number of characters (ex‐
++			   cluding the terminating null byte) which would have been written to the final string if enough  space  had  been
++			   available.   Thus,  a  return  value of size or more means that the output was truncated.  (See also below under
++			   CAVEATS.) */
++			// "The sizeof operator in C returns a value of type size_t, which is an unsigned integer type. The correct format specifier for size_t is %zu in printf-style functions. This ensures portability across different platforms." - chatgpt-4o
++			//die("unable to convert context length '%ld' into string to then set the GIT_DIFF_OPTS=\"--unified=NUM\" to it. Error from snprintf was '%d' (with a sizeof of '%zu') and string converted so far is '%s'.", xecfg.ctxlen, ret, sizeof(ctxlen_str), ctxlen_str);
++			die("unable to convert context length '%d' into string to then set the GIT_DIFF_OPTS=\"--unified=NUM\" to it. Error from snprintf was '%d' (with a sizeof of '%zu') and string converted so far is '%s'.", context, ret, sizeof(ctxlen_str), ctxlen_str);
++		}
++//		// int setenv(const char *name, const char *value, int overwrite);
++//		if (setenv("GIT_DIFF_OPTS", ctxlen_str, /*overwrite:*/0) != 0) {
++//			// "setenv() and unsetenv() functions return zero on success, or -1 on error, with errno set to indicate the error." - man 3 setenv
++//			// chose to NOT overwrite it here because, if we're here, that env. var. was definitely not set yet, ergo, nothing to overwrite; but if logic changes in the future, this would err here if overwriting is needed!
++//			// "If name does exist in the environment, then its value is changed to value if overwrite  is  nonzero;  if overwrite is zero, then the value of name is not changed (and setenv() returns a success status)." - man setenv
++//			// "Yes, perror will print the error message corresponding to the last error that occurred, which is stored in errno. If setenv fails, it returns -1 and sets errno to indicate the error. perror will use errno to print an appropriate error message." - chatgpt-4o
++//			// "Yes, you are correct. In C, errno is typically implemented as a thread-local variable to avoid concurrency issues. This means that each thread has its own instance of errno, ensuring that errors in one thread do not affect the error state in another thread." - chatgpt-4o
++//			//perror("setenv failed for GIT_DIFF_OPTS=\"%s\"", ctxlen_str); //won't work, takes only a single string, no args
++//			int errnum=errno; // Store the errno value, just in case errno is a macro or worse it clears itself after first call/use.
++//
++//			fprintf(stderr, "setenv failed for GIT_DIFF_OPTS=\"%s\", errno('%d'): '%s'\n", ctxlen_str, errnum, strerror(errnum));
++//			die("due to the above setenv error");
++//		}
++		strvec_pushf(&cmd.env, "GIT_DIFF_OPTS=%s", ctxlen_str);
++	} else {
++		// env.var. is set to something, even if empty string!
++	//	die("the value for GIT_DIFF_OPTS=\"%s\" would've been ignored", diffopts);
++		//technically this isn't needed, because if 'git' sees this, then it's exported, thus child of 'git'(aka the external diff program) will see it too.
++		//strvec_pushf(&cmd.env, "GIT_DIFF_OPTS=%s", diffopts);
++	}
++
+ 	diff_free_filespec_data(one);
+ 	diff_free_filespec_data(two);
+ 	cmd.use_shell = 1;
+-	if (run_command(&cmd))
+-		die(_("external diff died, stopping at %s"), name);
++	int status;
++	if (status=run_command(&cmd))
++		die(_("external diff died(exit code '%d'), stopping at %s"), status, name);
+ 
+ 	remove_tempfile();
+ }
