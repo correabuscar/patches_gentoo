@@ -1,0 +1,22 @@
+so for example if I use:
+ -up --unified=1
+then it won't be capped at a minimum of 3, instead it will take the 1
+
+but if u use:
+ --unified=1 -up
+it will reset to 3
+
+Index: /var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.c
+===================================================================
+--- .orig/var/tmp/portage/sys-apps/diffutils-3.10/work/diffutils-3.10/src/diff.c
++++ diffutils-3.10/src/diff.c
+@@ -374,8 +374,7 @@ main (int argc, char **argv)
+               numval = 3;
+ 
+             specify_style (c == 'U' ? OUTPUT_UNIFIED : OUTPUT_CONTEXT);
+-            if (context < numval)
+-              context = numval;
++            context = numval;
+             explicit_context = true;
+           }
+           break;
