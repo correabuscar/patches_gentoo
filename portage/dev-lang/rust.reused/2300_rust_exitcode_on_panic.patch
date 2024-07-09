@@ -1,0 +1,32 @@
+used in /home/user/sandbox/rust/05_sandbox/exec/exit_code_with_cleanup_from_panic
+allows a different exit code from panic(s) than the 101 one!
+all you've to do is not forget to set it before a panic ocurrs(or from within the user set panic hook) like:
+std::rt::EXIT_CODE_ON_PANIC.store(21, std::sync::atomic::Ordering::Relaxed);
+
+needs:   #![feature(rt)]
+
+Index: /var/tmp/portage/dev-lang/rust-1.79.0/work/rustc-1.79.0-src/library/std/src/rt.rs
+===================================================================
+--- .orig/var/tmp/portage/dev-lang/rust-1.79.0/work/rustc-1.79.0-src/library/std/src/rt.rs
++++ rustc-1.79.0-src/library/std/src/rt.rs
+@@ -112,6 +112,9 @@ pub(crate) fn cleanup() {
+     });
+ }
+ 
++const DEFAULT_EXIT_CODE_ON_PANIC:i32=101;
++pub static EXIT_CODE_ON_PANIC: crate::sync::atomic::AtomicI32 = crate::sync::atomic::AtomicI32::new(DEFAULT_EXIT_CODE_ON_PANIC);
++
+ // To reduce the generated code of the new `lang_start`, this function is doing
+ // the real work.
+ #[cfg(not(test))]
+@@ -138,7 +141,9 @@ fn lang_start_internal(
+     // user code from `main` or, more nefariously, as described in e.g. issue #86030.
+     // SAFETY: Only called once during runtime initialization.
+     panic::catch_unwind(move || unsafe { init(argc, argv, sigpipe) }).map_err(rt_abort)?;
+-    let ret_code = panic::catch_unwind(move || panic::catch_unwind(main).unwrap_or(101) as isize)
++    let ret_code = panic::catch_unwind(move || panic::catch_unwind(main).unwrap_or_else(|_| {
++        panic::catch_unwind(|| EXIT_CODE_ON_PANIC.load(crate::sync::atomic::Ordering::Relaxed)).unwrap_or(101)
++    }) as isize)
+         .map_err(move |e| {
+             mem::forget(e);
+             rtabort!("drop of the panic payload panicked");
