@@ -1,0 +1,179 @@
+Index: /var/tmp/portage/media-video/vlc-3.0.21/work/vlc-3.0.21/modules/meta_engine/taglib.cpp
+===================================================================
+--- .orig/var/tmp/portage/media-video/vlc-3.0.21/work/vlc-3.0.21/modules/meta_engine/taglib.cpp
++++ vlc-3.0.21/modules/meta_engine/taglib.cpp
+@@ -739,6 +739,7 @@ static void ReadMetaFromXiph( Ogg::XiphC
+             vlc_meta_SetTrackTotal( p_meta, (*list.begin()).toCString( true ) );
+     }
+ 
++    /*
+     // Try now to get embedded art
+     StringList mime_list = tag->fieldListMap()[ "COVERARTMIME" ];
+     StringList art_list = tag->fieldListMap()[ "COVERART" ];
+@@ -777,7 +778,7 @@ static void ReadMetaFromXiph( Ogg::XiphC
+         int i_cover_idx;
+         int i_data = vlc_b64_decode_binary( &p_data, art_list[0].toCString(true) );
+         i_cover_score = i_cover_idx = 0;
+-        /* TODO: Use i_cover_score / i_cover_idx to select the picture. */
++        /* TODO: Use i_cover_score / i_cover_idx to select the picture. * /
+         p_attachment = ParseFlacPicture( p_data, i_data, 0,
+             &i_cover_score, &i_cover_idx );
+         free( p_data );
+@@ -794,6 +795,7 @@ static void ReadMetaFromXiph( Ogg::XiphC
+             free( psz_url );
+         }
+     }
++    */
+ }
+ 
+ /**
+Index: /var/tmp/portage/media-video/vlc-3.0.21/work/vlc-3.0.21/modules/gui/qt/components/info_panels.cpp
+===================================================================
+--- .orig/var/tmp/portage/media-video/vlc-3.0.21/work/vlc-3.0.21/modules/gui/qt/components/info_panels.cpp
++++ vlc-3.0.21/modules/gui/qt/components/info_panels.cpp
+@@ -145,9 +145,9 @@ MetaPanel::MetaPanel( QWidget *parent,
+ 
+     ADD_META( VLC_META_COPYRIGHT, copyright_text, 0,  7 ); line++;
+ 
+-    /* ART_URL */
+-    art_cover = new CoverArtLabel( this, p_intf );
+-    metaLayout->addWidget( art_cover, line, 7, 6, 3, Qt::AlignLeft );
++//    /* ART_URL */
++//    art_cover = new CoverArtLabel( this, p_intf );
++//    metaLayout->addWidget( art_cover, line, 7, 6, 3, Qt::AlignLeft );
+ 
+     ADD_META( VLC_META_ENCODED_BY, encodedby_text, 0, 7 ); line++;
+ 
+@@ -274,8 +274,8 @@ void MetaPanel::update( input_item_t *p_
+         free( psz );
+     }
+ 
+-    art_cover->showArtUpdate( file );
+-    art_cover->setItem( p_item );
++//    art_cover->showArtUpdate( file );
++//    art_cover->setItem( p_item );
+ }
+ 
+ /**
+@@ -345,7 +345,7 @@ void MetaPanel::clear()
+     nowplaying_text->clear();
+     publisher_text->clear();
+     encodedby_text->clear();
+-    art_cover->clear();
++    //art_cover->clear();
+     fingerprintButton->setVisible( false );
+ 
+     setEditMode( false );
+Index: /var/tmp/portage/media-video/vlc-3.0.21/work/vlc-3.0.21/modules/gui/qt/components/info_panels.hpp
+===================================================================
+--- .orig/var/tmp/portage/media-video/vlc-3.0.21/work/vlc-3.0.21/modules/gui/qt/components/info_panels.hpp
++++ vlc-3.0.21/modules/gui/qt/components/info_panels.hpp
+@@ -39,7 +39,7 @@ class QTreeWidget;
+ class QTreeWidgetItem;
+ class QTableWidget;
+ class QLineEdit;
+-class CoverArtLabel;
++//class CoverArtLabel;
+ class QTextEdit;
+ class QLabel;
+ class VLCStatsView;
+@@ -74,7 +74,7 @@ private:
+     QLineEdit *nowplaying_text;
+     QLineEdit *publisher_text;
+     QLineEdit *encodedby_text;
+-    CoverArtLabel *art_cover;
++    //CoverArtLabel *art_cover;
+ 
+     QLabel   *lblURL;
+     QString  currentURL;
+Index: /var/tmp/portage/media-video/vlc-3.0.21/work/vlc-3.0.21/modules/gui/qt/components/playlist/playlist.cpp
+===================================================================
+--- .orig/var/tmp/portage/media-video/vlc-3.0.21/work/vlc-3.0.21/modules/gui/qt/components/playlist/playlist.cpp
++++ vlc-3.0.21/modules/gui/qt/components/playlist/playlist.cpp
+@@ -65,21 +65,21 @@ PlaylistWidget::PlaylistWidget( intf_thr
+     selector = new PLSelector( this, p_intf );
+     leftSplitter->addWidget( selector );
+ 
+-    /* Create a Container for the Art Label
+-       in order to have a beautiful resizing for the selector above it */
+-    artContainer = new QStackedWidget;
+-
+-    /* Art label */
+-    CoverArtLabel *art = new CoverArtLabel( artContainer, p_intf );
+-    art->setToolTip( qtr( "Double click to get media information" ) );
+-    artContainer->addWidget( art );
+-
+-    CONNECT( THEMIM->getIM(), artChanged( QString ),
+-             art, showArtUpdate( const QString& ) );
+-    CONNECT( THEMIM->getIM(), artChanged( input_item_t * ),
+-             art, showArtUpdate( input_item_t * ) );
+-
+-    leftSplitter->addWidget( artContainer );
++//    /* Create a Container for the Art Label
++//       in order to have a beautiful resizing for the selector above it */
++//    artContainer = new QStackedWidget;
++//
++//    /* Art label */
++//    CoverArtLabel *art = new CoverArtLabel( artContainer, p_intf );
++//    art->setToolTip( qtr( "Double click to get media information" ) );
++//    artContainer->addWidget( art );
++//
++//    CONNECT( THEMIM->getIM(), artChanged( QString ),
++//             art, showArtUpdate( const QString& ) );
++//    CONNECT( THEMIM->getIM(), artChanged( input_item_t * ),
++//             art, showArtUpdate( input_item_t * ) );
++//
++//    leftSplitter->addWidget( artContainer );
+ 
+     /*******************
+      * Right           *
+Index: /var/tmp/portage/media-video/vlc-3.0.21/work/vlc-3.0.21/modules/gui/qt/components/interface_widgets.cpp
+===================================================================
+--- .orig/var/tmp/portage/media-video/vlc-3.0.21/work/vlc-3.0.21/modules/gui/qt/components/interface_widgets.cpp
++++ vlc-3.0.21/modules/gui/qt/components/interface_widgets.cpp
+@@ -841,7 +841,7 @@ void SpeedControlWidget::resetRate()
+     THEMIM->getIM()->setRate( INPUT_RATE_DEFAULT );
+ }
+ 
+-CoverArtLabel::CoverArtLabel( QWidget *parent, intf_thread_t *_p_i )
++/*CoverArtLabel::CoverArtLabel( QWidget *parent, intf_thread_t *_p_i )
+     : QLabel( parent ), p_intf( _p_i ), p_item( NULL )
+ {
+     setContextMenuPolicy( Qt::ActionsContextMenu );
+@@ -904,7 +904,7 @@ void CoverArtLabel::showArtUpdate( const
+ 
+ void CoverArtLabel::showArtUpdate( input_item_t *_p_item )
+ {
+-    /* not for me */
++    /* not for me * /
+     if ( _p_item != p_item )
+         return;
+ 
+@@ -936,7 +936,7 @@ void CoverArtLabel::clear()
+ {
+     showArtUpdate( "" );
+ }
+-
++*/
+ TimeLabel::TimeLabel( intf_thread_t *_p_intf, TimeLabel::Display _displayType  )
+     : ClickableQLabel()
+     , p_intf( _p_intf )
+Index: /var/tmp/portage/media-video/vlc-3.0.21/work/vlc-3.0.21/modules/gui/qt/components/interface_widgets.hpp
+===================================================================
+--- .orig/var/tmp/portage/media-video/vlc-3.0.21/work/vlc-3.0.21/modules/gui/qt/components/interface_widgets.hpp
++++ vlc-3.0.21/modules/gui/qt/components/interface_widgets.hpp
+@@ -262,6 +262,7 @@ private slots:
+     void resetRate();
+ };
+ 
++/*
+ class CoverArtLabel : public QLabel
+ {
+     Q_OBJECT
+@@ -290,5 +291,6 @@ public slots:
+     void setArtFromFile();
+     void clear();
+ };
++*/
+ 
+ #endif
