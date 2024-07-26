@@ -1,5 +1,5 @@
 for firefox 123.0:
-tab_text doesn't see to affect anything.
+tab_text doesn't seem to affect anything.
 tab_selected is the background color of the currently selected/active tab; its text is white tho (can't change apparently).
 tab_background_text is the text color of the other non-active tabs in the list.
 
