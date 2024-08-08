@@ -1,3 +1,4 @@
+this has no effect now in 129.0 !
 Index: /var/tmp/portage/www-client/firefox-129.0/work/firefox-129.0/old-configure.in
 ===================================================================
 --- .orig/var/tmp/portage/www-client/firefox-129.0/work/firefox-129.0/old-configure.in
