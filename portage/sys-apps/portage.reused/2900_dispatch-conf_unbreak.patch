@@ -1,0 +1,16 @@
+this will workaround getopts rust crate eating up the arg to -u when not specified, even tho it's marked as optional
+so specifying it will prevent eating the first '%s' as the NUM
+
+Index: /var/tmp/portage/sys-apps/portage-3.0.65-r1/work/portage-3.0.65/bin/dispatch-conf
+===================================================================
+--- .orig/var/tmp/portage/sys-apps/portage-3.0.65-r1/work/portage-3.0.65/bin/dispatch-conf
++++ portage-3.0.65/bin/dispatch-conf
+@@ -50,7 +50,7 @@
+ from portage.process import find_binary, spawn
+ from portage.util import writemsg, writemsg_stdout
+
+-DIFF_CONTENTS = "diff -Nu '%s' '%s'"
++DIFF_CONTENTS = "diff -Nu3 '%s' '%s'"
+
+ # We need a secure scratch dir and python does silly verbose errors on the use of tempnam
+ oldmask = os.umask(0o077)
