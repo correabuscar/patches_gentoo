@@ -1,0 +1,81 @@
+do not ignore 'diff' cmd exit code and don't silently overwrite the modified configs with the new ones as a side effect of that and of same_cvs being true in /etc/dispatch-conf.conf
+
+https://bugs.gentoo.org/936596#c5
+
+Index: /var/tmp/portage/sys-apps/portage-3.0.65-r1/work/portage-3.0.65/bin/dispatch-conf
+===================================================================
+--- .orig/var/tmp/portage/sys-apps/portage-3.0.65-r1/work/portage-3.0.65/bin/dispatch-conf
++++ portage-3.0.65/bin/dispatch-conf
+@@ -100,7 +100,20 @@
+     return find_binary(cmd[0]) is not None
+
+
+-diff = diff_mixed_wrapper(diffstatusoutput, DIFF_CONTENTS)
++def diff(conf_current, archive_dist):
++    diffoldway = diff_mixed_wrapper(diffstatusoutput, DIFF_CONTENTS)
++    # Call the `diff` function with the specific arguments
++    mystatus, myoutput = diffoldway(conf_current, archive_dist)
++    exit_code = mystatus & 0xFF
++    if not exit_code in [0,1,2]:
++        print(f"'diff' command, for files '{conf_current}' and '{archive_dist}', exited with unexpected exit code {exit_code}, here's its output:")
++        print(myoutput)
++        sys.exit(1)
++    if exit_code == 2:
++        print(f"trouble running 'diff' command for files '{conf_current}' and '{archive_dist}', exit code {exit_code}, here's its output:")
++        print(myoutput)
++        sys.exit(1)
++    return mystatus, myoutput
+
+
+ class dispatch:
+@@ -255,6 +268,18 @@
+             mystatus, myoutput = diff(conf["current"], newconf)
+             myoutput_len = len(myoutput)
+             same_file = 0 == myoutput_len
++            exit_code = mystatus & 0xFF
++            if not exit_code in [0,1,2]:
++                print(f"diff exited with unexpected exit code {exit_code}, here's its output:")
++                print(myoutput)
++                sys.exit(1)
++                return False #unsure yet if this is good to do instead of exit!
++            if exit_code == 2:
++                print(f"trouble running diff, exit code {exit_code}, here's its output:")
++                print(myoutput)
++                sys.exit(1)
++                return False #unsure yet if this is good to do instead of exit!
++            # XXX: this check is possibly not right, but I can't really test it. Should be if exit code is 1 then they differ, if 0 they don't, if 2 trouble
+             if mystatus >> 8 == 2:
+                 # Binary files differ
+                 same_cvs = False
+@@ -266,7 +291,7 @@
+                 # Filter out all the cvs headers
+                 cvs_header = re.compile("# [$]Header:")
+                 cvs_lines = list(filter(cvs_header.search, mylines))
+-                same_cvs = len(mylines) == len(cvs_lines)
++                same_cvs = len(mylines) > 0 and len(mylines) == len(cvs_lines)
+
+                 # Filter out comments and whitespace-only changes.
+                 # Note: be nice to also ignore lines that only differ in whitespace...
+@@ -273,7 +298,7 @@
+                 wsc_lines = []
+                 for x in [r"^[-+]\s*#", r"^[-+]\s*$"]:
+                     wsc_lines += list(filter(re.compile(x).match, mylines))
+-                same_wsc = len(mylines) == len(wsc_lines)
++                same_wsc = len(mylines) > 0 and len(mylines) == len(wsc_lines)
+
+             # Do options permit?
+             same_cvs = same_cvs and self.options["replace-cvs"] == "yes"
+@@ -304,6 +329,8 @@
+                 or same_wsc
+                 or not protect_obj.isprotected(conf["current"])
+             ):
++                print("Refusing(and exiting here) to silently mv",newconf,conf["current"])
++                sys.exit(1)
+                 self.replace(newconf, conf["current"])
+                 self.post_process(conf["current"])
+                 if newconf == mrgconf:
+@@ -618,3 +645,4 @@
+     d.grind(sys.argv[1:])
+ else:
+     d.grind(portage.settings.get("CONFIG_PROTECT", "").split())
++# vim: set expandtab tabstop=4 shiftwidth=4:
