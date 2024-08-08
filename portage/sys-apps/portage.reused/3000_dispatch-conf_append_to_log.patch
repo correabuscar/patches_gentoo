@@ -1,0 +1,16 @@
+this will workaround getopts rust crate eating up the arg to -u when not specified, even tho it's marked as optional
+so specifying it will prevent eating the first '%s' as the NUM
+
+Index: /var/tmp/portage/sys-apps/portage-3.0.65-r1/work/portage-3.0.65/bin/dispatch-conf
+===================================================================
+--- .orig/var/tmp/portage/sys-apps/portage-3.0.65-r1/work/portage-3.0.65/bin/dispatch-conf
++++ portage-3.0.65/bin/dispatch-conf
+@@ -122,7 +135,7 @@
+                 self.options["log-file"]
+             ):
+                 old_umask = os.umask(0o077)
+-                open(self.options["log-file"], "w").close()  # Truncate it
++                open(self.options["log-file"], "a").close()  # always append
+                 os.umask(old_umask)
+
+         pager = self.options.get("pager")
