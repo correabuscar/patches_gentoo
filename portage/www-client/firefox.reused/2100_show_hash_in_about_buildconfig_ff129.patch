@@ -6,7 +6,7 @@ Index: /var/tmp/portage/www-client/firefox-129.0/work/firefox-129.0/old-configur
 @@ -319,6 +319,10 @@
    fi
  fi
-
+ 
 +MOZ_INCLUDE_SOURCE_INFO=1
 +#this will define&show MOZ_SOURCE_URL in about:buildconfig
 +#unclear if this still works since ff 129.0, but it did in 128.0.3 when prev. ver. of 2100_*.patch applied
