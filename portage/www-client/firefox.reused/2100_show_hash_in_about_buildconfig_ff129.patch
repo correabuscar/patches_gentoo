@@ -1,19 +1,33 @@
-this has no effect now in 129.0 !
-Index: /var/tmp/portage/www-client/firefox-129.0/work/firefox-129.0/old-configure.in
+
+Index: /var/tmp/portage/www-client/firefox-129.0/work/firefox-129.0/build/variables.py
 ===================================================================
---- .orig/var/tmp/portage/www-client/firefox-129.0/work/firefox-129.0/old-configure.in
-+++ firefox-129.0/old-configure.in
-@@ -319,6 +319,10 @@
-   fi
- fi
+--- .orig/var/tmp/portage/www-client/firefox-129.0/work/firefox-129.0/build/variables.py
++++ firefox-129.0/build/variables.py
+@@ -103,7 +103,7 @@
+     if changeset:
+         output.write("#define MOZ_SOURCE_STAMP %s\n" % changeset)
  
-+MOZ_INCLUDE_SOURCE_INFO=1
-+#this will define&show MOZ_SOURCE_URL in about:buildconfig
-+#unclear if this still works since ff 129.0, but it did in 128.0.3 when prev. ver. of 2100_*.patch applied
-+
- MOZ_ARG_WITH_STRING(branding,
- [  --with-branding=dir     Use branding from the specified directory.],
-     MOZ_BRANDING_DIRECTORY=$withval)
+-    if repo and buildconfig.substs.get("MOZ_INCLUDE_SOURCE_INFO"):
++    if repo: # and buildconfig.substs.get("MOZ_INCLUDE_SOURCE_INFO"):
+         source = "%s/rev/%s" % (repo, changeset)
+         output.write("#define MOZ_SOURCE_REPO %s\n" % repo)
+         output.write("#define MOZ_SOURCE_URL %s\n" % source)
+#this has no effect now in 129.0 !
+#Index: /var/tmp/portage/www-client/firefox-129.0/work/firefox-129.0/old-configure.in
+#===================================================================
+#--- .orig/var/tmp/portage/www-client/firefox-129.0/work/firefox-129.0/old-configure.in
+#+++ firefox-129.0/old-configure.in
+#@@ -319,6 +319,10 @@
+#   fi
+# fi
+# 
+#+MOZ_INCLUDE_SOURCE_INFO=1
+#+#this will define&show MOZ_SOURCE_URL in about:buildconfig
+#+#unclear if this still works since ff 129.0, but it did in 128.0.3 when prev. ver. of 2100_*.patch applied
+#+
+# MOZ_ARG_WITH_STRING(branding,
+# [  --with-branding=dir     Use branding from the specified directory.],
+#     MOZ_BRANDING_DIRECTORY=$withval)
 #diff -r dc5251d30a38 old-configure.in
 #--- a/old-configure.in	Tue Apr 14 00:32:50 2020 +0000
 #+++ b/old-configure.in	Tue Apr 14 12:40:49 2020 +0200
